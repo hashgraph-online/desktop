@@ -16,8 +16,8 @@ A modern desktop application for the Hashgraph Online Conversational Agent, buil
 
 ```bash
 # Clone the repository
-git clone https://github.com/hashgraph-online/conversational-agent
-cd conversational-agent/app
+git clone https://github.com/hashgraph-online/desktop
+cd desktop/app
 
 # Run the interactive setup
 ./setup.sh
@@ -42,8 +42,8 @@ cd conversational-agent/app
 
 ```bash
 # Clone and navigate to app
-git clone https://github.com/hashgraph-online/conversational-agent
-cd conversational-agent/app
+git clone https://github.com/hashgraph-online/desktop
+cd desktop/app
 
 # Setup legal files using Node.js script
 node scripts/setup-legal.js
@@ -57,8 +57,8 @@ pnpm build
 
 ```bash
 # Clone repository
-git clone https://github.com/hashgraph-online/conversational-agent
-cd conversational-agent/app
+git clone https://github.com/hashgraph-online/desktop
+cd desktop/app
 
 # Setup legal files manually
 cp terms.md.example terms.md
