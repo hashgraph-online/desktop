@@ -1,0 +1,57 @@
+{
+  "updateServer": {
+    "provider": "github",
+    "owner": "hashgraph-online",
+    "repo": "conversational-agent",
+    "private": false
+  },
+  "releaseChannels": {
+    "stable": {
+      "releaseType": "release",
+      "autoDownload": false,
+      "checkInterval": 43200000
+    },
+    "beta": {
+      "releaseType": "prerelease",
+      "autoDownload": false,
+      "checkInterval": 21600000
+    }
+  },
+  "platforms": {
+    "darwin": {
+      "formats": ["dmg", "zip"],
+      "codeSign": {
+        "identity": "Developer ID Application",
+        "entitlements": "assets/entitlements.mac.plist",
+        "hardenedRuntime": true,
+        "gatekeeperAssess": false
+      },
+      "notarize": {
+        "enabled": true,
+        "teamId": "${APPLE_TEAM_ID}"
+      }
+    },
+    "win32": {
+      "formats": ["nsis", "zip"],
+      "codeSign": {
+        "certificateFile": "${WINDOWS_CERTIFICATE_FILE}",
+        "certificatePassword": "${WINDOWS_CERTIFICATE_PASSWORD}"
+      }
+    },
+    "linux": {
+      "formats": ["AppImage", "deb", "rpm"],
+      "category": "Utility"
+    }
+  },
+  "security": {
+    "allowDowngrade": false,
+    "verifySignature": true,
+    "checksumValidation": true
+  },
+  "ui": {
+    "showNotifications": true,
+    "showProgressBar": true,
+    "showReleaseNotes": true,
+    "autoCloseDelay": 3000
+  }
+}

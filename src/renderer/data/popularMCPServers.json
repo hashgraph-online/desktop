@@ -1,0 +1,282 @@
+{
+  "categories": [
+    {
+      "id": "dev-tools",
+      "name": "Development Tools",
+      "description": "Tools for software development and code management",
+      "icon": "FiCode"
+    },
+    {
+      "id": "data-sources",
+      "name": "Data Sources",
+      "description": "Database connections and data management tools",
+      "icon": "FiDatabase"
+    },
+    {
+      "id": "ai-ml",
+      "name": "AI & Machine Learning",
+      "description": "AI models and machine learning integrations",
+      "icon": "FiCpu"
+    },
+    {
+      "id": "productivity",
+      "name": "Productivity",
+      "description": "Tools to enhance productivity and workflow",
+      "icon": "FiBriefcase"
+    },
+    {
+      "id": "cloud-services",
+      "name": "Cloud Services",
+      "description": "Cloud platform integrations and services",
+      "icon": "FiCloud"
+    }
+  ],
+  "servers": [
+    {
+      "id": "filesystem-local",
+      "name": "Local Filesystem",
+      "description": "Access and manage files on your local computer with read/write capabilities",
+      "category": "dev-tools",
+      "popularity": 95,
+      "difficulty": "easy",
+      "tags": ["files", "local", "essential"],
+      "setupTime": "< 1 minute",
+      "template": {
+        "type": "filesystem",
+        "config": {
+          "rootPath": "$HOME",
+          "readOnly": false
+        }
+      },
+      "requirements": [
+        "Choose a root directory to grant access to",
+        "Consider using read-only mode for sensitive directories"
+      ],
+      "quickSetup": true
+    },
+    {
+      "id": "github-api",
+      "name": "GitHub Integration",
+      "description": "Interact with GitHub repositories, issues, pull requests, and more",
+      "category": "dev-tools",
+      "popularity": 88,
+      "difficulty": "easy",
+      "tags": ["github", "git", "vcs", "collaboration"],
+      "setupTime": "2-3 minutes",
+      "template": {
+        "type": "github",
+        "config": {
+          "branch": "main"
+        }
+      },
+      "requirements": [
+        "GitHub Personal Access Token with appropriate scopes",
+        "Repository owner and name"
+      ],
+      "documentation": "https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token",
+      "quickSetup": true
+    },
+    {
+      "id": "postgres-db",
+      "name": "PostgreSQL Database",
+      "description": "Connect to PostgreSQL databases for data queries and management",
+      "category": "data-sources",
+      "popularity": 82,
+      "difficulty": "medium",
+      "tags": ["database", "postgres", "sql", "data"],
+      "setupTime": "3-5 minutes",
+      "template": {
+        "type": "postgres",
+        "config": {
+          "host": "localhost",
+          "port": 5432,
+          "ssl": false
+        }
+      },
+      "requirements": [
+        "PostgreSQL server running and accessible",
+        "Database credentials (username, password)",
+        "Database name"
+      ],
+      "documentation": "https://www.postgresql.org/docs/current/app-psql.html",
+      "quickSetup": true
+    },
+    {
+      "id": "sqlite-local",
+      "name": "SQLite Database",
+      "description": "Work with local SQLite database files for lightweight data storage",
+      "category": "data-sources",
+      "popularity": 75,
+      "difficulty": "easy",
+      "tags": ["database", "sqlite", "sql", "local", "embedded"],
+      "setupTime": "< 1 minute",
+      "template": {
+        "type": "sqlite",
+        "config": {
+          "readOnly": false
+        }
+      },
+      "requirements": [
+        "Path to SQLite database file (.db or .sqlite)"
+      ],
+      "quickSetup": true
+    },
+    {
+      "id": "openai-gpt",
+      "name": "OpenAI GPT",
+      "description": "Integrate OpenAI's GPT models for text generation and analysis",
+      "category": "ai-ml",
+      "popularity": 90,
+      "difficulty": "easy",
+      "tags": ["ai", "gpt", "openai", "llm", "text"],
+      "setupTime": "2-3 minutes",
+      "template": {
+        "type": "custom",
+        "config": {
+          "command": "mcp-openai",
+          "args": ["--model", "gpt-4"],
+          "env": {
+            "OPENAI_API_KEY": ""
+          }
+        }
+      },
+      "requirements": [
+        "OpenAI API key",
+        "Install mcp-openai package: npm install -g @mcp/openai"
+      ],
+      "documentation": "https://platform.openai.com/docs/api-reference",
+      "installCommand": "npm install -g @mcp/openai"
+    },
+    {
+      "id": "docker-manager",
+      "name": "Docker Manager",
+      "description": "Manage Docker containers, images, and compose files",
+      "category": "dev-tools",
+      "popularity": 78,
+      "difficulty": "medium",
+      "tags": ["docker", "containers", "devops", "deployment"],
+      "setupTime": "2-3 minutes",
+      "template": {
+        "type": "custom",
+        "config": {
+          "command": "mcp-docker",
+          "args": ["--socket", "/var/run/docker.sock"]
+        }
+      },
+      "requirements": [
+        "Docker installed and running",
+        "Install mcp-docker package: npm install -g @mcp/docker",
+        "Docker socket access permissions"
+      ],
+      "documentation": "https://docs.docker.com/",
+      "installCommand": "npm install -g @mcp/docker"
+    },
+    {
+      "id": "slack-integration",
+      "name": "Slack Workspace",
+      "description": "Send messages, manage channels, and interact with Slack workspaces",
+      "category": "productivity",
+      "popularity": 71,
+      "difficulty": "easy",
+      "tags": ["slack", "chat", "communication", "collaboration"],
+      "setupTime": "3-5 minutes",
+      "template": {
+        "type": "custom",
+        "config": {
+          "command": "mcp-slack",
+          "env": {
+            "SLACK_BOT_TOKEN": "",
+            "SLACK_APP_TOKEN": ""
+          }
+        }
+      },
+      "requirements": [
+        "Slack Bot Token and App Token",
+        "Install mcp-slack package: npm install -g @mcp/slack",
+        "Slack app with appropriate permissions"
+      ],
+      "documentation": "https://api.slack.com/",
+      "installCommand": "npm install -g @mcp/slack"
+    },
+    {
+      "id": "aws-s3",
+      "name": "AWS S3 Storage",
+      "description": "Manage files and buckets in Amazon S3 cloud storage",
+      "category": "cloud-services",
+      "popularity": 84,
+      "difficulty": "medium",
+      "tags": ["aws", "s3", "storage", "cloud", "files"],
+      "setupTime": "5-10 minutes",
+      "template": {
+        "type": "custom",
+        "config": {
+          "command": "mcp-aws-s3",
+          "env": {
+            "AWS_ACCESS_KEY_ID": "",
+            "AWS_SECRET_ACCESS_KEY": "",
+            "AWS_REGION": "us-east-1"
+          }
+        }
+      },
+      "requirements": [
+        "AWS Access Key ID and Secret Access Key",
+        "Install mcp-aws-s3 package: npm install -g @mcp/aws-s3",
+        "S3 bucket permissions"
+      ],
+      "documentation": "https://docs.aws.amazon.com/s3/",
+      "installCommand": "npm install -g @mcp/aws-s3"
+    },
+    {
+      "id": "redis-cache",
+      "name": "Redis Cache",
+      "description": "Interact with Redis for caching, pub/sub, and data storage",
+      "category": "data-sources",
+      "popularity": 76,
+      "difficulty": "medium",
+      "tags": ["redis", "cache", "database", "nosql", "performance"],
+      "setupTime": "2-3 minutes",
+      "template": {
+        "type": "custom",
+        "config": {
+          "command": "mcp-redis",
+          "args": ["--host", "localhost", "--port", "6379"]
+        }
+      },
+      "requirements": [
+        "Redis server running and accessible",
+        "Install mcp-redis package: npm install -g @mcp/redis",
+        "Optional: Redis password if configured"
+      ],
+      "documentation": "https://redis.io/documentation",
+      "installCommand": "npm install -g @mcp/redis"
+    },
+    {
+      "id": "jira-integration",
+      "name": "Jira Project Management",
+      "description": "Manage Jira issues, projects, and workflows",
+      "category": "productivity",
+      "popularity": 69,
+      "difficulty": "medium",
+      "tags": ["jira", "project-management", "issues", "agile"],
+      "setupTime": "5-10 minutes",
+      "template": {
+        "type": "custom",
+        "config": {
+          "command": "mcp-jira",
+          "env": {
+            "JIRA_HOST": "",
+            "JIRA_EMAIL": "",
+            "JIRA_API_TOKEN": ""
+          }
+        }
+      },
+      "requirements": [
+        "Jira host URL (e.g., yourcompany.atlassian.net)",
+        "Jira email and API token",
+        "Install mcp-jira package: npm install -g @mcp/jira"
+      ],
+      "documentation": "https://developer.atlassian.com/cloud/jira/platform/rest/v3/",
+      "installCommand": "npm install -g @mcp/jira"
+    }
+  ]
+}

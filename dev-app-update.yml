@@ -1,0 +1,13 @@
+# Development auto-updater configuration
+# This file is used for testing auto-update functionality in development
+# In production, the GitHub Releases configuration is used instead
+
+provider: github
+owner: hashgraph-online
+repo: conversational-agent
+private: false
+releaseType: release
+
+# For development testing, you can also use a local update server:
+# provider: generic
+# url: http://localhost:3000/updates/
