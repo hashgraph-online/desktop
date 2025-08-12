@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FiCheckCircle, FiAlertCircle } from 'react-icons/fi'
@@ -15,6 +15,7 @@ export const HederaSettings: React.FC<HederaSettingsProps> = () => {
   const { config, setHederaAccountId, setHederaPrivateKey, setHederaNetwork, testHederaConnection, isHederaConfigValid } = useConfigStore()
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null)
   const [isTesting, setIsTesting] = useState(false)
+  const [isMainnetEnabled, setIsMainnetEnabled] = useState(false)
 
   const {
     register,
@@ -44,6 +45,25 @@ export const HederaSettings: React.FC<HederaSettingsProps> = () => {
   const watchAccountId = watch('accountId')
   const watchPrivateKey = watch('privateKey')
   const watchNetwork = watch('network')
+
+  useEffect(() => {
+    window.electron.getEnvironmentConfig().then((envConfig: any) => {
+      const mainnetEnabled = envConfig.enableMainnet || false
+      setIsMainnetEnabled(mainnetEnabled)
+      
+      if (!mainnetEnabled && watchNetwork === 'mainnet') {
+        reset({ ...watch(), network: 'testnet' })
+        setHederaNetwork('testnet')
+      }
+    }).catch((error: any) => {
+      console.error('Failed to load environment config:', error)
+      setIsMainnetEnabled(false)
+      if (watchNetwork === 'mainnet') {
+        reset({ ...watch(), network: 'testnet' })
+        setHederaNetwork('testnet')
+      }
+    })
+  }, [watchNetwork, reset, watch, setHederaNetwork])
 
   React.useEffect(() => {
     setHederaAccountId(watchAccountId || '')
@@ -145,9 +165,18 @@ export const HederaSettings: React.FC<HederaSettingsProps> = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="testnet">Testnet</SelectItem>
-              <SelectItem value="mainnet">Mainnet</SelectItem>
+              {isMainnetEnabled && (
+                <SelectItem value="mainnet">Mainnet</SelectItem>
+              )}
             </SelectContent>
           </Select>
+          {!isMainnetEnabled && (
+            <div className="mt-1">
+              <Typography variant="caption" color="muted">
+                Only testnet is available in this configuration.
+              </Typography>
+            </div>
+          )}
         </div>
 
         <div className="pt-4">

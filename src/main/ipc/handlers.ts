@@ -30,6 +30,7 @@ import { TransactionParserService } from '../services/TransactionParserService';
 import { setupHCS10Handlers } from './hcs10Handlers';
 import { UpdateService } from '../services/UpdateService';
 import { OpenRouterService } from '../services/OpenRouterService';
+import { getEnvironmentConfig } from '../config/environment';
 
 const DEFAULT_SERVICE = 'conversational-agent';
 
@@ -537,6 +538,17 @@ export function setupConfigHandlers(): void {
       }
     }
   );
+
+  ipcMain.handle('config:getEnvironment', async (): Promise<any> => {
+    try {
+      const envConfig = getEnvironmentConfig();
+      logger.info('Environment config loaded', envConfig);
+      return envConfig;
+    } catch (error) {
+      logger.error('Failed to load environment config:', error);
+      throw error;
+    }
+  });
 }
 
 /**

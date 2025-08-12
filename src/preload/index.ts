@@ -30,6 +30,7 @@ const electronBridge = {
   saveConfig: (config: Record<string, unknown>) =>
     ipcRenderer.invoke('config:save', config),
   loadConfig: () => ipcRenderer.invoke('config:load'),
+  getEnvironmentConfig: () => ipcRenderer.invoke('config:getEnvironment'),
 
   testHederaConnection: (credentials: Record<string, unknown>) =>
     ipcRenderer.invoke('connection:test-hedera', credentials),
