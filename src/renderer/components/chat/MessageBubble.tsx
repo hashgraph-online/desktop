@@ -190,7 +190,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
     if (
       !isUser &&
       message.metadata?.transactionBytes &&
-      operationalMode === 'returnBytes'
+      operationalMode === 'provideBytes'
     ) {
       cleanedContent = cleanedContent
         .replace(/```[a-z]*\n[A-Za-z0-9+/=]+\n```/g, '')
@@ -386,7 +386,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                   {isUser ? (
                     <FiUser className='w-4 h-4 text-gray-700 dark:text-white' />
                   ) : (
-                    <Logo size="sm" variant="icon" className="w-5 h-5" />
+                    <Logo size='sm' variant='icon' className='w-5 h-5' />
                   )}
                 </div>
                 <Typography variant='h6' className='font-medium'>
@@ -477,7 +477,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
       >
         <div
           className={cn(
-            'flex max-w-[90%] sm:max-w-[80%] space-x-2',
+            'flex max-w-[min(85%,600px)] md:max-w-[min(75%,700px)] lg:max-w-[min(70%,800px)] space-x-2',
             isUser ? 'flex-row-reverse space-x-reverse' : 'flex-row'
           )}
         >
@@ -520,24 +520,20 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                   <FiUser className='w-4 h-4 text-gray-700 dark:text-white' />
                 )
               ) : (
-                <Logo
-                  size='sm'
-                  variant='icon'
-                  className='w-5 h-5'
-                />
+                <Logo size='sm' variant='icon' className='w-5 h-5' />
               )}
             </div>
           </div>
 
           <div
             className={cn(
-              'flex flex-col space-y-1',
+              'flex flex-col space-y-1 max-w-full',
               isUser ? 'items-end' : 'items-start'
             )}
           >
             <div
               className={cn(
-                'px-4 py-3 rounded-2xl shadow-xs select-text relative group',
+                'px-4 py-3 rounded-2xl shadow-xs select-text relative group break-words overflow-wrap-anywhere max-w-full',
                 isUser
                   ? 'bg-white dark:bg-gray-800 border border-gray-200/50 dark:border-gray-700/50 text-gray-900 dark:text-white rounded-tr-md'
                   : 'bg-gradient-to-br from-blue-500 to-blue-500/90 dark:from-[#a679f0] dark:to-[#9568df] text-white rounded-tl-md shadow-blue-500/10'
@@ -620,7 +616,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                   return (
                     <div
                       key={`text-${index}`}
-                      className='prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-li:my-0 select-text cursor-text text-sm [&_.inline-code-style]:bg-gray-200 [&_.inline-code-style]:dark:bg-gray-700 [&_.inline-code-style]:px-1.5 [&_.inline-code-style]:py-0.5 [&_.inline-code-style]:rounded [&_.inline-code-style]:font-mono [&_.inline-code-style]:text-xs'
+                      className='prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-li:my-0 select-text cursor-text text-sm break-words overflow-wrap-anywhere [&_.inline-code-style]:bg-gray-200 [&_.inline-code-style]:dark:bg-gray-700 [&_.inline-code-style]:px-1.5 [&_.inline-code-style]:py-0.5 [&_.inline-code-style]:rounded [&_.inline-code-style]:font-mono [&_.inline-code-style]:text-xs'
                       dangerouslySetInnerHTML={{
                         __html: processMarkdown(part.content),
                       }}
@@ -729,7 +725,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
               </div>
             )}
 
-            {operationalMode === 'returnBytes' &&
+            {operationalMode === 'provideBytes' &&
               (message.metadata?.scheduleId ||
                 message.metadata?.transactionBytes) &&
               !isUser && (

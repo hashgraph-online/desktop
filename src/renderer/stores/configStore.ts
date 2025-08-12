@@ -37,7 +37,7 @@ export interface AdvancedConfig {
   theme: 'light' | 'dark';
   autoStart: boolean;
   logLevel: 'debug' | 'info' | 'warn' | 'error';
-  operationalMode?: 'autonomous' | 'returnBytes';
+  operationalMode?: 'autonomous' | 'provideBytes';
 }
 
 export interface LegalAcceptanceConfig {
@@ -77,7 +77,7 @@ export interface ConfigStore {
   setTheme: (theme: 'light' | 'dark') => Promise<void>;
   setAutoStart: (autoStart: boolean) => void;
   setLogLevel: (logLevel: 'debug' | 'info' | 'warn' | 'error') => void;
-  setOperationalMode: (mode: 'autonomous' | 'returnBytes') => void;
+  setOperationalMode: (mode: 'autonomous' | 'provideBytes') => void;
   setAutonomousMode: (enabled: boolean) => void;
 
   saveConfig: () => Promise<void>;
@@ -113,7 +113,7 @@ const defaultConfig: AppConfig = {
     theme: 'light',
     autoStart: false,
     logLevel: 'info',
-    operationalMode: 'returnBytes',
+    operationalMode: 'provideBytes',
   },
   llmProvider: 'openai',
   autonomousMode: false,
@@ -318,12 +318,24 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
       const loadedConfig = await window.electron.loadConfig();
 
       if (loadedConfig) {
-        const migratedConfig = migrateConfig(loadedConfig);
+        const mode = (
+          loadedConfig.operationalMode ||
+          loadedConfig.advanced?.operationalMode ||
+          'provideBytes'
+        ).replace('returnBytes', 'provideBytes');
+
+        const migratedConfig = {
+          ...loadedConfig,
+          advanced: {
+            ...loadedConfig.advanced,
+            operationalMode: mode,
+          },
+        };
         set({ config: migratedConfig, isLoading: false });
         localStorage.setItem('app-config', JSON.stringify(migratedConfig));
 
         try {
-          await configService.applyTheme(migratedConfig.advanced.theme);
+          await configService.applyTheme(loadedConfig.advanced.theme);
         } catch (error) {}
       } else {
         set({ config: defaultConfig, isLoading: false });
@@ -450,7 +462,7 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
 
     const hasKey = !!config.openai.apiKey;
     const result = hasKey;
-    
+
     return result;
   },
 
@@ -494,55 +506,4 @@ function isValidAccountId(accountId: string): boolean {
  */
 function isValidPrivateKey(privateKey: string): boolean {
   return !!privateKey && privateKey.length > 0;
-}
-
-/**
- * Migrates old configuration format to new format
- */
-function migrateConfig(config: any): AppConfig {
-  if (
-    config.hedera &&
-    config.openai &&
-    config.anthropic &&
-    config.advanced &&
-    config.llmProvider &&
-    typeof config.autonomousMode === 'boolean' &&
-    config.legalAcceptance
-  ) {
-    return config as AppConfig;
-  }
-
-  return {
-    hedera: {
-      accountId: config.hederaAccountId || config.hedera?.accountId || '',
-      privateKey: config.hederaPrivateKey || config.hedera?.privateKey || '',
-      network: config.hederaNetwork || config.hedera?.network || 'testnet',
-    },
-    openai: {
-      apiKey: config.openaiApiKey || config.openai?.apiKey || '',
-      model: config.openaiModel || config.openai?.model || 'gpt-4o',
-    },
-    anthropic: {
-      apiKey: config.anthropicApiKey || config.anthropic?.apiKey || '',
-      model:
-        config.anthropicModel ||
-        config.anthropic?.model ||
-        'claude-3-5-sonnet-20241022',
-    },
-    advanced: {
-      theme: config.theme || config.advanced?.theme || 'light',
-      autoStart: config.autoStart || config.advanced?.autoStart || false,
-      logLevel: config.logLevel || config.advanced?.logLevel || 'info',
-      operationalMode:
-        config.operationalMode ||
-        config.advanced?.operationalMode ||
-        'returnBytes',
-    },
-    llmProvider: config.llmProvider || 'openai',
-    autonomousMode: config.autonomousMode || false,
-    legalAcceptance: config.legalAcceptance || {
-      termsAccepted: false,
-      privacyAccepted: false,
-    },
-  };
 }

@@ -1,28 +1,36 @@
-import type Database from 'better-sqlite3'
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
-import * as schema from './schema'
-import path from 'path'
-import fs from 'fs'
-import { app } from 'electron'
-import { Logger } from '../utils/logger'
+import Database from 'better-sqlite3';
+import {
+  drizzle,
+  type BetterSQLite3Database,
+} from 'drizzle-orm/better-sqlite3';
+import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
+import * as schema from './schema';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import fs from 'fs';
+import { app } from 'electron';
+import { Logger } from '../utils/logger';
 
-export type MCPRegistryDatabase = BetterSQLite3Database<typeof schema>
+const __filename = fileURLToPath(import.meta.url);
+const currentDir = dirname(__filename);
+
+export type MCPRegistryDatabase = BetterSQLite3Database<typeof schema>;
 
 class DatabaseManager {
-  private static instance: DatabaseManager
-  private database: MCPRegistryDatabase | null = null
-  private sqlite: Database.Database | null = null
-  private logger: Logger
+  private static instance: DatabaseManager;
+  private database: MCPRegistryDatabase | null = null;
+  private sqlite: Database.Database | null = null;
+  private logger: Logger;
 
   private constructor() {
-    this.logger = new Logger({ module: 'DatabaseManager' })
+    this.logger = new Logger({ module: 'DatabaseManager' });
   }
 
   static getInstance(): DatabaseManager {
     if (!DatabaseManager.instance) {
-      DatabaseManager.instance = new DatabaseManager()
+      DatabaseManager.instance = new DatabaseManager();
     }
-    return DatabaseManager.instance
+    return DatabaseManager.instance;
   }
 
   /**
@@ -30,9 +38,9 @@ class DatabaseManager {
    */
   getDatabase(): MCPRegistryDatabase | null {
     if (!this.database) {
-      this.initializeDatabase()
+      this.initializeDatabase();
     }
-    return this.database
+    return this.database;
   }
 
   /**
@@ -40,48 +48,33 @@ class DatabaseManager {
    */
   private initializeDatabase(): void {
     try {
-      const dbPath = this.getDatabasePath()
-      this.ensureDatabaseDirectory(dbPath)
+      const dbPath = this.getDatabasePath();
+      this.ensureDatabaseDirectory(dbPath);
 
-      this.logger.info(`Initializing database at: ${dbPath}`)
+      this.logger.info(`Initializing database at: ${dbPath}`);
 
-      let Database: any
-      let drizzle: any
-      let migrate: any
-
-      try {
-        Database = require('better-sqlite3')
-        const drizzleModule = require('drizzle-orm/better-sqlite3')
-        const migrateModule = require('drizzle-orm/better-sqlite3/migrator')
-        drizzle = drizzleModule.drizzle
-        migrate = migrateModule.migrate
-      } catch (importError) {
-        this.logger.error('Failed to import database dependencies:', importError)
-        throw new Error('Database dependencies not available. Please ensure better-sqlite3 is properly installed.')
-      }
-
-      this.sqlite = new Database(dbPath)
+      this.sqlite = new Database(dbPath);
 
       if (!this.sqlite) {
-        throw new Error('Failed to create SQLite connection')
+        throw new Error('Failed to create SQLite connection');
       }
 
-      this.sqlite.pragma('journal_mode = WAL')
-      this.sqlite.pragma('synchronous = NORMAL')
-      this.sqlite.pragma('cache_size = 10000')
-      this.sqlite.pragma('temp_store = MEMORY')
-      this.sqlite.pragma('mmap_size = 268435456')
-      this.database = drizzle(this.sqlite, { schema })
+      this.sqlite.pragma('journal_mode = WAL');
+      this.sqlite.pragma('synchronous = NORMAL');
+      this.sqlite.pragma('cache_size = 10000');
+      this.sqlite.pragma('temp_store = MEMORY');
+      this.sqlite.pragma('mmap_size = 268435456');
+      this.database = drizzle(this.sqlite, { schema });
 
-      this.runMigrations(migrate)
+      this.runMigrations();
 
-      this.initializeRegistrySync()
+      this.initializeRegistrySync();
 
-      this.logger.info('Database initialized successfully')
+      this.logger.info('Database initialized successfully');
     } catch (error) {
-      this.logger.error('Failed to initialize database:', error)
-      this.database = null
-      this.sqlite = null
+      this.logger.error('Failed to initialize database:', error);
+      this.database = null;
+      this.sqlite = null;
     }
   }
 
@@ -89,44 +82,46 @@ class DatabaseManager {
    * Get the appropriate database file path
    */
   private getDatabasePath(): string {
-    const userDataPath = app.getPath('userData')
-    return path.join(userDataPath, 'mcp-registry.db')
+    const userDataPath = app.getPath('userData');
+    return join(userDataPath, 'mcp-registry.db');
   }
 
   /**
    * Ensure database directory exists
    */
   private ensureDatabaseDirectory(dbPath: string): void {
-    const dbDir = path.dirname(dbPath)
+    const dbDir = dirname(dbPath);
     if (!fs.existsSync(dbDir)) {
-      fs.mkdirSync(dbDir, { recursive: true })
+      fs.mkdirSync(dbDir, { recursive: true });
     }
   }
 
   /**
    * Run database migrations
    */
-  private runMigrations(migrate: any): void {
+  private runMigrations(): void {
     try {
-      const migrationsFolder = path.join(__dirname, 'migrations')
-      
+      const migrationsFolder = join(currentDir, 'migrations');
+
       if (!fs.existsSync(migrationsFolder)) {
-        fs.mkdirSync(migrationsFolder, { recursive: true })
-        this.logger.info('Created migrations directory')
+        fs.mkdirSync(migrationsFolder, { recursive: true });
+        this.logger.info('Created migrations directory');
       }
 
-      const migrationFiles = fs.readdirSync(migrationsFolder).filter(f => f.endsWith('.sql'))
-      
+      const migrationFiles = fs
+        .readdirSync(migrationsFolder)
+        .filter((f) => f.endsWith('.sql'));
+
       if (migrationFiles.length > 0 && this.database) {
-        this.logger.info(`Running ${migrationFiles.length} migrations...`)
-        migrate(this.database, { migrationsFolder })
-        this.logger.info('Migrations completed successfully')
+        this.logger.info(`Running ${migrationFiles.length} migrations...`);
+        migrate(this.database, { migrationsFolder });
+        this.logger.info('Migrations completed successfully');
       } else {
-        this.createInitialSchema()
+        this.createInitialSchema();
       }
     } catch (error) {
-      this.logger.error('Migration failed:', error)
-      this.createInitialSchema()
+      this.logger.error('Migration failed:', error);
+      this.createInitialSchema();
     }
   }
 
@@ -135,8 +130,8 @@ class DatabaseManager {
    */
   private createInitialSchema(): void {
     try {
-      this.logger.info('Creating initial database schema...')
-      
+      this.logger.info('Creating initial database schema...');
+
       const createTablesSQL = `
         CREATE TABLE IF NOT EXISTS mcp_servers (
           id TEXT PRIMARY KEY,
@@ -211,7 +206,7 @@ class DatabaseManager {
           memory_usage_mb REAL,
           timestamp INTEGER DEFAULT (unixepoch())
         );
-      `
+      `;
 
       const createIndexesSQL = `
         CREATE INDEX IF NOT EXISTS idx_mcp_servers_name ON mcp_servers (name);
@@ -241,15 +236,15 @@ class DatabaseManager {
         CREATE INDEX IF NOT EXISTS idx_performance_metrics_timestamp ON performance_metrics (timestamp);
         CREATE INDEX IF NOT EXISTS idx_performance_metrics_duration ON performance_metrics (duration_ms);
         CREATE INDEX IF NOT EXISTS idx_performance_metrics_cache_hit ON performance_metrics (cache_hit);
-      `
+      `;
 
-      this.sqlite!.exec(createTablesSQL)
-      this.sqlite!.exec(createIndexesSQL)
-      
-      this.logger.info('Initial schema created successfully')
+      this.sqlite!.exec(createTablesSQL);
+      this.sqlite!.exec(createIndexesSQL);
+
+      this.logger.info('Initial schema created successfully');
     } catch (error) {
-      this.logger.error('Failed to create initial schema:', error)
-      throw error
+      this.logger.error('Failed to create initial schema:', error);
+      throw error;
     }
   }
 
@@ -258,31 +253,37 @@ class DatabaseManager {
    */
   private initializeRegistrySync(): void {
     try {
-      const registries = ['pulsemcp', 'official', 'smithery']
-      const db = this.getDatabase()
+      const registries = ['pulsemcp', 'official', 'smithery'];
+      const db = this.getDatabase();
 
       if (!db) {
-        this.logger.warn('Database not available - skipping registry sync initialization')
-        return
+        this.logger.warn(
+          'Database not available - skipping registry sync initialization'
+        );
+        return;
       }
 
       for (const registry of registries) {
-        const existing = db.select().from(schema.registrySync)
+        const existing = db
+          .select()
+          .from(schema.registrySync)
           .where(eq(schema.registrySync.registry, registry))
-          .get()
+          .get();
 
         if (!existing) {
-          db.insert(schema.registrySync).values({
-            registry,
-            status: 'pending' as const,
-            nextSyncAt: new Date(Date.now() + 60000)
-          } as any).run()
+          db.insert(schema.registrySync)
+            .values({
+              registry,
+              status: 'pending' as const,
+              nextSyncAt: new Date(Date.now() + 60000),
+            } as any)
+            .run();
         }
       }
 
-      this.logger.info('Registry sync records initialized')
+      this.logger.info('Registry sync records initialized');
     } catch (error) {
-      this.logger.warn('Failed to initialize registry sync records:', error)
+      this.logger.warn('Failed to initialize registry sync records:', error);
     }
   }
 
@@ -291,18 +292,19 @@ class DatabaseManager {
    */
   async cleanupExpiredCache(): Promise<void> {
     try {
-      const db = this.getDatabase()
-      if (!db) return
-      
-      const result = db.delete(schema.searchCache)
+      const db = this.getDatabase();
+      if (!db) return;
+
+      const result = db
+        .delete(schema.searchCache)
         .where(lt(schema.searchCache.expiresAt, new Date()))
-        .run()
+        .run();
 
       if (result.changes > 0) {
-        this.logger.info(`Cleaned up ${result.changes} expired cache entries`)
+        this.logger.info(`Cleaned up ${result.changes} expired cache entries`);
       }
     } catch (error) {
-      this.logger.error('Failed to cleanup expired cache:', error)
+      this.logger.error('Failed to cleanup expired cache:', error);
     }
   }
 
@@ -310,47 +312,53 @@ class DatabaseManager {
    * Get database statistics
    */
   getStats(): {
-    servers: number
-    categories: number
-    cacheEntries: number
-    dbSizeMB: number
+    servers: number;
+    categories: number;
+    cacheEntries: number;
+    dbSizeMB: number;
   } {
     try {
-      const db = this.getDatabase()
+      const db = this.getDatabase();
       if (!db) {
-        return { servers: 0, categories: 0, cacheEntries: 0, dbSizeMB: 0 }
+        return { servers: 0, categories: 0, cacheEntries: 0, dbSizeMB: 0 };
       }
-      
-      const serversCount = db.select({ count: sql<number>`count(*)` })
-        .from(schema.mcpServers)
-        .get()?.count || 0
 
-      const categoriesCount = db.select({ count: sql<number>`count(*)` })
-        .from(schema.serverCategories)
-        .get()?.count || 0
+      const serversCount =
+        db
+          .select({ count: sql<number>`count(*)` })
+          .from(schema.mcpServers)
+          .get()?.count || 0;
 
-      const cacheCount = db.select({ count: sql<number>`count(*)` })
-        .from(schema.searchCache)
-        .get()?.count || 0
+      const categoriesCount =
+        db
+          .select({ count: sql<number>`count(*)` })
+          .from(schema.serverCategories)
+          .get()?.count || 0;
 
-      const dbPath = this.getDatabasePath()
-      let dbSizeMB = 0
+      const cacheCount =
+        db
+          .select({ count: sql<number>`count(*)` })
+          .from(schema.searchCache)
+          .get()?.count || 0;
+
+      const dbPath = this.getDatabasePath();
+      let dbSizeMB = 0;
       try {
-        const stats = fs.statSync(dbPath)
-        dbSizeMB = Math.round(stats.size / (1024 * 1024) * 100) / 100
+        const stats = fs.statSync(dbPath);
+        dbSizeMB = Math.round((stats.size / (1024 * 1024)) * 100) / 100;
       } catch (error) {
-        this.logger.warn('Failed to get database file size:', error)
+        this.logger.warn('Failed to get database file size:', error);
       }
 
       return {
         servers: serversCount,
         categories: categoriesCount,
         cacheEntries: cacheCount,
-        dbSizeMB
-      }
+        dbSizeMB,
+      };
     } catch (error) {
-      this.logger.error('Failed to get database stats:', error)
-      return { servers: 0, categories: 0, cacheEntries: 0, dbSizeMB: 0 }
+      this.logger.error('Failed to get database stats:', error);
+      return { servers: 0, categories: 0, cacheEntries: 0, dbSizeMB: 0 };
     }
   }
 
@@ -360,19 +368,20 @@ class DatabaseManager {
   close(): void {
     try {
       if (this.sqlite) {
-        this.sqlite.close()
-        this.sqlite = null
-        this.database = null
-        this.logger.info('Database connection closed')
+        this.sqlite.close();
+        this.sqlite = null;
+        this.database = null;
+        this.logger.info('Database connection closed');
       }
     } catch (error) {
-      this.logger.error('Failed to close database:', error)
+      this.logger.error('Failed to close database:', error);
     }
   }
 }
 
-import { eq, lt, sql } from 'drizzle-orm'
+import { eq, lt, sql } from 'drizzle-orm';
 
-export const databaseManager = DatabaseManager.getInstance()
-export const getDatabase = (): MCPRegistryDatabase | null => databaseManager.getDatabase()
-export { schema }
+export const databaseManager = DatabaseManager.getInstance();
+export const getDatabase = (): MCPRegistryDatabase | null =>
+  databaseManager.getDatabase();
+export { schema };

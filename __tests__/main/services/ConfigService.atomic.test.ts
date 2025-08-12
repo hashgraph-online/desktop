@@ -2,6 +2,10 @@ import { ConfigService } from '../../../src/main/services/ConfigService';
 import * as fs from 'fs';
 import * as path from 'path';
 import { app, safeStorage } from 'electron';
+import { fileURLToPath } from 'node:url';
+
+const __filename = fileURLToPath(import.meta.url);
+const currentDir = dirname(__filename);
 
 /**
  * Tests for atomic write operations in ConfigService
@@ -13,7 +17,7 @@ describe('ConfigService Atomic Write Operations', () => {
   let transactionLogPath: string;
 
   beforeEach(() => {
-    userDataPath = path.join(__dirname, 'test-user-data');
+    userDataPath = path.join(currentDir, 'test-user-data');
     jest.spyOn(app, 'getPath').mockReturnValue(userDataPath);
     jest.spyOn(safeStorage, 'isEncryptionAvailable').mockReturnValue(false);
     

@@ -1,14 +1,18 @@
 import './init-logger';
 import { app, BrowserWindow, shell, ipcMain, nativeImage } from 'electron';
-import path from 'path';
 import started from 'electron-squirrel-startup';
 import electronLog from 'electron-log';
 import { Logger } from '@hashgraphonline/standards-sdk';
 import { setupIPCHandlers } from './ipc/handlers';
 import { UpdateService } from './services/UpdateService';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve, join } from 'node:path';
 
 electronLog.transports.file.level = 'info';
 electronLog.transports.console.level = 'info';
+
+const __filename = fileURLToPath(import.meta.url);
+const currentDir = dirname(__filename);
 
 // Ensure the app name shows as HOL Desktop as early as possible (affects macOS dock hover in dev)
 try {
@@ -18,7 +22,7 @@ try {
 
   // Improves some OS displays and dev tools labels
   process.title = 'HOL Desktop';
-} catch { }
+} catch {}
 
 if (started) {
   app.quit();
@@ -32,11 +36,11 @@ let logger: {
 
 function createWindow() {
   logger.info('Creating main window...');
-  logger.info('Preload path:', path.join(__dirname, 'preload.js'));
+  logger.info('Preload path:', join(currentDir, 'preload.cjs'));
 
   const iconPath = app.isPackaged
-    ? path.join(__dirname, '../../assets/hol-dock.png')
-    : path.join(__dirname, '../../assets/hol-dock.png');
+    ? join(currentDir, '../../assets/hol-dock.png')
+    : join(currentDir, '../../assets/hol-dock.png');
 
   const icon = nativeImage.createFromPath(iconPath);
 
@@ -54,7 +58,7 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegrationInWorker: true,
       sandbox: false,
-      preload: path.join(__dirname, 'preload.js'),
+      preload: join(currentDir, 'preload.cjs'),
     },
   });
 
@@ -66,8 +70,8 @@ function createWindow() {
     mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
     mainWindow.webContents.openDevTools();
   } else {
-    const indexPath = path.join(
-      __dirname,
+    const indexPath = join(
+      currentDir,
       `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`
     );
     logger.info('Loading file:', indexPath);
@@ -119,13 +123,11 @@ app.on('ready', async () => {
   logger = new Logger({ module: 'MainProcess' });
   logger.info('App ready, initializing...');
 
-
   if (process.platform === 'darwin') {
     const iconPath = app.isPackaged
-      ? path.join(__dirname, '../../assets/hol-dock.png')
-      : path.join(__dirname, '../../assets/hol-dock.png');
+      ? join(currentDir, '../../assets/hol-dock.png')
+      : join(currentDir, '../../assets/hol-dock.png');
     logger.info('Dock icon path:', iconPath);
-    logger.info('Dock icon exists:', require('fs').existsSync(iconPath));
 
     const icon = nativeImage.createFromPath(iconPath);
     logger.info('Dock icon loaded:', !icon.isEmpty());

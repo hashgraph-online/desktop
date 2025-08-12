@@ -8,6 +8,7 @@ import { MCPService } from './MCPService';
 import type { MCPServerConfig } from './MCPService';
 import { AgentLoader } from './AgentLoader';
 import type { ProgressiveLoadConfig } from '../../shared/types/mcp-performance';
+import { TransactionParser } from '@hashgraphonline/standards-sdk';
 
 export interface AgentConfig {
   accountId: string;
@@ -15,7 +16,7 @@ export interface AgentConfig {
   network: NetworkType;
   openAIApiKey: string;
   modelName?: string;
-  operationalMode?: 'autonomous' | 'returnBytes';
+  operationalMode?: 'autonomous' | 'provideBytes';
   llmProvider?: 'openai' | 'anthropic';
   mcpServers?: MCPServerConfig[];
   useProgressiveLoading?: boolean;
@@ -275,12 +276,14 @@ export class AgentService {
         });
       }
 
-
       let modelName = config.modelName || 'gpt-4o-mini';
       if (config.llmProvider === 'openai' && modelName.startsWith('openai/')) {
         modelName = modelName.replace('openai/', '');
       }
-      if (config.llmProvider === 'anthropic' && modelName.startsWith('anthropic/')) {
+      if (
+        config.llmProvider === 'anthropic' &&
+        modelName.startsWith('anthropic/')
+      ) {
         modelName = modelName.replace('anthropic/', '');
       }
 
@@ -309,11 +312,16 @@ export class AgentService {
 
       if (mcpServers && mcpServers.length > 0) {
         const underlyingAgent = conversationalAgent.getAgent();
-        this.logger.info(`Initiating background MCP connections for ${mcpServers.length} servers...`);
-        
+        this.logger.info(
+          `Initiating background MCP connections for ${mcpServers.length} servers...`
+        );
+
         setTimeout(() => {
           underlyingAgent.connectMCPServers().catch((error: any) => {
-            this.logger.error('Failed to initiate MCP server connections:', error);
+            this.logger.error(
+              'Failed to initiate MCP server connections:',
+              error
+            );
           });
         }, 100);
       }
@@ -466,10 +474,15 @@ export class AgentService {
           '[AgentService] Agent returned error:',
           response.error
         );
-        
+
         // Handle tool schema errors with a more user-friendly message
-        if (response.error.includes('Received tool input did not match expected schema')) {
-          response.message = 'I encountered an issue formatting the transfer request. Please try rephrasing your request, for example: "Send 1 HBAR to account 0.0.800"';
+        if (
+          response.error.includes(
+            'Received tool input did not match expected schema'
+          )
+        ) {
+          response.message =
+            'I encountered an issue formatting the transfer request. Please try rephrasing your request, for example: "Send 1 HBAR to account 0.0.800"';
           response.output = response.message;
         }
       }
@@ -556,6 +569,10 @@ export class AgentService {
         }
       }
 
+      const parsedTransaction = await TransactionParser.parseTransactionBytes(
+        transactionBytes
+      );
+
       const agentMessage: AgentMessage = {
         id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         role: 'assistant',
@@ -637,7 +654,7 @@ export class AgentService {
         );
 
         const contentStoreManager = this.agent.getContentStoreManager();
-        
+
         this.logger.info('Using ContentStoreManager for attachment storage:', {
           hasContentStoreManager: !!contentStoreManager,
           isInitialized: contentStoreManager?.isInitialized(),

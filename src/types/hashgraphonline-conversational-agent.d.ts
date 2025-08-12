@@ -1,6 +1,6 @@
 declare module '@hashgraphonline/conversational-agent' {
-  export type AgentOperationalMode = 'autonomous' | 'returnBytes';
-  
+  export type AgentOperationalMode = 'autonomous' | 'provideBytes';
+
   export interface MCPServerConfig {
     name: string;
     command?: string;
@@ -41,7 +41,10 @@ declare module '@hashgraphonline/conversational-agent' {
       debug: (...args: any[]) => void;
     };
     initialize(): Promise<void>;
-    processMessage(message: string, conversationIdOrChatHistory?: string | any[]): Promise<any>;
+    processMessage(
+      message: string,
+      conversationIdOrChatHistory?: string | any[]
+    ): Promise<any>;
     disconnect(): Promise<void>;
     cleanup(): Promise<void>;
     getAgent(): any;

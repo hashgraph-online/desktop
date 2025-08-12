@@ -135,18 +135,24 @@ export function setupAgentHandlers(): void {
       try {
         const configService = ConfigService.getInstance();
         const storedConfig = await configService.load();
-        
+
         const mergedConfig: AgentConfig = {
           accountId: config.accountId || storedConfig.hedera.accountId,
           privateKey: storedConfig.hedera.privateKey,
           network: config.network || storedConfig.hedera.network,
-          openAIApiKey: config.llmProvider === 'anthropic' ? storedConfig.anthropic.apiKey : storedConfig.openai.apiKey,
-          modelName: config.modelName || (config.llmProvider === 'openai' ? storedConfig.openai.model : storedConfig.anthropic.model),
+          openAIApiKey:
+            config.llmProvider === 'anthropic'
+              ? storedConfig.anthropic.apiKey
+              : storedConfig.openai.apiKey,
+          modelName:
+            config.modelName ||
+            (config.llmProvider === 'openai'
+              ? storedConfig.openai.model
+              : storedConfig.anthropic.model),
           operationalMode: config.operationalMode,
           llmProvider: config.llmProvider || storedConfig.llmProvider,
         };
-        
-        
+
         const result = await agentService.initialize(mergedConfig);
         return result;
       } catch (error) {
@@ -161,8 +167,8 @@ export function setupAgentHandlers(): void {
     'agent:send-message',
     async (
       event: IpcMainInvokeEvent,
-      data: { 
-        content: string; 
+      data: {
+        content: string;
         chatHistory: ChatHistory[];
         attachments?: Array<{
           name: string;
@@ -177,9 +183,9 @@ export function setupAgentHandlers(): void {
           contentLength: data.content?.length || 0,
           historyLength: data.chatHistory?.length || 0,
           attachmentsCount: data.attachments?.length || 0,
-          hasAttachments: !!data.attachments && data.attachments.length > 0
+          hasAttachments: !!data.attachments && data.attachments.length > 0,
         });
-        
+
         const result = await agentService.sendMessageWithAttachments(
           data.content,
           data.chatHistory,
@@ -1381,7 +1387,6 @@ function setupMirrorNodeHandlers(): void {
     }
   );
 
-  // Add TransactionParser handlers
   const transactionParserService = TransactionParserService.getInstance();
 
   ipcMain.handle(
@@ -1391,7 +1396,8 @@ function setupMirrorNodeHandlers(): void {
       transactionBytes: string
     ): Promise<IPCResponse> => {
       try {
-        const validation = transactionParserService.validateTransactionBytes(transactionBytes);
+        const validation =
+          transactionParserService.validateTransactionBytes(transactionBytes);
         return { success: true, data: validation };
       } catch (error) {
         return {
@@ -1412,7 +1418,9 @@ function setupMirrorNodeHandlers(): void {
       transactionBytes: string
     ): Promise<IPCResponse> => {
       try {
-        const parsed = await transactionParserService.parseTransactionBytes(transactionBytes);
+        const parsed = await transactionParserService.parseTransactionBytes(
+          transactionBytes
+        );
         return { success: true, data: parsed };
       } catch (error) {
         return {

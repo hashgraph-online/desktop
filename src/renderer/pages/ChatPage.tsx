@@ -622,7 +622,6 @@ const ChatPage: React.FC<ChatPageProps> = () => {
 
   return (
     <div className='flex flex-col bg-gradient-to-br from-gray-50/95 via-white/90 to-gray-100/95 dark:from-gray-950/98 dark:via-gray-900/95 dark:to-gray-800/98 relative h-full'>
-      {/* Enhanced luxurious animated background */}
       <div className='absolute inset-0 opacity-[0.03] dark:opacity-[0.04] pointer-events-none'>
         <motion.div
           className='absolute inset-0'
@@ -646,11 +645,10 @@ const ChatPage: React.FC<ChatPageProps> = () => {
         />
       </div>
 
-      {/* Premium gradient overlay with depth */}
       <div className='absolute inset-0 bg-gradient-to-br from-white/30 via-transparent to-gray-50/20 dark:from-gray-950/40 dark:via-transparent dark:to-gray-900/30 pointer-events-none' />
       <div className='absolute inset-0 bg-gradient-to-t from-transparent via-white/10 to-transparent dark:from-transparent dark:via-gray-900/10 dark:to-transparent pointer-events-none' />
-      <header className='h-14 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-b border-gray-200/30 dark:border-gray-800/30 flex items-center justify-between px-8 lg:px-16 xl:px-24 2xl:px-32 relative z-10 gap-6 shadow-sm shadow-gray-200/10 dark:shadow-gray-900/20'>
-        <div className='max-w-6xl mx-auto w-full flex items-center justify-between gap-6'>
+      <header className='h-14 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-b border-gray-200/30 dark:border-gray-800/30 flex items-center justify-between px-3 sm:px-4 lg:px-6 relative z-10 gap-6 shadow-sm shadow-gray-200/10 dark:shadow-gray-900/20'>
+        <div className='max-w-5xl mx-auto w-full flex items-center justify-between gap-6'>
           <div className='flex items-center gap-2 sm:gap-4 flex-shrink-0'>
             <div className='flex items-center gap-2'>
               <motion.div
@@ -792,7 +790,7 @@ const ChatPage: React.FC<ChatPageProps> = () => {
             </div>
           </div>
         ) : (
-          <div className='py-12 px-8 lg:px-16 xl:px-24 2xl:px-32 space-y-8 max-w-6xl mx-auto w-full'>
+          <div className='py-6 px-3 sm:px-4 lg:px-6 space-y-4 max-w-5xl mx-auto w-full'>
             {messages.map((message) => (
               <MessageBubble
                 key={message.id}
@@ -861,14 +859,14 @@ const ChatPage: React.FC<ChatPageProps> = () => {
       {/* Input area fixed at bottom */}
       <div className='border-t border-gray-200/30 dark:border-gray-800/30 bg-white/98 dark:bg-gray-900/98 backdrop-blur-2xl flex-shrink-0 shadow-2xl shadow-gray-200/10 dark:shadow-gray-900/30'>
         {/* Disclaimer */}
-        <div className='px-8 lg:px-16 xl:px-24 2xl:px-32 pt-4'>
-          <div className='max-w-6xl mx-auto'>
+        <div className='px-3 sm:px-4 lg:px-6 pt-4'>
+          <div className='max-w-5xl mx-auto'>
             <Disclaimer />
           </div>
         </div>
 
-        <div className='px-8 lg:px-16 xl:px-24 2xl:px-32 pb-8 pt-3'>
-          <div className='max-w-6xl mx-auto'>
+        <div className='px-3 sm:px-4 lg:px-6 pb-6 pt-3'>
+          <div className='max-w-5xl mx-auto'>
             {fileError && (
               <Alert className='mb-3 border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/20'>
                 <FiAlertCircle className='h-4 w-4 text-orange-600 dark:text-orange-400' />
@@ -999,42 +997,46 @@ const ChatPage: React.FC<ChatPageProps> = () => {
           />
         </div>
       </div>
-      
+
       {/* Clear Chat Confirmation Dialog */}
       {showClearDialog && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div className='fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50'>
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-md w-full p-6 border border-gray-200 dark:border-gray-800"
+            className='bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-md w-full p-6 border border-gray-200 dark:border-gray-800'
           >
-            <div className="flex items-start gap-4">
-              <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center flex-shrink-0">
-                <FiAlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
+            <div className='flex items-start gap-4'>
+              <div className='w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center flex-shrink-0'>
+                <FiAlertCircle className='w-5 h-5 text-red-600 dark:text-red-400' />
               </div>
-              <div className="flex-1">
-                <Typography variant="h6" className="font-semibold text-gray-900 dark:text-white mb-2">
+              <div className='flex-1'>
+                <Typography
+                  variant='h6'
+                  className='font-semibold text-gray-900 dark:text-white mb-2'
+                >
                   Clear Chat History?
                 </Typography>
-                <Typography variant="body2" color="muted" className="mb-6">
-                  Are you sure you want to clear the chat? This action cannot be reversed and all messages will be permanently deleted.
+                <Typography variant='body2' color='muted' className='mb-6'>
+                  Are you sure you want to clear the chat? This action cannot be
+                  reversed and all messages will be permanently deleted.
                 </Typography>
-                <div className="flex gap-3 justify-end">
+                <div className='flex gap-3 justify-end'>
                   <Button
-                    variant="ghost"
+                    variant='ghost'
                     onClick={() => setShowClearDialog(false)}
-                    className="px-4 py-2"
+                    className='px-4 py-2'
                   >
                     Cancel
                   </Button>
                   <Button
-                    variant="destructive"
+                    variant='destructive'
                     onClick={() => {
                       clearMessages();
                       setShowClearDialog(false);
                     }}
-                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white"
+                    className='px-4 py-2 bg-red-600 hover:bg-red-700 text-white'
                   >
                     Clear Chat
                   </Button>

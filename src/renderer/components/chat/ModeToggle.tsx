@@ -12,7 +12,7 @@ import Typography from '../ui/Typography';
 import { useConfigStore } from '../../stores/configStore';
 import { useLegalStore } from '../../stores/legalStore';
 
-export type OperationalMode = 'autonomous' | 'returnBytes';
+export type OperationalMode = 'autonomous' | 'provideBytes';
 
 interface ModeToggleProps {
   mode: OperationalMode;
@@ -40,7 +40,7 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({
 
   const handleToggle = () => {
     if (disabled || !isAutonomousModeEnabled) return;
-    onChange(isAutonomousMode ? 'returnBytes' : 'autonomous');
+    onChange(isAutonomousMode ? 'provideBytes' : 'autonomous');
   };
 
   const getDisplayText = () => {

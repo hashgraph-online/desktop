@@ -20,4 +20,7 @@ try {
       <App />
     </React.StrictMode>
   );
-} catch (error) {}
+} catch (error) {
+  console.error('Failed to render app:', error);
+  console.error('Error stack:', error.stack);
+}

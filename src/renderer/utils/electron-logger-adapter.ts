@@ -23,13 +23,6 @@ export interface ILogger {
   setModule(module: string): void;
 }
 
-let electronLog: any;
-try {
-  electronLog = require('electron-log/renderer');
-} catch (e) {
-  electronLog = console;
-}
-
 /**
  * Adapter to use electron-log in the renderer process with the standards-sdk Logger interface
  */
@@ -42,11 +35,7 @@ export class ElectronRendererLoggerAdapter implements ILogger {
     this.moduleContext = options.module || 'renderer';
     this.level = options.level || 'info';
 
-    this.logger = electronLog;
-
-    if (this.logger.transports && this.logger.transports.console) {
-      this.logger.transports.console.level = this.level;
-    }
+    this.logger = console;
 
     if (process.env.NODE_ENV === 'test' || options.silent) {
       this.setSilent(true);
@@ -112,13 +101,6 @@ export class ElectronRendererLoggerAdapter implements ILogger {
   }
 
   setSilent(silent: boolean): void {
-    if (this.logger.transports && this.logger.transports.console) {
-      if (silent) {
-        this.logger.transports.console.level = false;
-      } else {
-        this.logger.transports.console.level = this.level;
-      }
-    }
   }
 
   setModule(module: string): void {

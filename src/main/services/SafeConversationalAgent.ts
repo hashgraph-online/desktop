@@ -15,6 +15,7 @@ export type AgentConfig = {
   openAIModelName?: string;
   llmProvider?: 'openai' | 'anthropic';
   operationalMode?: AgentOperationalMode;
+  userAccountId?: string;
   mcpServers?: LibMCPServerConfig[];
   verbose?: boolean;
   disableLogging?: boolean;
@@ -37,6 +38,7 @@ export class SafeConversationalAgent extends ConversationalAgent {
       ...config,
       entityMemoryEnabled: config.entityMemoryEnabled ?? true,
       entityMemoryConfig: config.entityMemoryConfig,
+      userAccountId: config.userAccountId || config.accountId,
     });
 
     this.config = config;
@@ -128,6 +130,7 @@ export class SafeConversationalAgent extends ConversationalAgent {
    * Get the ContentStoreManager instance
    */
   getContentStoreManager(): ContentStoreManager | undefined {
+    // @ts-ignore
     return this.contentStoreManager;
   }
 

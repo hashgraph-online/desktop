@@ -1,5 +1,9 @@
 import electronLog from 'electron-log';
-import type { ILogger, LogLevel, LoggerOptions } from '@hashgraphonline/standards-sdk';
+import type {
+  ILogger,
+  LogLevel,
+  LoggerOptions,
+} from '@hashgraphonline/standards-sdk';
 
 /**
  * Adapter to use electron-log with the standards-sdk Logger interface
@@ -12,18 +16,20 @@ export class ElectronLoggerAdapter implements ILogger {
   constructor(options: LoggerOptions = {}) {
     this.moduleContext = options.module || 'app';
     this.level = options.level || 'info';
-    
+
     this.logger = electronLog.create({ logId: this.moduleContext });
-    
+
     this.logger.transports.file.fileName = 'conversational-agent.log';
     this.logger.transports.file.level = this.level;
     this.logger.transports.console.level = this.level;
-    
-    this.logger.transports.file.format = '[{y}-{m}-{d} {h}:{i}:{s}.{ms}] [{level}] [{processType}] {text}';
-    this.logger.transports.console.format = '[{h}:{i}:{s}.{ms}] [{level}] [{processType}] {text}';
-    
+
+    this.logger.transports.file.format =
+      '[{y}-{m}-{d} {h}:{i}:{s}.{ms}] [{level}] [{processType}] {text}';
+    this.logger.transports.console.format =
+      '[{h}:{i}:{s}.{ms}] [{level}] [{processType}] {text}';
+
     this.logger.variables.module = this.moduleContext;
-    
+
     if (process.env.NODE_ENV === 'test' || options.silent) {
       this.setSilent(true);
     }
@@ -31,9 +37,13 @@ export class ElectronLoggerAdapter implements ILogger {
 
   private formatMessage(args: any[]): string {
     const parts: string[] = [`[${this.moduleContext}]`];
-    
-    args.forEach(arg => {
-      if (typeof arg === 'string' || typeof arg === 'number' || typeof arg === 'boolean') {
+
+    args.forEach((arg) => {
+      if (
+        typeof arg === 'string' ||
+        typeof arg === 'number' ||
+        typeof arg === 'boolean'
+      ) {
         parts.push(String(arg));
       } else if (arg instanceof Error) {
         parts.push(arg.message);
@@ -48,7 +58,7 @@ export class ElectronLoggerAdapter implements ILogger {
         }
       }
     });
-    
+
     return parts.join(' ');
   }
 

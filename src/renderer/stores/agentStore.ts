@@ -9,7 +9,7 @@ export type AgentStatus =
   | 'connected'
   | 'disconnecting'
   | 'error';
-export type OperationalMode = 'autonomous' | 'returnBytes';
+export type OperationalMode = 'autonomous' | 'provideBytes';
 
 export interface Message {
   id: string;
