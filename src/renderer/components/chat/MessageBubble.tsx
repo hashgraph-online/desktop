@@ -192,14 +192,11 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
       message.metadata?.transactionBytes &&
       operationalMode === 'provideBytes'
     ) {
-      cleanedContent = cleanedContent
-        .replace(/```[a-z]*\n[A-Za-z0-9+/=]+\n```/g, '')
-        .replace(
-          /\n\nPlease sign and submit this transaction to complete the transfer\./g,
-          ''
-        )
-        .replace(/\n\nPlease sign the transaction with your account\./g, '')
-        .trim();
+      const transactionType = message.metadata?.parsedTransaction?.humanReadableType || 
+                              message.metadata?.parsedTransaction?.type || 
+                              'transaction';
+      const typeText = transactionType.toLowerCase().replace(' transaction', '');
+      cleanedContent = `Your ${typeText} transaction is ready for approval!`;
     }
 
     const parsedContent = parseScheduleMessage(cleanedContent, isUser);
@@ -336,12 +333,23 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
 
   const handleCopyMessage = async () => {
     try {
-      // Get clean text content without markdown/HTML
-      const cleanContent = cleanMessageContent(message.content);
-      await navigator.clipboard.writeText(cleanContent);
+      let textToCopy = cleanMessageContent(message.content);
+      
+      if (
+        !isUser &&
+        message.metadata?.transactionBytes &&
+        operationalMode === 'provideBytes'
+      ) {
+        const transactionType = message.metadata?.parsedTransaction?.humanReadableType || 
+                                message.metadata?.parsedTransaction?.type || 
+                                'transaction';
+        const typeText = transactionType.toLowerCase().replace(' transaction', '');
+        textToCopy = `Your ${typeText} transaction is ready for approval!`;
+      }
+      
+      await navigator.clipboard.writeText(textToCopy);
       setIsCopied(true);
 
-      // Reset copied state after 2 seconds
       setTimeout(() => {
         setIsCopied(false);
       }, 2000);
@@ -633,6 +641,54 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                   (imageData, imageName) =>
                     setImageModal({ imageData, imageName })
                 )}
+
+              {/* Transaction approval inside bubble for assistant messages */}
+              {operationalMode === 'provideBytes' &&
+                (message.metadata?.scheduleId ||
+                  message.metadata?.transactionBytes) &&
+                !isUser && (
+                  <div className='mt-3'>
+                    <TransactionApprovalButton
+                      scheduleId={message.metadata.scheduleId}
+                      transactionBytes={message.metadata.transactionBytes}
+                      description={message.metadata.description || ''}
+                      className='!mt-0'
+                      notes={message.metadata?.notes}
+                    />
+                  </div>
+                )}
+              
+              {/* Show notes when not in provideBytes mode or no transaction */}
+              {!isUser && 
+                message.metadata?.notes && 
+                message.metadata.notes.length > 0 && 
+                !(operationalMode === 'provideBytes' &&
+                  (message.metadata?.scheduleId || message.metadata?.transactionBytes)) && (
+                <div
+                  className='bg-blue-900/30 dark:bg-purple-900/30 rounded-lg p-3 mt-3'
+                  role='region'
+                  aria-label='Transaction notes'
+                >
+                  <Typography
+                    variant='caption'
+                    className='font-medium text-white/90'
+                  >
+                    Notes:
+                  </Typography>
+                  <ul className='mt-1' role='list'>
+                    {message.metadata.notes.map((note: string, index: number) => (
+                      <li key={index}>
+                        <Typography
+                          variant='caption'
+                          className='block text-white/80'
+                        >
+                          • {note}
+                        </Typography>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
 
             <div
@@ -692,52 +748,6 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                   </div>
                 )}
             </div>
-
-            {message.metadata?.notes && message.metadata.notes.length > 0 && (
-              <div
-                className={cn(
-                  'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mt-2',
-                  isUser ? 'ml-2 sm:ml-8' : 'mr-2 sm:mr-8'
-                )}
-                role='region'
-                aria-label='Transaction details'
-              >
-                <Typography
-                  variant='caption'
-                  color='secondary'
-                  className='font-medium'
-                >
-                  Transaction Details:
-                </Typography>
-                <ul className='mt-1' role='list'>
-                  {message.metadata.notes.map((note: string, index: number) => (
-                    <li key={index}>
-                      <Typography
-                        variant='caption'
-                        color='secondary'
-                        className='block'
-                      >
-                        • {note}
-                      </Typography>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {operationalMode === 'provideBytes' &&
-              (message.metadata?.scheduleId ||
-                message.metadata?.transactionBytes) &&
-              !isUser && (
-                <>
-                  <TransactionApprovalButton
-                    scheduleId={message.metadata.scheduleId}
-                    transactionBytes={message.metadata.transactionBytes}
-                    description={message.metadata.description || ''}
-                    className='mt-3'
-                  />
-                </>
-              )}
 
             {(() => {
               return (

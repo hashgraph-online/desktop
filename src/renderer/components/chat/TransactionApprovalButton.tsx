@@ -44,6 +44,7 @@ interface TransactionApprovalButtonProps {
   description?: string;
   network?: string;
   className?: string;
+  notes?: string[];
   onApprove?: (messageId: string) => Promise<void>;
   onReject?: (messageId: string) => Promise<void>;
 }
@@ -55,6 +56,9 @@ const TransactionContent = ({
   description,
   scheduleId,
   network,
+  isAlreadyExecuted,
+  executedTimestamp,
+  notes,
 }: {
   isLoadingDetails: boolean;
   transactionDetails: ParsedTransaction | null;
@@ -62,69 +66,137 @@ const TransactionContent = ({
   description: string;
   scheduleId: string;
   network: string;
+  isAlreadyExecuted?: boolean;
+  executedTimestamp?: string | null;
+  notes?: string[];
 }): React.ReactNode => {
-  if (isLoadingDetails) {
-    return (
-      <div className='flex items-center gap-2 py-4'>
-        <FiLoader className='h-4 w-4 animate-spin text-brand-blue' />
-        <Typography
-          variant='caption'
-          className='text-gray-600 dark:text-gray-400'
-        >
-          Loading transaction details...
-        </Typography>
-      </div>
-    );
-  }
-
-  if (transactionDetails) {
-    const hideHeader = true;
-
-    // Ensure transfers is always an array
-    const transfers = Array.isArray(transactionDetails.transfers)
-      ? transactionDetails.transfers
-      : [];
-
-    const hbarTransfersForDisplay = transfers.map((t) => ({
-      ...t,
-      amount: getValidAmount(t.amount),
-    }));
-
-    // Ensure tokenTransfers is always an array
-    const tokenTransfers = Array.isArray(transactionDetails.tokenTransfers)
-      ? transactionDetails.tokenTransfers
-      : [];
-
-    const tokenTransfersForDisplay = tokenTransfers.map((tokenTransfer) => ({
-      tokenId: tokenTransfer.tokenId,
-      accountId: tokenTransfer.accountId,
-      amount: getValidAmount(tokenTransfer.amount),
-    }));
-
-    return (
-      <TransactionDetails
-        {...transactionDetails}
-        humanReadableType={transactionDetails.humanReadableType || ''}
-        transfers={hbarTransfersForDisplay}
-        tokenTransfers={tokenTransfersForDisplay}
-        expirationTime={expirationTime || undefined}
-        scheduleId={scheduleId || ''}
-        hideHeader={hideHeader}
-        network={network}
-        variant='embedded'
-      />
-    );
-  }
+  const formatExecutedAt = (timestamp: string): string => {
+    if (!timestamp) return '';
+    try {
+      const asSeconds = Number(timestamp);
+      const date = isNaN(asSeconds)
+        ? new Date(timestamp)
+        : new Date(asSeconds * 1000);
+      return format(date, 'PPpp');
+    } catch {
+      return timestamp;
+    }
+  };
 
   return (
-    <div className='flex items-center gap-2 py-2'>
-      <FiInfo className='h-4 w-4 text-yellow-500' />
-      <Typography
-        variant='caption'
-        className='text-gray-600 dark:text-gray-400'
-      >
-        Transaction details not available
-      </Typography>
+    <div className='relative'>
+      <div className='relative bg-black/20 rounded-xl border border-white/10 p-5'>
+        {/* Header Section */}
+        <div className='flex items-start gap-3'>
+          <div className={cn(
+            'relative flex items-center justify-center w-10 h-10 rounded-lg',
+            'bg-white/10'
+          )}>
+            {isAlreadyExecuted ? (
+              <FiCheckCircle className='text-white h-5 w-5' />
+            ) : (
+              <FiClock className='text-white h-5 w-5' />
+            )}
+            {!isAlreadyExecuted && !isLoadingDetails && (
+              <span className='absolute -top-1 -right-1 h-2 w-2'>
+                <span className='animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75'></span>
+                <span className='relative inline-flex rounded-full h-2 w-2 bg-yellow-400'></span>
+              </span>
+            )}
+          </div>
+          
+          <div className='flex-1'>
+            <Typography
+              variant='h6'
+              className='font-semibold text-white leading-tight'
+            >
+              {isAlreadyExecuted
+                ? 'Transaction Executed'
+                : 'Transaction Approval Required'}
+            </Typography>
+            
+            <Typography
+              variant='body2'
+              className='text-white/90 mt-1 leading-relaxed'
+            >
+              {isAlreadyExecuted
+                ? `Executed ${executedTimestamp ? formatExecutedAt(executedTimestamp) : 'successfully'}`
+                : description ||
+                  transactionDetails?.humanReadableType ||
+                  'Review and approve the transaction details below'}
+            </Typography>
+            
+            {/* Notes Section */}
+            {notes && notes.length > 0 && (
+              <div className='mt-3 pl-4 border-l-2 border-white/30'>
+                {notes.map((note: string, index: number) => (
+                  <Typography
+                    key={index}
+                    variant='body2'
+                    className='text-white/90 leading-relaxed mb-1 last:mb-0'
+                  >
+                    {note}
+                  </Typography>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Transaction Details Section */}
+        {isLoadingDetails ? (
+          <div className='mt-5 flex items-center justify-center py-6'>
+            <div className='flex flex-col items-center gap-3'>
+              <div className='relative'>
+                <div className='w-10 h-10 border-3 border-white/20 rounded-full' />
+                <div className='absolute top-0 w-10 h-10 border-3 border-white rounded-full border-t-transparent animate-spin' />
+              </div>
+              <Typography variant='caption' className='text-white text-sm'>
+                Loading transaction details...
+              </Typography>
+            </div>
+          </div>
+        ) : transactionDetails ? (
+          (() => {
+            const hideHeader = true;
+            const transfers = Array.isArray(transactionDetails.transfers)
+              ? transactionDetails.transfers
+              : [];
+
+            const hbarTransfersForDisplay = transfers.map((t) => ({
+              ...t,
+              amount: getValidAmount(t.amount),
+            }));
+
+            const tokenTransfers = Array.isArray(transactionDetails.tokenTransfers)
+              ? transactionDetails.tokenTransfers
+              : [];
+
+            const tokenTransfersForDisplay = tokenTransfers.map((tokenTransfer) => ({
+              tokenId: tokenTransfer.tokenId,
+              accountId: tokenTransfer.accountId,
+              amount: getValidAmount(tokenTransfer.amount),
+            }));
+
+            return (
+              <div className='mt-4'>
+                <TransactionDetails
+                  {...transactionDetails}
+                  humanReadableType={transactionDetails.humanReadableType || ''}
+                  transfers={hbarTransfersForDisplay}
+                  tokenTransfers={tokenTransfersForDisplay}
+                  expirationTime={expirationTime || undefined}
+                  scheduleId={scheduleId || ''}
+                  hideHeader={hideHeader}
+                  network={network}
+                  variant='embedded'
+                  className='[&>div]:!bg-transparent [&>div]:!border-0 [&>div]:!shadow-none [&>div]:!p-0 [&_table]:!bg-transparent [&_table]:!border-0 [&_thead]:!border-b [&_thead]:!border-white/20 [&_th]:!bg-transparent [&_th]:!text-white/90 [&_th]:!font-medium [&_th]:!text-xs [&_th]:!uppercase [&_th]:!tracking-wider [&_th]:!border-0 [&_th]:!pb-2 [&_td]:!text-white [&_td]:!text-sm [&_td]:!border-0 [&_td]:!py-2 [&_tr]:!border-0 [&_tbody_tr]:!border-b [&_tbody_tr]:!border-white/10 [&_tbody_tr:last-child]:!border-0 [&_tr:hover]:!bg-white/5 [&_.text-gray-500]:!text-white/90 [&_.text-gray-600]:!text-white [&_.text-gray-700]:!text-white [&_.bg-gray-50]:!bg-transparent [&_.bg-gray-100]:!bg-transparent [&_.bg-white]:!bg-transparent [&_.border-gray-200]:!border-white/20 [&_.shadow-sm]:!shadow-none'
+                />
+              </div>
+            );
+          })()
+        ) : null}
+      </div>
     </div>
   );
 };
@@ -138,12 +210,14 @@ export const TransactionApprovalButton: React.FC<
   description = '',
   network: propsNetwork,
   className,
+  notes,
   onApprove,
   onReject,
 }) => {
   const [isApproving, setIsApproving] = useState(false);
   const [isApproved, setIsApproved] = useState(false);
   const [isExecuted, setIsExecuted] = useState(false);
+  const [isDismissed, setIsDismissed] = useState(false);
   const [executedTransactionId, setExecutedTransactionId] = useState<
     string | null
   >(null);
@@ -705,254 +779,242 @@ export const TransactionApprovalButton: React.FC<
     []
   );
 
+  if (isDismissed) {
+    return null;
+  }
+
   return (
     <div className={cn('mt-4 flex flex-col items-start w-full', className)}>
-      <div className='bg-gradient-to-br from-gray-50 to-gray-100/50 dark:from-gray-800/30 dark:to-gray-900/40 border border-gray-200 dark:border-gray-700 rounded-xl p-3 sm:p-4 w-full backdrop-blur-sm shadow-sm'>
+      <div className='w-full'>
         <div className='flex flex-col space-y-4 md:space-y-5'>
           {isApproved && isExecuted ? (
-            <div className='flex flex-col animate-fadeIn py-4 space-y-4'>
-              <div className='flex items-center'>
-                <div className='bg-brand-green/20 dark:bg-brand-green/30 p-2 sm:p-2.5 rounded-full shadow-sm flex items-center justify-center flex-shrink-0'>
-                  <FiCheckCircle className='text-brand-green h-4 sm:h-5 w-4 sm:w-5' />
+            <div className='relative'>
+              <div className='relative bg-black/20 rounded-xl border border-white/10 p-5'>
+                {/* Header Section */}
+                <div className='flex items-start gap-3'>
+                  <div className={cn(
+                    'relative flex items-center justify-center w-10 h-10 rounded-lg',
+                    'bg-white/10'
+                  )}>
+                    <FiCheckCircle className='text-white h-5 w-5' />
+                  </div>
+                  
+                  <div className='flex-1'>
+                    <Typography
+                      variant='h6'
+                      className='font-semibold text-white leading-tight'
+                    >
+                      Transaction Executed Successfully
+                    </Typography>
+                    
+                    <Typography
+                      variant='body2'
+                      className='text-white/90 mt-1 leading-relaxed'
+                    >
+                      {executedTransactionId ? (
+                        <>
+                          Transaction ID: {executedTransactionId}
+                          <br />
+                          <button
+                            onClick={() => {
+                              const explorerUrl =
+                                network === 'mainnet'
+                                  ? `https://hashscan.io/mainnet/transaction/${executedTransactionId}`
+                                  : `https://hashscan.io/testnet/transaction/${executedTransactionId}`;
+                              window.electron.openExternal(explorerUrl);
+                            }}
+                            className='text-white underline hover:text-white/80 mt-1 inline-block'
+                          >
+                            View on HashScan →
+                          </button>
+                        </>
+                      ) : (
+                        'The transaction has been successfully executed.'
+                      )}
+                    </Typography>
+                  </div>
                 </div>
-                <div className='ml-3 sm:ml-4'>
-                  <Typography
-                    variant='body1'
-                    className='font-medium text-green-700 dark:text-green-300 text-sm sm:text-base'
-                  >
-                    Transaction Executed Successfully
-                  </Typography>
-                  <Typography
-                    variant='caption'
-                    className='text-xs sm:text-sm text-green-600/80 dark:text-green-400/80 mt-0.5'
-                  >
-                    {executedTransactionId ? (
-                      <>
-                        Transaction ID: {executedTransactionId}
-                        <br />
-                        <button
-                          onClick={() => {
-                            const explorerUrl =
-                              network === 'mainnet'
-                                ? `https://hashscan.io/mainnet/transaction/${executedTransactionId}`
-                                : `https://hashscan.io/testnet/transaction/${executedTransactionId}`;
-                            window.electron.openExternal(explorerUrl);
-                          }}
-                          className='text-green-600 dark:text-green-400 underline hover:text-green-700 dark:hover:text-green-300'
-                        >
-                          View on HashScan →
-                        </button>
-                      </>
-                    ) : (
-                      'The transaction has been successfully executed.'
-                    )}
-                  </Typography>
-                </div>
+
+                {isLoadingEnhancedDetails && (
+                  <div className='mt-5 flex items-center justify-center py-6'>
+                    <div className='flex flex-col items-center gap-3'>
+                      <div className='relative'>
+                        <div className='w-10 h-10 border-3 border-white/20 rounded-full' />
+                        <div className='absolute top-0 w-10 h-10 border-3 border-white rounded-full border-t-transparent animate-spin' />
+                      </div>
+                      <Typography variant='caption' className='text-white text-sm'>
+                        Loading transaction details...
+                      </Typography>
+                    </div>
+                  </div>
+                )}
+
+                {enhancedTransactionDetails && (
+                  <div className='mt-4'>
+                    {(() => {
+                      const entityId =
+                        enhancedTransactionDetails.details?.createdTokenId ||
+                        enhancedTransactionDetails.details?.entityId;
+
+                      const formattedTransfers = Array.isArray(
+                        enhancedTransactionDetails.transfers
+                      )
+                        ? enhancedTransactionDetails.transfers.map(
+                            (transfer) => ({
+                              accountId: transfer.accountId,
+                              amount:
+                                typeof transfer.amount === 'string'
+                                  ? parseFloat(transfer.amount)
+                                  : transfer.amount,
+                            })
+                          )
+                        : [];
+
+                      const formattedTokenTransfers = Array.isArray(
+                        enhancedTransactionDetails.tokenTransfers
+                      )
+                        ? enhancedTransactionDetails.tokenTransfers.map(
+                            (tokenTransfer) => ({
+                              tokenId: tokenTransfer.tokenId,
+                              accountId: tokenTransfer.accountId,
+                              amount: tokenTransfer.amount,
+                            })
+                          )
+                        : [];
+
+                      return (
+                        <TransactionDetails
+                          {...enhancedTransactionDetails}
+                          humanReadableType={
+                            enhancedTransactionDetails.humanReadableType || ''
+                          }
+                          transfers={formattedTransfers}
+                          tokenTransfers={formattedTokenTransfers}
+                          executedTransactionEntityId={entityId}
+                          executedTransactionType={
+                            enhancedTransactionDetails.type
+                          }
+                          network={network}
+                          hideHeader={true}
+                          variant='embedded'
+                          className='[&>div]:!bg-transparent [&>div]:!border-0 [&>div]:!shadow-none [&>div]:!p-0 [&_table]:!bg-transparent [&_table]:!border-0 [&_thead]:!border-b [&_thead]:!border-white/20 [&_th]:!bg-transparent [&_th]:!text-white/90 [&_th]:!font-medium [&_th]:!text-xs [&_th]:!uppercase [&_th]:!tracking-wider [&_th]:!border-0 [&_th]:!pb-2 [&_td]:!text-white [&_td]:!text-sm [&_td]:!border-0 [&_td]:!py-2 [&_tr]:!border-0 [&_tbody_tr]:!border-b [&_tbody_tr]:!border-white/10 [&_tbody_tr:last-child]:!border-0 [&_tr:hover]:!bg-white/5 [&_.text-gray-500]:!text-white/90 [&_.text-gray-600]:!text-white [&_.text-gray-700]:!text-white [&_.bg-gray-50]:!bg-transparent [&_.bg-gray-100]:!bg-transparent [&_.bg-white]:!bg-transparent [&_.border-gray-200]:!border-white/20 [&_.shadow-sm]:!shadow-none'
+                        />
+                      );
+                    })()}
+                  </div>
+                )}
               </div>
-
-              {isLoadingEnhancedDetails && (
-                <div className='flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800'>
-                  <FiLoader className='h-4 w-4 animate-spin text-blue-600 dark:text-blue-400' />
-                  <Typography
-                    variant='caption'
-                    className='text-blue-700 dark:text-blue-300'
-                  >
-                    Loading enhanced transaction details...
-                  </Typography>
-                </div>
-              )}
-
-              {enhancedTransactionDetails && (
-                <div className='border-t border-gray-200 dark:border-gray-700 pt-4'>
-                  <Typography
-                    variant='caption'
-                    className='text-gray-600 dark:text-gray-400 mb-3 block'
-                  >
-                    Transaction Details:
-                  </Typography>
-                  {(() => {
-                    const entityId =
-                      enhancedTransactionDetails.details?.createdTokenId ||
-                      enhancedTransactionDetails.details?.entityId;
-
-                    const formattedTransfers = Array.isArray(
-                      enhancedTransactionDetails.transfers
-                    )
-                      ? enhancedTransactionDetails.transfers.map(
-                          (transfer) => ({
-                            accountId: transfer.accountId,
-                            amount:
-                              typeof transfer.amount === 'string'
-                                ? parseFloat(transfer.amount)
-                                : transfer.amount,
-                          })
-                        )
-                      : [];
-
-                    const formattedTokenTransfers = Array.isArray(
-                      enhancedTransactionDetails.tokenTransfers
-                    )
-                      ? enhancedTransactionDetails.tokenTransfers.map(
-                          (tokenTransfer) => ({
-                            tokenId: tokenTransfer.tokenId,
-                            accountId: tokenTransfer.accountId,
-                            amount: tokenTransfer.amount,
-                          })
-                        )
-                      : [];
-
-                    return (
-                      <TransactionDetails
-                        {...enhancedTransactionDetails}
-                        humanReadableType={
-                          enhancedTransactionDetails.humanReadableType || ''
-                        }
-                        transfers={formattedTransfers}
-                        tokenTransfers={formattedTokenTransfers}
-                        executedTransactionEntityId={entityId}
-                        executedTransactionType={
-                          enhancedTransactionDetails.type
-                        }
-                        network={network}
-                        className='bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3'
-                      />
-                    );
-                  })()}
-                </div>
-              )}
             </div>
           ) : isApproved ? (
-            <div className='flex items-center animate-fadeIn py-4'>
-              <div className='bg-brand-green/20 dark:bg-brand-green/30 p-2 sm:p-2.5 rounded-full shadow-sm flex items-center justify-center flex-shrink-0'>
-                <FiCheckCircle className='text-brand-green h-4 sm:h-5 w-4 sm:w-5' />
-              </div>
-              <div className='ml-3 sm:ml-4'>
-                <Typography
-                  variant='body1'
-                  className='font-medium text-green-700 dark:text-green-300 text-sm sm:text-base'
-                >
-                  Transaction Approved
-                </Typography>
-                <Typography
-                  variant='caption'
-                  className='text-xs sm:text-sm text-green-600/80 dark:text-green-400/80 mt-0.5'
-                >
-                  The transaction has been successfully signed.
-                </Typography>
+            <div className='relative'>
+              <div className='relative bg-black/20 rounded-xl border border-white/10 p-5'>
+                <div className='flex items-start gap-3'>
+                  <div className={cn(
+                    'relative flex items-center justify-center w-10 h-10 rounded-lg',
+                    'bg-white/10'
+                  )}>
+                    <FiCheckCircle className='text-white h-5 w-5' />
+                  </div>
+                  
+                  <div className='flex-1'>
+                    <Typography
+                      variant='h6'
+                      className='font-semibold text-white leading-tight'
+                    >
+                      Transaction Approved
+                    </Typography>
+                    
+                    <Typography
+                      variant='body2'
+                      className='text-white/90 mt-1 leading-relaxed'
+                    >
+                      The transaction has been successfully signed and is being processed.
+                    </Typography>
+                  </div>
+                </div>
               </div>
             </div>
           ) : (
             <>
-              <div className='flex items-start'>
-                <div className='bg-brand-blue/20 dark:bg-brand-blue/30 p-2 sm:p-2.5 rounded-full shadow-sm flex items-center justify-center flex-shrink-0'>
-                  {isAlreadyExecuted ? (
-                    <FiCheckCircle className='text-gray-500 dark:text-gray-400 h-4 sm:h-5 w-4 sm:w-5' />
-                  ) : (
-                    <FiClock className='text-brand-blue h-4 sm:h-5 w-4 sm:w-5' />
-                  )}
-                </div>
-
-                <div className='ml-3 sm:ml-4 overflow-hidden'>
-                  <Typography
-                    variant='body1'
-                    className={cn(
-                      'font-medium truncate text-sm sm:text-base',
-                      isAlreadyExecuted
-                        ? 'text-gray-700 dark:text-gray-300'
-                        : 'text-purple-800 dark:text-purple-200'
-                    )}
-                  >
-                    {isAlreadyExecuted
-                      ? 'Transaction Already Executed'
-                      : 'Transaction Requires Approval'}
-                  </Typography>
-                  <Typography
-                    variant='caption'
-                    className={cn(
-                      'text-xs sm:text-sm mt-1 sm:mt-1.5 break-words',
-                      isAlreadyExecuted
-                        ? 'text-gray-600 dark:text-gray-400'
-                        : 'text-purple-700/80 dark:text-purple-300/80'
-                    )}
-                  >
-                    {isAlreadyExecuted
-                      ? `This scheduled transaction has already been executed${
-                          executedTimestamp
-                            ? ` on ${formatExecutedAt(executedTimestamp)}`
-                            : ''
-                        }`
-                      : description ||
-                        (transactionDetails?.humanReadableType &&
-                        transactionDetails.humanReadableType !==
-                          'Unknown Transaction'
-                          ? transactionDetails.humanReadableType
-                          : 'Transaction requires approval')}
-                  </Typography>
-                </div>
-              </div>
-
               <TransactionContent
-                isLoadingDetails={isLoadingDetails}
-                transactionDetails={transactionDetails}
-                expirationTime={expirationTime}
-                description={description}
-                scheduleId={scheduleId || ''}
-                network={network}
-              />
+                  isLoadingDetails={isLoadingDetails}
+                  transactionDetails={transactionDetails}
+                  expirationTime={expirationTime}
+                  description={description}
+                  scheduleId={scheduleId || ''}
+                  network={network}
+                  isAlreadyExecuted={isAlreadyExecuted}
+                  executedTimestamp={executedTimestamp}
+                  notes={notes}
+                />
 
-              {!isAlreadyExecuted && !isExecuted && !isApproved && (
-                <div className='flex flex-wrap items-center pt-3 sm:pt-4 gap-2'>
-                  <Button
-                    onClick={approveTransaction}
-                    disabled={isApproving || isExecuted || isApproved}
-                    className={cn(
-                      'transition-all duration-300 bg-gradient-to-r from-brand-blue to-brand-purple hover:from-brand-purple hover:to-brand-blue text-white border-0 shadow-md hover:shadow-lg relative overflow-hidden group',
-                      (isApproving || isExecuted || isApproved) && 'opacity-70'
+                {!isAlreadyExecuted && !isExecuted && !isApproved && (
+                  <div className='mt-5 flex items-center justify-between'>
+                    {error && (
+                      <Typography
+                        variant='caption'
+                        className='text-red-400 text-sm flex items-center gap-2'
+                      >
+                        <FiAlertTriangle className='h-4 w-4' />
+                        {error}
+                      </Typography>
                     )}
-                  >
-                    <span className='absolute inset-0 w-full h-full bg-[linear-gradient(120deg,transparent,rgba(255,255,255,0.2),transparent)] group-hover:translate-x-full transition-transform duration-700 ease-in-out'></span>
-                    {isApproving ? (
-                      <div className='flex items-center space-x-2 relative z-10'>
-                        <FiLoader className='h-4 w-4 animate-spin' />
-                        <span>
-                          {executionStatus === 'signing' &&
-                            'Signing transaction...'}
-                          {executionStatus === 'submitting' &&
-                            'Submitting to network...'}
-                          {executionStatus === 'confirming' &&
-                            'Confirming execution...'}
-                          {!executionStatus && 'Approving...'}
-                        </span>
-                      </div>
-                    ) : (
-                      <div className='flex items-center space-x-2 relative z-10'>
-                        <FiCheck className='h-4 w-4' />
-                        <span>Approve</span>
-                      </div>
-                    )}
-                  </Button>
-                  {transactionBytes && messageId && onReject && (
-                    <Button
-                      onClick={rejectTransaction}
-                      variant='outline'
-                      className='border-red-300 dark:border-red-600 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20'
-                    >
-                      <div className='flex items-center space-x-2'>
-                        <FiX className='h-4 w-4' />
-                        <span>Reject</span>
-                      </div>
-                    </Button>
-                  )}
-                  {error && (
-                    <Typography
-                      variant='caption'
-                      className='text-red-500 dark:text-red-400 text-sm'
-                    >
-                      {error}
-                    </Typography>
-                  )}
-                </div>
-              )}
+                    <div className='flex items-center gap-3 ml-auto'>
+                      <button
+                        onClick={() => setIsDismissed(true)}
+                        type='button'
+                        className={cn(
+                          'px-5 py-2.5 rounded-lg font-medium text-sm transition-all duration-200',
+                          'bg-white/10 text-white/90 hover:bg-white/15 hover:text-white',
+                          'border border-white/10 hover:border-white/20'
+                        )}
+                      >
+                        Dismiss
+                      </button>
+                      {transactionBytes && messageId && onReject && (
+                        <button
+                          onClick={rejectTransaction}
+                          type='button'
+                          className={cn(
+                            'px-5 py-2.5 rounded-lg font-medium text-sm transition-all duration-200',
+                            'bg-white/10 text-white/90 hover:bg-white/15 hover:text-white',
+                            'border border-white/10 hover:border-white/20'
+                          )}
+                        >
+                          Decline
+                        </button>
+                      )}
+                      <button
+                        onClick={approveTransaction}
+                        disabled={isApproving || isExecuted || isApproved}
+                        type='button'
+                        className={cn(
+                          'relative px-5 py-2.5 rounded-lg font-medium text-sm transition-all duration-200',
+                          'bg-white text-blue-600 hover:bg-white/95 disabled:opacity-50 disabled:cursor-not-allowed',
+                          'shadow-lg shadow-white/10 hover:shadow-white/20',
+                          !isApproving && 'transform hover:scale-[1.02] active:scale-[0.98]'
+                        )}
+                      >
+                        {isApproving ? (
+                          <span className='flex items-center gap-2'>
+                            <FiLoader className='h-4 w-4 animate-spin' />
+                            <span>
+                              {executionStatus === 'signing' && 'Signing...'}
+                              {executionStatus === 'submitting' && 'Submitting...'}
+                              {executionStatus === 'confirming' && 'Confirming...'}
+                              {!executionStatus && 'Processing...'}
+                            </span>
+                          </span>
+                        ) : (
+                          <span className='flex items-center gap-2'>
+                            <FiCheck className='h-4 w-4' />
+                            Approve Transaction
+                          </span>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                )}
             </>
           )}
         </div>

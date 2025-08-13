@@ -136,9 +136,15 @@ export function setupAgentHandlers(): void {
         const configService = ConfigService.getInstance();
         const storedConfig = await configService.load();
 
+        const privateKey = storedConfig.hedera.privateKey;
+        
+        if (!privateKey || typeof privateKey !== 'string') {
+          throw new Error('Invalid or missing private key in configuration. Please check your Hedera credentials in Settings.');
+        }
+
         const mergedConfig: AgentConfig = {
           accountId: config.accountId || storedConfig.hedera.accountId,
-          privateKey: storedConfig.hedera.privateKey,
+          privateKey: privateKey,
           network: config.network || storedConfig.hedera.network,
           openAIApiKey:
             config.llmProvider === 'anthropic'

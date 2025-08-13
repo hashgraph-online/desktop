@@ -85,7 +85,7 @@ export class ConfigService {
                 const decrypted = safeStorage.decryptString(encryptedBuffer);
                 configData.hedera.privateKey = decrypted;
               } catch (decryptError) {
-                this.logger.warn('Failed to decrypt Hedera private key');
+                this.logger.warn('Failed to decrypt Hedera private key, keeping encrypted value');
               }
             }
           } catch (error) {

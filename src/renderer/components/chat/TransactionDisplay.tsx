@@ -88,7 +88,7 @@ export const TransactionDisplay: React.FC<TransactionDisplayProps> = ({
               href={`https://hashscan.io/testnet/transaction/${transactionId}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-brand-blue hover:text-brand-purple"
+              className="text-white hover:text-white/80"
             >
               <FiExternalLink className="w-3 h-3" />
             </a>
@@ -109,7 +109,7 @@ export const TransactionDisplay: React.FC<TransactionDisplayProps> = ({
               href={`https://hashscan.io/testnet/schedule/${scheduleId}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-brand-blue hover:text-brand-purple"
+              className="text-white hover:text-white/80"
             >
               <FiExternalLink className="w-3 h-3" />
             </a>

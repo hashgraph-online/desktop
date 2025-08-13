@@ -569,9 +569,23 @@ export class AgentService {
         }
       }
 
-      const parsedTransaction = await TransactionParser.parseTransactionBytes(
-        transactionBytes
-      );
+      let parsedTransaction = null;
+      if (transactionBytes) {
+        try {
+          parsedTransaction = await TransactionParser.parseTransactionBytes(
+            transactionBytes
+          );
+          this.logger.info('[AgentService] Parsed transaction:', {
+            hasTransaction: !!parsedTransaction,
+            transactionType: parsedTransaction?.transactionType,
+          });
+        } catch (parseError) {
+          this.logger.warn(
+            '[AgentService] Failed to parse transaction bytes:',
+            parseError
+          );
+        }
+      }
 
       const agentMessage: AgentMessage = {
         id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -583,6 +597,7 @@ export class AgentService {
           scheduleId: scheduleId,
           notes: response.notes,
           transactionBytes: transactionBytes,
+          parsedTransaction: parsedTransaction,
           description: description || response.description,
           isError: !!response.error,
           ...response.metadata,
@@ -1012,57 +1027,6 @@ export class AgentService {
     } catch (error) {
       this.logger.error('Failed to store entity association:', error);
     }
-  }
-
-  /**
-   * Reinitialize agent with performance optimizations
-   */
-  async reinitializeWithOptimizations(
-    config: AgentConfig,
-    progressiveConfig?: Partial<ProgressiveLoadConfig>
-  ): Promise<{
-    success: boolean;
-    sessionId?: string;
-    error?: string;
-    coreReadyTimeMs?: number;
-    backgroundTasksRemaining?: number;
-    performanceGain?: string;
-  }> {
-    const startTime = Date.now();
-
-    if (this.agent) {
-      await this.disconnect();
-    }
-
-    const optimizedConfig = {
-      ...config,
-      useProgressiveLoading: true,
-      progressiveLoadConfig: {
-        coreAgentTimeoutMs: 3000,
-        mcpConnectionBatchSize: 3,
-        mcpConnectionDelayMs: 1000,
-        backgroundConnectionsEnabled: true,
-        ...progressiveConfig,
-      },
-    };
-
-    const result = await this.initialize(optimizedConfig);
-
-    if (result.success && result.coreReadyTimeMs) {
-      const performanceGain =
-        result.coreReadyTimeMs < 5000
-          ? `${Math.round(
-              ((5000 - result.coreReadyTimeMs) / 5000) * 100
-            )}% faster`
-          : 'Standard performance';
-
-      return {
-        ...result,
-        performanceGain,
-      };
-    }
-
-    return result;
   }
 
   /**

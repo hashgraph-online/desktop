@@ -30,7 +30,7 @@ export const HbarTransfersSection: React.FC<HbarTransfersSectionProps> = ({
           className={cn(
             'text-sm font-semibold px-2 py-0.5 rounded',
             transfer.amount >= 0
-              ? 'text-brand-green bg-brand-green/10'
+              ? 'text-white bg-white/10'
               : 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20'
           )}
         >
@@ -84,7 +84,7 @@ export const TokenTransfersSection: React.FC<TokenTransfersSectionProps> = ({
             className={cn(
               'text-sm font-semibold px-2 py-0.5 rounded',
               transfer.amount >= 0
-                ? 'text-brand-green bg-brand-green/10'
+                ? 'text-white bg-white/10'
                 : 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20'
             )}
           >
@@ -147,7 +147,7 @@ export const AirdropSection: React.FC<AirdropSectionProps> = ({
                   <span className='text-sm font-medium text-gray-700 dark:text-gray-300'>
                     {transfer.accountId}
                   </span>
-                  <span className='text-sm font-semibold text-brand-green bg-brand-green/10 px-2 py-0.5 rounded'>
+                  <span className='text-sm font-semibold text-white bg-white/10 px-2 py-0.5 rounded'>
                     +{formattedAmount} {symbol || 'tokens'}
                   </span>
                 </div>

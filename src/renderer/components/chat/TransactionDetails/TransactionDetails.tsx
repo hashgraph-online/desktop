@@ -206,7 +206,7 @@ export const TransactionDetails: React.FC<TransactionDetailsProps> = (
               href={`https://hashscan.io/${network}/schedule/${scheduleId}`}
               target='_blank'
               rel='noopener noreferrer'
-              className='text-brand-blue hover:text-brand-purple'
+              className='text-white hover:text-white/80'
             >
               <FiExternalLink className='w-3.5 h-3.5' />
             </a>

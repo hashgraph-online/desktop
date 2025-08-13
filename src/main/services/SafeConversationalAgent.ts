@@ -34,11 +34,13 @@ export class SafeConversationalAgent extends ConversationalAgent {
   private config: AgentConfig;
 
   constructor(config: AgentConfig) {
+    const userAccountId = config.userAccountId || config.accountId;
+    
     super({
       ...config,
       entityMemoryEnabled: config.entityMemoryEnabled ?? true,
       entityMemoryConfig: config.entityMemoryConfig,
-      userAccountId: config.userAccountId || config.accountId,
+      userAccountId: userAccountId,
     });
 
     this.config = config;
@@ -46,10 +48,6 @@ export class SafeConversationalAgent extends ConversationalAgent {
 
   async initialize() {
     try {
-      this.logger?.info(
-        'Initializing SafeConversationalAgent with base class...'
-      );
-
       await super.initialize();
 
       this.logger?.info('Agent initialized successfully', {

@@ -41,20 +41,20 @@ export const TokenCreationSection: React.FC<TokenCreationSectionProps> = ({
           type === 'TOKENCREATION' ||
           executedTransactionType === 'TOKENCREATE' ||
           executedTransactionType === 'TOKENCREATION') && (
-          <div className='mb-3 p-3 bg-brand-green/10 dark:bg-brand-green/20 border border-brand-green/30 rounded-lg'>
+          <div className='mb-3 p-3 bg-white/10 dark:bg-white/10 border border-white/20 rounded-lg'>
             <div className='flex items-center gap-2'>
-              <FiHash className='h-4 w-4 text-brand-green' />
+              <FiHash className='h-4 w-4 text-white' />
               <span className='text-sm font-medium text-gray-700 dark:text-gray-300'>
                 Created Token ID:
               </span>
-              <span className='text-sm font-mono font-bold text-brand-green'>
+              <span className='text-sm font-mono font-bold text-white'>
                 {executedTransactionEntityId}
               </span>
               <a
                 href={`https://hashscan.io/${network}/token/${executedTransactionEntityId}`}
                 target='_blank'
                 rel='noopener noreferrer'
-                className='ml-auto text-brand-blue hover:text-brand-purple'
+                className='ml-auto text-white hover:text-white/80'
               >
                 <FiExternalLink className='w-3.5 h-3.5' />
               </a>
@@ -162,31 +162,70 @@ export const TokenCreationSection: React.FC<TokenCreationSectionProps> = ({
 
 export const TokenMintSection: React.FC<{ tokenMint: TokenMintData }> = ({
   tokenMint,
-}) => (
-  <TransactionSection title='Token Mint Details'>
-    <div className='p-4 space-y-1'>
-      <FieldRow label='Token ID' value={tokenMint.tokenId} isMono />
-      <FieldRow label='Amount' value={tokenMint.amount} />
-      {tokenMint.metadata && tokenMint.metadata.length > 0 && (
-        <div className='pt-2 border-t border-gray-200 dark:border-gray-700'>
-          <div className='text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>
-            Metadata ({tokenMint.metadata.length} items)
+}) => {
+  const decodeMetadata = (meta: string): string => {
+    try {
+      return atob(meta);
+    } catch {
+      return meta;
+    }
+  };
+
+  const getKiloscribeCDNUrl = (hrl: string, network: string = 'testnet'): string | null => {
+    const match = hrl.match(/hcs:\/\/\d+\/(0\.0\.\d+)/);
+    if (match && match[1]) {
+      return `https://kiloscribe.com/api/inscription-cdn/${match[1]}?network=${network}`;
+    }
+    return null;
+  };
+
+  return (
+    <TransactionSection title='Token Mint Details'>
+      <div className='p-4 space-y-1'>
+        <FieldRow label='Token ID' value={tokenMint.tokenId} isMono />
+        <FieldRow label='Amount' value={tokenMint.amount} />
+        {tokenMint.metadata && tokenMint.metadata.length > 0 && (
+          <div className='pt-2 border-t border-gray-200 dark:border-gray-700'>
+            <div className='text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>
+              Metadata ({tokenMint.metadata.length} items)
+            </div>
+            <div className='space-y-2'>
+              {tokenMint.metadata.map((meta, idx) => {
+                const decodedMeta = decodeMetadata(meta);
+                const isHRL = decodedMeta.startsWith('hcs://');
+                const cdnUrl = isHRL ? getKiloscribeCDNUrl(decodedMeta, 'testnet') : null;
+                
+                return (
+                  <div
+                    key={idx}
+                    className='bg-gray-50 dark:bg-gray-700 p-2 rounded'
+                  >
+                    <div className='text-sm text-gray-600 dark:text-gray-400 font-mono text-xs break-all'>
+                      {decodedMeta}
+                    </div>
+                    {cdnUrl && (
+                      <div className='mt-2'>
+                        <a
+                          href={cdnUrl}
+                          target='_blank'
+                          rel='noopener noreferrer'
+                          className='inline-flex items-center gap-1 text-xs text-white hover:text-gray-200 transition-colors underline decoration-white/50'
+                        >
+                          <FiExternalLink className='w-3 h-3' />
+                          View Metadata
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
-          <div className='space-y-1'>
-            {tokenMint.metadata.map((meta, idx) => (
-              <div
-                key={idx}
-                className='text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 p-2 rounded font-mono text-xs'
-              >
-                {meta}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  </TransactionSection>
-);
+        )}
+      </div>
+    </TransactionSection>
+  );
+};
 
 export const TokenBurnSection: React.FC<{ tokenBurn: TokenBurnData }> = ({
   tokenBurn,

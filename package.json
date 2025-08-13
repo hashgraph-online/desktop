@@ -77,9 +77,9 @@
     "vite-plugin-node-polyfills": "^0.24.0"
   },
   "dependencies": {
-    "@hashgraphonline/conversational-agent": "0.1.211",
-    "@hashgraphonline/standards-agent-kit": "0.2.125",
-    "@hashgraphonline/standards-sdk": "0.0.180",
+    "@hashgraphonline/conversational-agent": "^0.1.214",
+    "@hashgraphonline/standards-agent-kit": "^0.2.131",
+    "@hashgraphonline/standards-sdk": "0.0.181",
     "@hookform/resolvers": "^5.2.0",
     "@langchain/anthropic": "^0.3.25",
     "@noble/hashes": "1.8.0",
