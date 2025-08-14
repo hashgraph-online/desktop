@@ -1,5 +1,5 @@
-import React from 'react';
-import { FiHash, FiExternalLink } from 'react-icons/fi';
+import React, { useState, useEffect } from 'react';
+import { FiHash, FiExternalLink, FiImage, FiFile, FiLoader } from 'react-icons/fi';
 import { TransactionSection, FieldRow } from './CommonFields';
 import {
   TokenCreationData,
@@ -160,6 +160,142 @@ export const TokenCreationSection: React.FC<TokenCreationSectionProps> = ({
   </TransactionSection>
 );
 
+interface MetadataViewerProps {
+  hrl: string;
+  network?: string;
+}
+
+const MetadataViewer: React.FC<MetadataViewerProps> = ({ hrl, network = 'testnet' }) => {
+  const [metadata, setMetadata] = useState<any>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchMetadata = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const match = hrl.match(/hcs:\/\/\d+\/(0\.0\.\d+)/);
+        if (!match || !match[1]) {
+          throw new Error('Invalid HRL format');
+        }
+
+        const topicId = match[1];
+        const cdnUrl = `https://kiloscribe.com/api/inscription-cdn/${topicId}?network=${network}`;
+        
+        const response = await fetch(cdnUrl);
+        if (!response.ok) {
+          throw new Error('Failed to fetch metadata');
+        }
+
+        const data = await response.json();
+        setMetadata(data);
+
+        if (data.image) {
+          if (data.image.startsWith('hcs://')) {
+            const imageMatch = data.image.match(/hcs:\/\/\d+\/(0\.0\.\d+)/);
+            if (imageMatch && imageMatch[1]) {
+              setImageUrl(`https://kiloscribe.com/api/inscription-cdn/${imageMatch[1]}?network=${network}`);
+            }
+          } else if (data.image.startsWith('https://') || data.image.startsWith('ipfs://')) {
+            setImageUrl(data.image);
+          }
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load metadata');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMetadata();
+  }, [hrl, network]);
+
+  if (loading) {
+    return (
+      <div className='flex items-center gap-2 p-3 text-xs text-gray-500'>
+        <FiLoader className='w-3 h-3 animate-spin' />
+        Loading metadata...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className='text-xs text-red-500 p-2'>
+        Failed to load metadata: {error}
+      </div>
+    );
+  }
+
+  if (!metadata) {
+    return null;
+  }
+
+  return (
+    <div className='mt-3 p-3 bg-white/5 rounded-lg border border-white/10'>
+      {imageUrl && (
+        <div className='mb-3'>
+          <img 
+            src={imageUrl} 
+            alt={metadata.name || 'NFT Image'} 
+            className='w-full max-w-[200px] h-auto rounded-lg'
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+            }}
+          />
+        </div>
+      )}
+      
+      <div className='space-y-2'>
+        {metadata.name && (
+          <div>
+            <span className='text-xs text-gray-500 dark:text-gray-400'>Name:</span>
+            <p className='text-sm font-medium text-white'>{metadata.name}</p>
+          </div>
+        )}
+        
+        {metadata.description && (
+          <div>
+            <span className='text-xs text-gray-500 dark:text-gray-400'>Description:</span>
+            <p className='text-xs text-gray-300'>{metadata.description}</p>
+          </div>
+        )}
+        
+        {metadata.creator && (
+          <div>
+            <span className='text-xs text-gray-500 dark:text-gray-400'>Creator:</span>
+            <p className='text-xs font-mono text-gray-300'>{metadata.creator}</p>
+          </div>
+        )}
+        
+        {metadata.type && (
+          <div>
+            <span className='text-xs text-gray-500 dark:text-gray-400'>Type:</span>
+            <p className='text-xs text-gray-300'>{metadata.type}</p>
+          </div>
+        )}
+
+        {metadata.attributes && metadata.attributes.length > 0 && (
+          <div>
+            <span className='text-xs text-gray-500 dark:text-gray-400'>Attributes:</span>
+            <div className='mt-1 grid grid-cols-2 gap-2'>
+              {metadata.attributes.map((attr: any, idx: number) => (
+                <div key={idx} className='bg-white/5 rounded p-2'>
+                  <p className='text-xs text-gray-400'>{attr.trait_type}</p>
+                  <p className='text-xs font-medium text-white'>{attr.value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 export const TokenMintSection: React.FC<{ tokenMint: TokenMintData }> = ({
   tokenMint,
 }) => {
@@ -169,14 +305,6 @@ export const TokenMintSection: React.FC<{ tokenMint: TokenMintData }> = ({
     } catch {
       return meta;
     }
-  };
-
-  const getKiloscribeCDNUrl = (hrl: string, network: string = 'testnet'): string | null => {
-    const match = hrl.match(/hcs:\/\/\d+\/(0\.0\.\d+)/);
-    if (match && match[1]) {
-      return `https://kiloscribe.com/api/inscription-cdn/${match[1]}?network=${network}`;
-    }
-    return null;
   };
 
   return (
@@ -193,28 +321,17 @@ export const TokenMintSection: React.FC<{ tokenMint: TokenMintData }> = ({
               {tokenMint.metadata.map((meta, idx) => {
                 const decodedMeta = decodeMetadata(meta);
                 const isHRL = decodedMeta.startsWith('hcs://');
-                const cdnUrl = isHRL ? getKiloscribeCDNUrl(decodedMeta, 'testnet') : null;
                 
                 return (
                   <div
                     key={idx}
-                    className='bg-gray-50 dark:bg-gray-700 p-2 rounded'
+                    className='bg-gray-50 dark:bg-gray-700 p-3 rounded'
                   >
                     <div className='text-sm text-gray-600 dark:text-gray-400 font-mono text-xs break-all'>
                       {decodedMeta}
                     </div>
-                    {cdnUrl && (
-                      <div className='mt-2'>
-                        <a
-                          href={cdnUrl}
-                          target='_blank'
-                          rel='noopener noreferrer'
-                          className='inline-flex items-center gap-1 text-xs text-white hover:text-gray-200 transition-colors underline decoration-white/50'
-                        >
-                          <FiExternalLink className='w-3 h-3' />
-                          View Metadata
-                        </a>
-                      </div>
+                    {isHRL && (
+                      <MetadataViewer hrl={decodedMeta} network='testnet' />
                     )}
                   </div>
                 );
