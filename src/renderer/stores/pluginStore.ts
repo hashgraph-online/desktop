@@ -2,8 +2,6 @@ import { create } from 'zustand'
 import {
   PluginConfig,
   NPMPluginConfig,
-  LocalPluginConfig,
-  CustomPluginConfig,
   PluginSearchResult,
   PluginInstallProgress,
   PluginUpdateInfo,
@@ -58,7 +56,7 @@ export interface PluginStore {
   
   enablePlugin: (pluginId: string) => Promise<void>
   disablePlugin: (pluginId: string) => Promise<void>
-  configurePlugin: (pluginId: string, config: Record<string, any>) => Promise<void>
+  configurePlugin: (pluginId: string, config: Record<string, unknown>) => Promise<void>
   
   grantPermissions: (pluginId: string, permissions: PluginPermissions) => Promise<void>
   revokePermissions: (pluginId: string, permissions: PluginPermissions) => Promise<void>
@@ -393,7 +391,7 @@ export const usePluginStore = create<PluginStore>((set, get) => ({
     }
   },
   
-  configurePlugin: async (pluginId: string, config: Record<string, any>) => {
+  configurePlugin: async (pluginId: string, config: Record<string, unknown>) => {
     set({ isLoading: true, error: null })
     
     try {
@@ -500,15 +498,15 @@ export const usePluginStore = create<PluginStore>((set, get) => ({
     }
   },
   
-  loadLocalPlugin: async (path: string) => {
+  loadLocalPlugin: async (_path: string) => {
     throw new Error('Local plugin loading is not yet implemented')
   },
   
-  reloadLocalPlugin: async (pluginId: string) => {
+  reloadLocalPlugin: async (_pluginId: string) => {
     throw new Error('Local plugin reloading is not yet implemented')
   },
   
-  setRegistry: async (registry: string, auth?: { token?: string; username?: string; password?: string }) => {
+  setRegistry: async (_registry: string, _auth?: { token?: string; username?: string; password?: string }) => {
     throw new Error('Custom plugin registry is not yet implemented')
   },
   

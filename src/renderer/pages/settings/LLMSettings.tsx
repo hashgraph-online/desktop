@@ -11,7 +11,8 @@ import { ModelSelectorWithOpenRouter } from '../../components/ui/ModelSelectorWi
 import { ApiKeyGuide } from '../../components/ui/ApiKeyGuide'
 import { getModelInfo } from '../../lib/models'
 
-interface LLMSettingsProps { }
+// Component has no props currently
+type LLMSettingsProps = Record<string, never>;
 
 const llmSettingsSchema = z.object({
   provider: z.enum(['openai', 'anthropic']),
@@ -43,7 +44,7 @@ export const LLMSettings: React.FC<LLMSettingsProps> = () => {
 
   const {
     register,
-    handleSubmit,
+    handleSubmit: _handleSubmit,
     formState: { errors },
     watch,
     setValue,
@@ -94,7 +95,7 @@ export const LLMSettings: React.FC<LLMSettingsProps> = () => {
 
   useEffect(() => {
     if (watchOpenAIModel) {
-      setOpenAIModel(watchOpenAIModel as any)
+      setOpenAIModel(watchOpenAIModel as string)
     }
   }, [watchOpenAIModel, setOpenAIModel])
 
@@ -106,7 +107,7 @@ export const LLMSettings: React.FC<LLMSettingsProps> = () => {
 
   useEffect(() => {
     if (watchAnthropicModel) {
-      setAnthropicModel(watchAnthropicModel as any)
+      setAnthropicModel(watchAnthropicModel as string)
     }
   }, [watchAnthropicModel, setAnthropicModel])
 

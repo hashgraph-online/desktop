@@ -8,8 +8,10 @@ import * as schema from './schema';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fs from 'fs';
-import { app } from 'electron';
 import { Logger } from '../utils/logger';
+import type { DatabasePathProvider } from '../interfaces/services';
+import { lt, sql } from 'drizzle-orm';
+import { createHash } from 'node:crypto';
 
 const __filename = fileURLToPath(import.meta.url);
 const currentDir = dirname(__filename);
@@ -21,55 +23,55 @@ class DatabaseManager {
   private database: MCPRegistryDatabase | null = null;
   private sqlite: Database.Database | null = null;
   private logger: Logger;
+  private pathProvider?: DatabasePathProvider;
 
-  private constructor() {
+  private constructor(pathProvider?: DatabasePathProvider) {
     this.logger = new Logger({ module: 'DatabaseManager' });
+    this.pathProvider = pathProvider;
   }
 
-  static getInstance(): DatabaseManager {
+  static getInstance(pathProvider?: DatabasePathProvider): DatabaseManager {
     if (!DatabaseManager.instance) {
-      DatabaseManager.instance = new DatabaseManager();
+      DatabaseManager.instance = new DatabaseManager(pathProvider);
     }
     return DatabaseManager.instance;
   }
 
-  /**
-   * Get database connection, creating it if necessary
-   */
   getDatabase(): MCPRegistryDatabase | null {
-    if (!this.database) {
-      this.initializeDatabase();
-    }
+    if (!this.database) this.initializeDatabase();
     return this.database;
   }
 
-  /**
-   * Initialize database connection and run migrations
-   */
+  initializeDatabaseForTesting(dbPath?: string): void {
+    try {
+      const path = dbPath || this.getDatabasePath();
+      this.ensureDatabaseDirectory(path);
+      this.logger.info(`Initializing test database at: ${path}`);
+
+      this.sqlite = new Database(path);
+      if (!this.sqlite) throw new Error('Failed to create SQLite connection');
+      this.applyPragmas();
+      this.database = drizzle(this.sqlite, { schema });
+      this.runMigrations();
+      this.logger.info('Test database initialized successfully');
+    } catch (error) {
+      this.logger.error('Failed to initialize test database:', error);
+      this.database = null;
+      this.sqlite = null;
+    }
+  }
+
   private initializeDatabase(): void {
     try {
       const dbPath = this.getDatabasePath();
       this.ensureDatabaseDirectory(dbPath);
-
       this.logger.info(`Initializing database at: ${dbPath}`);
 
       this.sqlite = new Database(dbPath);
-
-      if (!this.sqlite) {
-        throw new Error('Failed to create SQLite connection');
-      }
-
-      this.sqlite.pragma('journal_mode = WAL');
-      this.sqlite.pragma('synchronous = NORMAL');
-      this.sqlite.pragma('cache_size = 10000');
-      this.sqlite.pragma('temp_store = MEMORY');
-      this.sqlite.pragma('mmap_size = 268435456');
+      if (!this.sqlite) throw new Error('Failed to create SQLite connection');
+      this.applyPragmas();
       this.database = drizzle(this.sqlite, { schema });
-
       this.runMigrations();
-
-      this.initializeRegistrySync();
-
       this.logger.info('Database initialized successfully');
     } catch (error) {
       this.logger.error('Failed to initialize database:', error);
@@ -78,239 +80,178 @@ class DatabaseManager {
     }
   }
 
-  /**
-   * Get the appropriate database file path
-   */
-  private getDatabasePath(): string {
-    const userDataPath = app.getPath('userData');
-    return join(userDataPath, 'mcp-registry.db');
+  private applyPragmas(): void {
+    if (!this.sqlite) return;
+    this.sqlite.pragma('journal_mode = WAL');
+    this.sqlite.pragma('synchronous = NORMAL');
+    this.sqlite.pragma('cache_size = 10000');
+    this.sqlite.pragma('temp_store = MEMORY');
+    this.sqlite.pragma('mmap_size = 268435456');
   }
 
-  /**
-   * Ensure database directory exists
-   */
+  private getDatabasePath(): string {
+    if (this.pathProvider) return this.pathProvider.getDatabasePath();
+    try {
+      const electron = (globalThis as any).require?.('electron');
+      if (electron?.app) {
+        const userDataPath = electron.app.getPath('userData');
+        return join(userDataPath, 'mcp-registry.db');
+      }
+    } catch (error) {
+      this.logger.debug('Electron not available:', error);
+    }
+
+    this.logger.warn('Electron not available, using default database path');
+    try {
+      const os = (globalThis as any).require?.('os');
+      if (os) return join(os.homedir(), '.hashgraph-online', 'mcp-registry.db');
+    } catch (error) {
+      this.logger.debug('OS module not available:', error);
+    }
+
+    return join(currentDir, '..', '..', '..', 'temp', 'mcp-registry.db');
+  }
+
   private ensureDatabaseDirectory(dbPath: string): void {
     const dbDir = dirname(dbPath);
-    if (!fs.existsSync(dbDir)) {
-      fs.mkdirSync(dbDir, { recursive: true });
-    }
+    if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir, { recursive: true });
   }
 
-  /**
-   * Run database migrations
-   */
+  private resolveMigrationsFolder(): string | null {
+    const candidates = [
+      join(currentDir, 'migrations'),
+      join(currentDir, '..', 'migrations'),
+      join(currentDir, '..', '..', 'migrations'),
+      join(process.cwd(), 'src', 'main', 'db', 'migrations'),
+      join(process.cwd(), 'desktop', 'src', 'main', 'db', 'migrations'),
+      (process as any).resourcesPath
+        ? join((process as any).resourcesPath, 'migrations')
+        : '',
+    ].filter(Boolean) as string[];
+    for (const c of candidates) {
+      try {
+        if (fs.existsSync(c)) return c;
+      } catch {}
+    }
+    return null;
+  }
+
   private runMigrations(): void {
+    const folder = this.resolveMigrationsFolder();
+    if (!folder) throw new Error('Migrations not available');
+    this.logger.info(`Running migrations via Drizzle from: ${folder}`);
+
     try {
-      const migrationsFolder = join(currentDir, 'migrations');
-
-      if (!fs.existsSync(migrationsFolder)) {
-        fs.mkdirSync(migrationsFolder, { recursive: true });
-        this.logger.info('Created migrations directory');
-      }
-
-      const migrationFiles = fs
-        .readdirSync(migrationsFolder)
-        .filter((f) => f.endsWith('.sql'));
-
-      if (migrationFiles.length > 0 && this.database) {
-        this.logger.info(`Running ${migrationFiles.length} migrations...`);
-        migrate(this.database, { migrationsFolder });
-        this.logger.info('Migrations completed successfully');
-      } else {
-        this.createInitialSchema();
-      }
-    } catch (error) {
-      this.logger.error('Migration failed:', error);
-      this.createInitialSchema();
+      this.baselineMigrationsIfNeeded(folder);
+    } catch (e) {
+      this.logger.warn('Baseline check failed, continuing without baselining:', e);
     }
+
+    migrate(this.database!, { migrationsFolder: folder });
+    this.logger.info('Migrations completed successfully');
   }
 
-  /**
-   * Create initial schema for new installations
-   */
-  private createInitialSchema(): void {
+  private baselineMigrationsIfNeeded(migrationsFolder: string): void {
+    if (!this.sqlite) return;
+    const db = this.sqlite;
+
     try {
-      this.logger.info('Creating initial database schema...');
+      db.exec(
+        'CREATE TABLE IF NOT EXISTS "__drizzle_migrations" (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, hash text NOT NULL, created_at numeric)'
+      );
 
-      const createTablesSQL = `
-        CREATE TABLE IF NOT EXISTS mcp_servers (
-          id TEXT PRIMARY KEY,
-          name TEXT NOT NULL,
-          description TEXT NOT NULL DEFAULT '',
-          author TEXT,
-          version TEXT,
-          url TEXT,
-          package_name TEXT,
-          repository_type TEXT,
-          repository_url TEXT,
-          config_command TEXT,
-          config_args TEXT,
-          config_env TEXT,
-          tags TEXT,
-          license TEXT,
-          created_at TEXT,
-          updated_at TEXT,
-          install_count INTEGER DEFAULT 0,
-          rating REAL,
-          registry TEXT NOT NULL,
-          is_active INTEGER DEFAULT 1,
-          last_fetched INTEGER DEFAULT (unixepoch()),
-          search_vector TEXT
-        );
+      const row = db.prepare('SELECT COUNT(1) as cnt FROM "__drizzle_migrations"').get() as any;
+      const appliedCount = Number(row?.cnt || 0);
+      if (appliedCount > 0) {
+        return; // Already managed by Drizzle
+      }
 
-        CREATE TABLE IF NOT EXISTS server_categories (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          server_id TEXT NOT NULL,
-          category TEXT NOT NULL,
-          confidence REAL DEFAULT 1.0,
-          source TEXT DEFAULT 'manual',
-          created_at INTEGER DEFAULT (unixepoch()),
-          FOREIGN KEY (server_id) REFERENCES mcp_servers (id) ON DELETE CASCADE
-        );
+      const tableExists = (name: string): boolean => {
+        const r = db
+          .prepare(
+            'SELECT name FROM sqlite_master WHERE type = "table" AND name = ?'
+          )
+          .get(name) as any;
+        return Boolean(r && r.name);
+      };
+      const columnExists = (table: string, col: string): boolean => {
+        try {
+          const cols = db.prepare(`PRAGMA table_info(${table})`).all() as any[];
+          return cols?.some((c) => String(c?.name).toLowerCase() === col.toLowerCase());
+        } catch {
+          return false;
+        }
+      };
 
-        CREATE TABLE IF NOT EXISTS search_cache (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          query_hash TEXT NOT NULL UNIQUE,
-          query_text TEXT,
-          tags TEXT,
-          category TEXT,
-          search_offset INTEGER DEFAULT 0,
-          page_limit INTEGER DEFAULT 50,
-          result_ids TEXT NOT NULL,
-          total_count INTEGER NOT NULL,
-          has_more INTEGER DEFAULT 0,
-          created_at INTEGER DEFAULT (unixepoch()),
-          expires_at INTEGER NOT NULL,
-          hit_count INTEGER DEFAULT 1
-        );
+      const has0000 = [
+        'chat_messages',
+        'chat_sessions',
+        'mcp_servers',
+        'registry_sync',
+        'search_cache',
+        'server_categories',
+        'performance_metrics',
+      ].some(tableExists);
 
-        CREATE TABLE IF NOT EXISTS registry_sync (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          registry TEXT NOT NULL UNIQUE,
-          last_sync_at INTEGER,
-          last_success_at INTEGER,
-          server_count INTEGER DEFAULT 0,
-          status TEXT DEFAULT 'pending',
-          error_message TEXT,
-          sync_duration_ms INTEGER,
-          next_sync_at INTEGER
-        );
+      const has0001 = tableExists('entity_associations');
+      const has0002 =
+        columnExists('mcp_servers', 'package_registry') ||
+        columnExists('mcp_servers', 'github_stars');
 
-        CREATE TABLE IF NOT EXISTS performance_metrics (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          operation TEXT NOT NULL,
-          duration_ms INTEGER NOT NULL,
-          cache_hit INTEGER DEFAULT 0,
-          result_count INTEGER,
-          error_count INTEGER DEFAULT 0,
-          memory_usage_mb REAL,
-          timestamp INTEGER DEFAULT (unixepoch())
-        );
-      `;
-
-      const createIndexesSQL = `
-        CREATE INDEX IF NOT EXISTS idx_mcp_servers_name ON mcp_servers (name);
-        CREATE INDEX IF NOT EXISTS idx_mcp_servers_author ON mcp_servers (author);
-        CREATE INDEX IF NOT EXISTS idx_mcp_servers_registry ON mcp_servers (registry);
-        CREATE INDEX IF NOT EXISTS idx_mcp_servers_install_count ON mcp_servers (install_count);
-        CREATE INDEX IF NOT EXISTS idx_mcp_servers_rating ON mcp_servers (rating);
-        CREATE INDEX IF NOT EXISTS idx_mcp_servers_last_fetched ON mcp_servers (last_fetched);
-        CREATE INDEX IF NOT EXISTS idx_mcp_servers_active ON mcp_servers (is_active);
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_mcp_servers_package_name ON mcp_servers (package_name);
-
-        CREATE INDEX IF NOT EXISTS idx_server_categories_server_category ON server_categories (server_id, category);
-        CREATE INDEX IF NOT EXISTS idx_server_categories_category ON server_categories (category);
-        CREATE INDEX IF NOT EXISTS idx_server_categories_confidence ON server_categories (confidence);
-
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_search_cache_query_hash ON search_cache (query_hash);
-        CREATE INDEX IF NOT EXISTS idx_search_cache_expires_at ON search_cache (expires_at);
-        CREATE INDEX IF NOT EXISTS idx_search_cache_created_at ON search_cache (created_at);
-        CREATE INDEX IF NOT EXISTS idx_search_cache_hit_count ON search_cache (hit_count);
-
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_registry_sync_registry ON registry_sync (registry);
-        CREATE INDEX IF NOT EXISTS idx_registry_sync_last_sync ON registry_sync (last_sync_at);
-        CREATE INDEX IF NOT EXISTS idx_registry_sync_status ON registry_sync (status);
-        CREATE INDEX IF NOT EXISTS idx_registry_sync_next_sync ON registry_sync (next_sync_at);
-
-        CREATE INDEX IF NOT EXISTS idx_performance_metrics_operation ON performance_metrics (operation);
-        CREATE INDEX IF NOT EXISTS idx_performance_metrics_timestamp ON performance_metrics (timestamp);
-        CREATE INDEX IF NOT EXISTS idx_performance_metrics_duration ON performance_metrics (duration_ms);
-        CREATE INDEX IF NOT EXISTS idx_performance_metrics_cache_hit ON performance_metrics (cache_hit);
-      `;
-
-      this.sqlite!.exec(createTablesSQL);
-      this.sqlite!.exec(createIndexesSQL);
-
-      this.logger.info('Initial schema created successfully');
-    } catch (error) {
-      this.logger.error('Failed to create initial schema:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Initialize registry sync records
-   */
-  private initializeRegistrySync(): void {
-    try {
-      const registries = ['pulsemcp', 'official', 'smithery'];
-      const db = this.getDatabase();
-
-      if (!db) {
-        this.logger.warn(
-          'Database not available - skipping registry sync initialization'
-        );
+      if (!has0000 && !has0001 && !has0002) {
         return;
       }
 
-      for (const registry of registries) {
-        const existing = db
-          .select()
-          .from(schema.registrySync)
-          .where(eq(schema.registrySync.registry, registry))
-          .get();
+      const journalPath = join(migrationsFolder, 'meta', '_journal.json');
+      const journal = JSON.parse(fs.readFileSync(journalPath, 'utf8')) as {
+        entries: Array<{ tag: string; when: number }>;
+      };
 
-        if (!existing) {
-          db.insert(schema.registrySync)
-            .values({
-              registry,
-              status: 'pending' as const,
-              nextSyncAt: new Date(Date.now() + 60000),
-            } as any)
-            .run();
-        }
-      }
+      let baselineTag: string | null = null;
+      if (has0002) baselineTag = '0002_add_pkg_registry_and_github_stars';
+      else if (has0001) baselineTag = '0001_lively_swordsman';
+      else if (has0000) baselineTag = '0000_supreme_leader';
 
-      this.logger.info('Registry sync records initialized');
-    } catch (error) {
-      this.logger.warn('Failed to initialize registry sync records:', error);
+      if (!baselineTag) return;
+
+      const entry = journal.entries.find((e) => e.tag === baselineTag);
+      if (!entry) return;
+
+      const sqlPath = join(migrationsFolder, `${baselineTag}.sql`);
+      let hash = 'baseline';
+      try {
+        const content = fs.readFileSync(sqlPath, 'utf8');
+        hash = createHash('sha256').update(content).digest('hex');
+      } catch {}
+
+      db.prepare(
+        'INSERT INTO "__drizzle_migrations" ("hash", "created_at") VALUES (?, ?)'
+      )
+        .run(hash, entry.when);
+
+      this.logger.info(
+        `Baseline applied for existing schema -> ${baselineTag} (when=${entry.when})`
+      );
+    } catch (e) {
+      this.logger.warn('Failed to baseline legacy database:', e);
     }
   }
 
-  /**
-   * Clean up expired cache entries
-   */
   async cleanupExpiredCache(): Promise<void> {
     try {
       const db = this.getDatabase();
       if (!db) return;
-
       const result = db
         .delete(schema.searchCache)
         .where(lt(schema.searchCache.expiresAt, new Date()))
         .run();
-
-      if (result.changes > 0) {
+      if (result.changes > 0)
         this.logger.info(`Cleaned up ${result.changes} expired cache entries`);
-      }
     } catch (error) {
       this.logger.error('Failed to cleanup expired cache:', error);
     }
   }
 
-  /**
-   * Get database statistics
-   */
   getStats(): {
     servers: number;
     categories: number;
@@ -319,52 +260,35 @@ class DatabaseManager {
   } {
     try {
       const db = this.getDatabase();
-      if (!db) {
+      if (!db)
         return { servers: 0, categories: 0, cacheEntries: 0, dbSizeMB: 0 };
-      }
-
-      const serversCount =
+      const servers =
         db
           .select({ count: sql<number>`count(*)` })
           .from(schema.mcpServers)
           .get()?.count || 0;
-
-      const categoriesCount =
+      const categories =
         db
           .select({ count: sql<number>`count(*)` })
           .from(schema.serverCategories)
           .get()?.count || 0;
-
-      const cacheCount =
+      const cache =
         db
           .select({ count: sql<number>`count(*)` })
           .from(schema.searchCache)
           .get()?.count || 0;
-
-      const dbPath = this.getDatabasePath();
-      let dbSizeMB = 0;
+      let size = 0;
       try {
-        const stats = fs.statSync(dbPath);
-        dbSizeMB = Math.round((stats.size / (1024 * 1024)) * 100) / 100;
-      } catch (error) {
-        this.logger.warn('Failed to get database file size:', error);
-      }
-
-      return {
-        servers: serversCount,
-        categories: categoriesCount,
-        cacheEntries: cacheCount,
-        dbSizeMB,
-      };
+        const stats = fs.statSync(this.getDatabasePath());
+        size = Math.round((stats.size / (1024 * 1024)) * 100) / 100;
+      } catch {}
+      return { servers, categories, cacheEntries: cache, dbSizeMB: size };
     } catch (error) {
       this.logger.error('Failed to get database stats:', error);
       return { servers: 0, categories: 0, cacheEntries: 0, dbSizeMB: 0 };
     }
   }
 
-  /**
-   * Close database connection
-   */
   close(): void {
     try {
       if (this.sqlite) {
@@ -379,9 +303,12 @@ class DatabaseManager {
   }
 }
 
-import { eq, lt, sql } from 'drizzle-orm';
-
 export const databaseManager = DatabaseManager.getInstance();
 export const getDatabase = (): MCPRegistryDatabase | null =>
   databaseManager.getDatabase();
+export const initializeDatabase = (dbPath?: string): void =>
+  databaseManager.initializeDatabaseForTesting(dbPath);
+export const createDatabaseManager = (
+  pathProvider?: DatabasePathProvider
+): DatabaseManager => DatabaseManager.getInstance(pathProvider);
 export { schema };

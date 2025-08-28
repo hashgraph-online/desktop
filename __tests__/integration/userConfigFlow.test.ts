@@ -41,7 +41,7 @@ describe('User Config Flow Integration Tests', () => {
   let tempDir: string
   let configPath: string
   let mainConfigService: MainConfigService
-  let ipcHandlers: Map<string, Function>
+  let ipcHandlers: Map<string, (...args: unknown[]) => unknown>
   
   const userConfig: AppConfig = {
     hedera: {
@@ -87,11 +87,11 @@ describe('User Config Flow Integration Tests', () => {
     
     setupRealisticEncryption()
     
-    ;(MainConfigService as any).instance = undefined
+    ;(MainConfigService as { instance?: unknown }).instance = undefined
     mainConfigService = MainConfigService.getInstance()
     
     ipcHandlers = new Map()
-    ;(ipcMain.handle as jest.Mock).mockImplementation((channel: string, handler: Function) => {
+    ;(ipcMain.handle as jest.Mock).mockImplementation((channel: string, handler: (...args: unknown[]) => unknown) => {
       ipcHandlers.set(channel, handler)
     })
     
@@ -344,7 +344,7 @@ describe('User Config Flow Integration Tests', () => {
   })
 
   function simulateAppRestart() {
-    ;(MainConfigService as any).instance = undefined
+    ;(MainConfigService as { instance?: unknown }).instance = undefined
     
     ipcHandlers.clear()
     

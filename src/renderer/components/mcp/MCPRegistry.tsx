@@ -6,6 +6,47 @@ import { Button } from '../ui/Button'
 import { Input } from '../ui/input'
 import { cn } from '../../lib/utils'
 
+/**
+ * Utility to keep client-side ordering consistent when merging pages.
+ */
+function sortServersByStars(items: MCPRegistryServer[]): MCPRegistryServer[] {
+  const list = [...items]
+  list.sort((a, b) => {
+    const aStars = Number(a.githubStars ?? 0)
+    const bStars = Number(b.githubStars ?? 0)
+    if (aStars !== bStars) return bStars - aStars
+    const aInst = Number(a.installCount ?? 0)
+    const bInst = Number(b.installCount ?? 0)
+    if (aInst !== bInst) return bInst - aInst
+    return a.name.localeCompare(b.name)
+  })
+  return list
+}
+
+/**
+ * Builds a stable unique key for React lists and dedupe.
+ */
+function uniqueKeyForServer(s: MCPRegistryServer): string {
+  return (
+    s.packageName ||
+    s.repository?.url ||
+    s.id ||
+    s.name
+  )
+}
+
+/**
+ * Removes duplicate servers based on the unique key.
+ */
+function dedupeServers(servers: MCPRegistryServer[]): MCPRegistryServer[] {
+  const map = new Map<string, MCPRegistryServer>()
+  for (const s of servers) {
+    const key = uniqueKeyForServer(s)
+    if (!map.has(key)) map.set(key, s)
+  }
+  return Array.from(map.values())
+}
+
 interface MCPRegistryServer {
   id: string
   name: string
@@ -13,6 +54,7 @@ interface MCPRegistryServer {
   author?: string
   version?: string
   url?: string
+  packageRegistry?: string
   packageName?: string
   repository?: {
     type: string
@@ -24,6 +66,7 @@ interface MCPRegistryServer {
   updatedAt?: string
   installCount?: number
   rating?: number
+  githubStars?: number
   tools?: Array<{
     name: string
     description?: string
@@ -92,6 +135,8 @@ export const MCPRegistry: React.FC<MCPRegistryProps> = ({
     }
   }, [])
 
+  // Sorting handled by pure helper above to avoid inline callbacks
+
   const searchRegistries = useCallback(async (query: string = '', tags: string[] = [], pageNum: number = 0, append: boolean = false) => {
     if (!window.electron?.searchMCPRegistry) {
       setError('Registry search not available')
@@ -121,9 +166,9 @@ export const MCPRegistry: React.FC<MCPRegistryProps> = ({
 
       if (result.success && result.data) {
         if (append) {
-          setServers(prev => [...prev, ...(result.data.servers || [])])
+          setServers(prev => sortServersByStars(dedupeServers([...prev, ...(result.data.servers || [])])))
         } else {
-          setServers(result.data.servers || [])
+          setServers(sortServersByStars(dedupeServers(result.data.servers || [])))
         }
         setTotal(result.data.total || 0)
         const calculatedHasMore = result.data.hasMore || false
@@ -238,11 +283,12 @@ export const MCPRegistry: React.FC<MCPRegistryProps> = ({
 
   useEffect(() => {
     const currentRef = loadMoreRef.current
-    if (!currentRef || !hasMore || isLoadingMore) return
+    const computedHasMore = hasMore || (total > servers.length)
+    if (!currentRef || !computedHasMore || isLoadingMore) return
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && !isLoadingMore && hasMore) {
+        if (entries[0].isIntersecting && !isLoadingMore && computedHasMore) {
           loadMore()
         }
       },
@@ -256,7 +302,7 @@ export const MCPRegistry: React.FC<MCPRegistryProps> = ({
         observer.unobserve(currentRef)
       }
     }
-  }, [hasMore, isLoadingMore, loadMore])
+  }, [hasMore, total, servers.length, isLoadingMore, loadMore])
 
   const handleInstall = async (server: MCPRegistryServer) => {
     if (!window.electron?.installMCPFromRegistry) {
@@ -326,6 +372,8 @@ export const MCPRegistry: React.FC<MCPRegistryProps> = ({
   const filteredServers = React.useMemo(() => {
     return filterServersByCategory(servers, selectedCategory)
   }, [servers, selectedCategory])
+
+  const sortedServers = React.useMemo(() => sortServersByStars(filteredServers), [filteredServers])
 
   return (
     <div className={cn('space-y-6', className)}>
@@ -415,7 +463,7 @@ export const MCPRegistry: React.FC<MCPRegistryProps> = ({
                   Total Servers
                 </Typography>
                 <Typography variant="body1" className="font-semibold">
-                  {cacheStats.totalServers.toLocaleString()}
+                  {cacheStats.totalServers?.toLocaleString() || '0'}
                 </Typography>
               </div>
               <div>
@@ -423,7 +471,7 @@ export const MCPRegistry: React.FC<MCPRegistryProps> = ({
                   Cache Entries
                 </Typography>
                 <Typography variant="body1" className="font-semibold">
-                  {cacheStats.cacheEntries.toLocaleString()}
+                  {cacheStats.cacheEntries?.toLocaleString() || '0'}
                 </Typography>
               </div>
               <div>
@@ -431,7 +479,7 @@ export const MCPRegistry: React.FC<MCPRegistryProps> = ({
                   Hit Rate
                 </Typography>
                 <Typography variant="body1" className="font-semibold">
-                  {cacheStats.cacheHitRate.toFixed(1)}%
+                  {cacheStats.cacheHitRate?.toFixed(1) || '0.0'}%
                 </Typography>
               </div>
               <div>
@@ -439,7 +487,7 @@ export const MCPRegistry: React.FC<MCPRegistryProps> = ({
                   Avg Response
                 </Typography>
                 <Typography variant="body1" className="font-semibold">
-                  {Math.round(cacheStats.averageResponseTime)}ms
+                  {cacheStats.averageResponseTime ? Math.round(cacheStats.averageResponseTime) : 0}ms
                 </Typography>
               </div>
             </div>
@@ -448,12 +496,12 @@ export const MCPRegistry: React.FC<MCPRegistryProps> = ({
                 Servers by Registry
               </Typography>
               <div className="flex flex-wrap gap-2">
-                {Object.entries(cacheStats.serversByRegistry).map(([registry, count]) => (
+                {cacheStats.serversByRegistry && Object.entries(cacheStats.serversByRegistry).map(([registry, count]) => (
                   <span
                     key={registry}
                     className="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded"
                   >
-                    {registry}: {count.toLocaleString()}
+                    {registry}: {count?.toLocaleString() || '0'}
                   </span>
                 ))}
               </div>
@@ -539,9 +587,9 @@ export const MCPRegistry: React.FC<MCPRegistryProps> = ({
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredServers.map(server => (
+            {sortedServers.map(server => (
               <ServerCard
-                key={server.id}
+                key={uniqueKeyForServer(server)}
                 server={server}
                 onInstall={() => handleInstall(server)}
                 isInstalling={installingIds.has(server.id)}
@@ -550,7 +598,7 @@ export const MCPRegistry: React.FC<MCPRegistryProps> = ({
             ))}
           </div>
           
-          {hasMore && (
+          {(hasMore || total > servers.length) && (
             <div className="mt-8 text-center" ref={loadMoreRef}>
               <Button
                 variant="outline"
@@ -664,6 +712,18 @@ const ServerCard: React.FC<ServerCardProps> = ({ server, onInstall, isInstalling
         </Typography>
 
         <div className="flex flex-wrap gap-3 text-xs text-gray-500 dark:text-gray-400">
+          {server.githubStars !== undefined && server.githubStars !== null && (
+            <div className="flex items-center gap-1">
+              <FiStar className="w-3 h-3" />
+              <span>{server.githubStars.toLocaleString()} stars</span>
+            </div>
+          )}
+          {server.installCount !== undefined && server.installCount !== null && (
+            <div className="flex items-center gap-1">
+              <FiDownload className="w-3 h-3" />
+              <span>{server.installCount.toLocaleString()} installs</span>
+            </div>
+          )}
           {server.author && (
             <div className="flex items-center gap-1">
               <FiUser className="w-3 h-3" />
@@ -675,10 +735,9 @@ const ServerCard: React.FC<ServerCardProps> = ({ server, onInstall, isInstalling
               <span>v{server.version}</span>
             </div>
           )}
-          {server.installCount !== undefined && server.installCount !== null && (
+          {server.packageRegistry && (
             <div className="flex items-center gap-1">
-              <FiDownload className="w-3 h-3" />
-              <span>{server.installCount.toLocaleString()} installs</span>
+              <span>{server.packageRegistry}</span>
             </div>
           )}
           {formatUpdatedAt(server.updatedAt) && (

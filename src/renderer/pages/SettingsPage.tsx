@@ -14,6 +14,7 @@ import { useConfigStore } from '../stores/configStore';
 import { useAgentStore } from '../stores/agentStore';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent } from '../components/ui/Card';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs';
 import Typography from '../components/ui/Typography';
 import { cn } from '../lib/utils';
 
@@ -40,9 +41,9 @@ const tabs: Tab[] = [
 ];
 
 const tabGradients = {
-  hedera: 'from-[#a679f0] to-[#5599fe]',
-  llm: 'from-[#5599fe] to-[#48df7b]',
-  advanced: 'from-[#48df7b] to-[#a679f0]',
+  hedera: 'from-hgo-purple to-hgo-blue',
+  llm: 'from-hgo-blue to-hgo-green',
+  advanced: 'from-hgo-green to-hgo-purple',
 };
 
 const SettingsPage: React.FC<SettingsPageProps> = () => {
@@ -90,10 +91,17 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
         const hederaValid = isHederaConfigValid();
         const llmValid = isLLMConfigValid();
 
-        if (hederaValid && llmValid) {
-          const timeout = setTimeout(() => {
-            saveConfig();
-            setHasChanges(false);
+        const shouldAutoSave = (hederaValid && llmValid) || 
+                              (state.config?.advanced && 
+                               JSON.stringify(state.config.advanced) !== JSON.stringify(prevState.config?.advanced));
+        
+        if (shouldAutoSave) {
+          const timeout = setTimeout(async () => {
+            try {
+              await saveConfig();
+              setHasChanges(false);
+            } catch (error) {
+            }
           }, 2000);
           setSaveTimeout(timeout);
         }
@@ -133,7 +141,8 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
           }, 500);
         }
       }
-    } catch (error) {}
+    } catch (error) {
+    }
   };
 
   const handleCancel = async () => {
@@ -199,90 +208,70 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
         )}
 
         <Card className='shadow-lg'>
-          <div className='border-b border-gray-200 dark:border-gray-700 overflow-x-auto'>
-            <nav
-              className='flex space-x-4 sm:space-x-8 px-4 sm:px-6 min-w-max'
-              role='tablist'
-              aria-label='Settings tabs'
-              onKeyDown={(e) => {
-                const currentIndex = tabs.findIndex((t) => t.key === activeTab);
-                if (e.key === 'ArrowRight') {
-                  const next = (currentIndex + 1) % tabs.length;
-                  setActiveTab(tabs[next].key);
-                } else if (e.key === 'ArrowLeft') {
-                  const prev = (currentIndex - 1 + tabs.length) % tabs.length;
-                  setActiveTab(tabs[prev].key);
-                }
-              }}
-            >
-              {tabs.map((tab, index) => {
-                const Icon = tab.icon;
-                const isActive = activeTab === tab.key;
-                const gradient = tabGradients[tab.key];
-
-                return (
-                  <button
-                    key={tab.key}
-                    onClick={() => setActiveTab(tab.key)}
-                    className={cn(
-                      'py-3 sm:py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2',
-                      'transition-colors focus:outline-none focus:ring-2 focus:ring-brand-blue/40 focus:rounded-t-md min-h-[44px] touch-manipulation relative',
-                      isActive
-                        ? 'border-transparent text-foreground'
-                        : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-                    )}
-                    role='tab'
-                    aria-selected={activeTab === tab.key}
-                    aria-controls={`${tab.key}-panel`}
-                    id={`${tab.key}-tab`}
-                  >
-                    {isActive && (
-                      <div
-                        className={cn(
-                          'absolute inset-x-0 bottom-0 h-0.5',
-                          'bg-brand-blue'
-                        )}
-                      />
-                    )}
-
-                    <Icon
+          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabKey)}>
+            <div className='border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6'>
+              <TabsList className='grid grid-cols-3 h-auto bg-transparent'>
+                {tabs.map((tab) => {
+                  const Icon = tab.icon;
+                  return (
+                    <TabsTrigger
+                      key={tab.key}
+                      value={tab.key}
                       className={cn(
-                        'w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0 transition-colors duration-200',
-                        isActive ? 'text-brand-blue' : 'text-current'
-                      )}
-                      aria-hidden='true'
-                    />
-
-                    <span
-                      className={cn(
-                        'whitespace-nowrap transition-all duration-300',
-                        isActive && `font-semibold`
+                        'py-3 sm:py-4 px-1 font-medium text-sm flex items-center gap-2',
+                        'transition-colors min-h-[44px] touch-manipulation relative',
+                        'data-[state=active]:bg-transparent data-[state=active]:shadow-none',
+                        'data-[state=active]:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-brand-blue',
+                        'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
                       )}
                     >
-                      {tab.label}
-                    </span>
-                  </button>
-                );
-              })}
-            </nav>
-          </div>
+                      <Icon
+                        className={cn(
+                          'w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0 transition-colors duration-200'
+                        )}
+                        aria-hidden='true'
+                      />
+                      <span className='whitespace-nowrap transition-all duration-300'>
+                        {tab.label}
+                      </span>
+                    </TabsTrigger>
+                  );
+                })}
+              </TabsList>
+            </div>
 
-          <CardContent className='p-4 sm:p-6'>
-            <motion.div
-              key={activeTab}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              role='tabpanel'
-              id={`${activeTab}-panel`}
-              aria-labelledby={`${activeTab}-tab`}
-            >
-              {activeTab === 'hedera' && <HederaSettings />}
-              {activeTab === 'llm' && <LLMSettings />}
-              {activeTab === 'advanced' && <AdvancedSettings />}
-            </motion.div>
-          </CardContent>
+            <CardContent className='p-4 sm:p-6'>
+              <TabsContent value='hedera' className='mt-0'>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <HederaSettings />
+                </motion.div>
+              </TabsContent>
+              
+              <TabsContent value='llm' className='mt-0'>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <LLMSettings />
+                </motion.div>
+              </TabsContent>
+              
+              <TabsContent value='advanced' className='mt-0'>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <AdvancedSettings />
+                </motion.div>
+              </TabsContent>
+            </CardContent>
+          </Tabs>
 
           <div className='border-t border-gray-200 dark:border-gray-700 p-4 sm:p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4'>
             <div className='w-full sm:w-auto'>

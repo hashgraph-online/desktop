@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { FiHash, FiExternalLink, FiImage, FiFile, FiLoader } from 'react-icons/fi';
+import {
+  FiHash,
+  FiExternalLink,
+  FiFile,
+  FiLoader,
+} from 'react-icons/fi';
+import { Logger } from '@hashgraphonline/standards-sdk';
 import { TransactionSection, FieldRow } from './CommonFields';
 import {
   TokenCreationData,
@@ -18,6 +24,8 @@ import {
   TokenWipeAccountData,
   TokenFeeScheduleUpdateData,
 } from './types';
+
+const logger = new Logger({ module: 'TokenTransactions' });
 
 interface TokenCreationSectionProps {
   tokenCreationData: TokenCreationData;
@@ -51,7 +59,7 @@ export const TokenCreationSection: React.FC<TokenCreationSectionProps> = ({
                 {executedTransactionEntityId}
               </span>
               <a
-                href={`https://hashscan.io/${network}/token/${executedTransactionEntityId}`}
+                href={`https://hashscan.io/${network === 'testnet' ? 'testnet/' : ''}token/${executedTransactionEntityId}`}
                 target='_blank'
                 rel='noopener noreferrer'
                 className='ml-auto text-white hover:text-white/80'
@@ -165,46 +173,64 @@ interface MetadataViewerProps {
   network?: string;
 }
 
-const MetadataViewer: React.FC<MetadataViewerProps> = ({ hrl, network = 'testnet' }) => {
-  const [metadata, setMetadata] = useState<any>(null);
+const MetadataViewer: React.FC<MetadataViewerProps> = ({
+  hrl,
+  network = 'testnet',
+}) => {
+  const [metadata, setMetadata] = useState<{
+    name?: string;
+    description?: string;
+    creator?: string;
+    type?: string;
+    image?: string;
+    attributes?: Array<{ trait_type: string; value: string }>;
+  } | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    logger.debug('MetadataViewer loading HRL', { hrl });
     const fetchMetadata = async () => {
       try {
         setLoading(true);
         setError(null);
-        
+
         const match = hrl.match(/hcs:\/\/\d+\/(0\.0\.\d+)/);
         if (!match || !match[1]) {
           throw new Error('Invalid HRL format');
         }
+        logger.debug('MetadataViewer HRL match found', { match: match[1] });
 
         const topicId = match[1];
-        const cdnUrl = `https://kiloscribe.com/api/inscription-cdn/${topicId}?network=${network}`;
-        
+        logger.debug('MetadataViewer fetching metadata', { topicId, network });
+        const cdnUrl = `https://kiloscribe.com/api/inscription-cdn/${topicId}?network=${network || 'testnet'}`;
         const response = await fetch(cdnUrl);
         if (!response.ok) {
           throw new Error('Failed to fetch metadata');
         }
 
         const data = await response.json();
+        logger.debug('MetadataViewer metadata loaded', { data });
         setMetadata(data);
 
         if (data.image) {
+          logger.debug('MetadataViewer processing image', { imageUrl: data.image });
           if (data.image.startsWith('hcs://')) {
             const imageMatch = data.image.match(/hcs:\/\/\d+\/(0\.0\.\d+)/);
             if (imageMatch && imageMatch[1]) {
-              setImageUrl(`https://kiloscribe.com/api/inscription-cdn/${imageMatch[1]}?network=${network}`);
+              setImageUrl(
+                `https://kiloscribe.com/api/inscription-cdn/${imageMatch[1]}?network=${network || 'testnet'}`
+              );
             }
-          } else if (data.image.startsWith('https://') || data.image.startsWith('ipfs://')) {
+          } else if (data.image.startsWith('https://')) {
             setImageUrl(data.image);
           }
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load metadata');
+        setError(
+          err instanceof Error ? err.message : 'Failed to load metadata'
+        );
       } finally {
         setLoading(false);
       }
@@ -238,9 +264,9 @@ const MetadataViewer: React.FC<MetadataViewerProps> = ({ hrl, network = 'testnet
     <div className='mt-3 p-3 bg-white/5 rounded-lg border border-white/10'>
       {imageUrl && (
         <div className='mb-3'>
-          <img 
-            src={imageUrl} 
-            alt={metadata.name || 'NFT Image'} 
+          <img
+            src={imageUrl}
+            alt={metadata.name || 'NFT Image'}
             className='w-full max-w-[200px] h-auto rounded-lg'
             onError={(e) => {
               e.currentTarget.style.display = 'none';
@@ -248,41 +274,53 @@ const MetadataViewer: React.FC<MetadataViewerProps> = ({ hrl, network = 'testnet
           />
         </div>
       )}
-      
+
       <div className='space-y-2'>
         {metadata.name && (
           <div>
-            <span className='text-xs text-gray-500 dark:text-gray-400'>Name:</span>
+            <span className='text-xs text-gray-500 dark:text-gray-400'>
+              Name:
+            </span>
             <p className='text-sm font-medium text-white'>{metadata.name}</p>
           </div>
         )}
-        
+
         {metadata.description && (
           <div>
-            <span className='text-xs text-gray-500 dark:text-gray-400'>Description:</span>
+            <span className='text-xs text-gray-500 dark:text-gray-400'>
+              Description:
+            </span>
             <p className='text-xs text-gray-300'>{metadata.description}</p>
           </div>
         )}
-        
+
         {metadata.creator && (
           <div>
-            <span className='text-xs text-gray-500 dark:text-gray-400'>Creator:</span>
-            <p className='text-xs font-mono text-gray-300'>{metadata.creator}</p>
+            <span className='text-xs text-gray-500 dark:text-gray-400'>
+              Creator:
+            </span>
+            <p className='text-xs font-mono text-gray-300'>
+              {metadata.creator}
+            </p>
           </div>
         )}
-        
+
         {metadata.type && (
           <div>
-            <span className='text-xs text-gray-500 dark:text-gray-400'>Type:</span>
+            <span className='text-xs text-gray-500 dark:text-gray-400'>
+              Type:
+            </span>
             <p className='text-xs text-gray-300'>{metadata.type}</p>
           </div>
         )}
 
         {metadata.attributes && metadata.attributes.length > 0 && (
           <div>
-            <span className='text-xs text-gray-500 dark:text-gray-400'>Attributes:</span>
+            <span className='text-xs text-gray-500 dark:text-gray-400'>
+              Attributes:
+            </span>
             <div className='mt-1 grid grid-cols-2 gap-2'>
-              {metadata.attributes.map((attr: any, idx: number) => (
+              {metadata.attributes.map((attr, idx: number) => (
                 <div key={idx} className='bg-white/5 rounded p-2'>
                   <p className='text-xs text-gray-400'>{attr.trait_type}</p>
                   <p className='text-xs font-medium text-white'>{attr.value}</p>
@@ -321,7 +359,7 @@ export const TokenMintSection: React.FC<{ tokenMint: TokenMintData }> = ({
               {tokenMint.metadata.map((meta, idx) => {
                 const decodedMeta = decodeMetadata(meta);
                 const isHRL = decodedMeta.startsWith('hcs://');
-                
+
                 return (
                   <div
                     key={idx}

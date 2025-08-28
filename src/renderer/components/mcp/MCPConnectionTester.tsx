@@ -144,11 +144,15 @@ export const MCPConnectionTester: React.FC<MCPConnectionTesterProps> = ({
             <div className="flex items-center gap-3">
               <div className={cn(
                 "p-2 rounded-lg",
-                testProgress.stage === TestStage.Complete && result?.success
-                  ? "bg-green-100 dark:bg-green-900/20 text-green-600"
-                  : testProgress.stage === TestStage.Complete && !result?.success
-                  ? "bg-red-100 dark:bg-red-900/20 text-red-600"
-                  : "bg-brand-blue/10 text-brand-blue"
+                (() => {
+                  if (testProgress.stage === TestStage.Complete && result?.success) {
+                    return "bg-green-100 dark:bg-green-900/20 text-green-600";
+                  }
+                  if (testProgress.stage === TestStage.Complete && !result?.success) {
+                    return "bg-red-100 dark:bg-red-900/20 text-red-600";
+                  }
+                  return "bg-brand-blue/10 text-brand-blue";
+                })()
               )}>
                 {getStageIcon(testProgress.stage)}
               </div>

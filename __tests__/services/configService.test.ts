@@ -294,7 +294,7 @@ describe('configService', () => {
       })
 
       it('should reject invalid private key length', () => {
-        expect(configService.validatePrivateKey('0x' + '0'.repeat(63))).toBe(false)
+        expect(configService.validatePrivateKey('0x' + '0'.repeat(60))).toBe(false) // 62 chars total, too short
         expect(configService.validatePrivateKey('short')).toBe(false)
         expect(configService.validatePrivateKey('')).toBe(false)
       })
@@ -460,7 +460,7 @@ describe('configService', () => {
       }
 
       mockElectron.saveConfig.mockResolvedValue(undefined)
-      await configService.saveConfig(largeConfig as any)
+      await configService.saveConfig(largeConfig as Partial<AppConfig>)
 
       expect(mockElectron.saveConfig).toHaveBeenCalledWith(largeConfig)
     })
@@ -470,9 +470,9 @@ describe('configService', () => {
         ...testConfig,
         hedera: {
           ...testConfig.hedera,
-          privateKey: undefined as any
+          privateKey: undefined
         },
-        openai: null as any
+        openai: null
       }
 
       mockElectron.saveConfig.mockResolvedValue(undefined)

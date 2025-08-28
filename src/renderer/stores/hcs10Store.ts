@@ -21,11 +21,11 @@ interface HCS10State {
  */
 export const useHCS10Store = create<HCS10State>()(
   persist(
-    (set, get) => ({
-      profiles: [] as any[],
-      selectedProfileId: null as any,
+    (set, _get) => ({
+      profiles: [] as StoredHCS10Profile[],
+      selectedProfileId: null as string | null,
       isLoading: false,
-      error: null as any,
+      error: null as string | null,
 
       /**
        * Add a new profile
@@ -77,7 +77,7 @@ export const useHCS10Store = create<HCS10State>()(
           const result = await window.api.invoke('hcs10:getProfiles');
           
           if (result.success && result.data) {
-            const profiles = result.data.map((profile: any) => ({
+            const profiles = result.data.map((profile: StoredHCS10Profile) => ({
               ...profile,
               registeredAt: new Date(profile.registeredAt),
               lastUpdated: new Date(profile.lastUpdated)

@@ -12,11 +12,11 @@ export interface LoggerOptions {
 }
 
 export interface ILogger {
-  debug(...args: any[]): void;
-  info(...args: any[]): void;
-  warn(...args: any[]): void;
-  error(...args: any[]): void;
-  trace(...args: any[]): void;
+  debug(...args: unknown[]): void;
+  info(...args: unknown[]): void;
+  warn(...args: unknown[]): void;
+  error(...args: unknown[]): void;
+  trace(...args: unknown[]): void;
   setLogLevel(level: LogLevel): void;
   getLevel(): LogLevel;
   setSilent(silent: boolean): void;
@@ -27,7 +27,7 @@ export interface ILogger {
  * Adapter to use electron-log in the renderer process with the standards-sdk Logger interface
  */
 export class ElectronRendererLoggerAdapter implements ILogger {
-  private logger: any;
+  private logger: Console & { transports?: { console?: { level: string } } };
   private moduleContext: string;
   private level: LogLevel;
 
@@ -42,7 +42,7 @@ export class ElectronRendererLoggerAdapter implements ILogger {
     }
   }
 
-  private formatMessage(args: any[]): string {
+  private formatMessage(args: unknown[]): string {
     const parts: string[] = [`[${this.moduleContext}]`];
 
     args.forEach((arg) => {
@@ -69,30 +69,30 @@ export class ElectronRendererLoggerAdapter implements ILogger {
     return parts.join(' ');
   }
 
-  debug(...args: any[]): void {
+  debug(...args: unknown[]): void {
     this.logger.debug(this.formatMessage(args));
   }
 
-  info(...args: any[]): void {
+  info(...args: unknown[]): void {
     this.logger.info(this.formatMessage(args));
   }
 
-  warn(...args: any[]): void {
+  warn(...args: unknown[]): void {
     this.logger.warn(this.formatMessage(args));
   }
 
-  error(...args: any[]): void {
+  error(...args: unknown[]): void {
     this.logger.error(this.formatMessage(args));
   }
 
-  trace(...args: any[]): void {
+  trace(...args: unknown[]): void {
     this.logger.debug('[TRACE]', this.formatMessage(args));
   }
 
   setLogLevel(level: LogLevel): void {
     this.level = level;
     if (this.logger.transports && this.logger.transports.console) {
-      this.logger.transports.console.level = level as any;
+      this.logger.transports.console.level = level as string;
     }
   }
 
@@ -100,7 +100,7 @@ export class ElectronRendererLoggerAdapter implements ILogger {
     return this.level;
   }
 
-  setSilent(silent: boolean): void {
+  setSilent(_silent: boolean): void {
   }
 
   setModule(module: string): void {

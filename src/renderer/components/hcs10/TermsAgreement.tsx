@@ -1,4 +1,5 @@
 import React from 'react';
+import { Checkbox } from '../ui/checkbox';
 import { Label } from '../ui/label';
 import Typography from '../ui/Typography';
 
@@ -36,12 +37,10 @@ export function TermsAgreement({ checked, onChange }: TermsAgreementProps) {
       </div>
 
       <div className='flex items-start space-x-2 pt-2'>
-        <input
-          type='checkbox'
+        <Checkbox
           id='terms-agreement'
           checked={checked}
-          onChange={(e) => onChange(e.target.checked)}
-          className='mt-0.5 h-4 w-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2'
+          onCheckedChange={onChange}
         />
         <Label
           htmlFor='terms-agreement'

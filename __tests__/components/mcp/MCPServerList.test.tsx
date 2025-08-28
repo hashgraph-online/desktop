@@ -7,7 +7,7 @@ import { factories } from '../../utils/testHelpers'
  * Mock the MCPServerCard component to focus on MCPServerList logic
  */
 jest.mock('../../../src/renderer/components/mcp/MCPServerCard', () => ({
-  MCPServerCard: ({ server, onToggle, onEdit, onDelete, onTest }: any) => (
+  MCPServerCard: ({ server, onToggle, onEdit, onDelete, onTest }: { server: { id: string; name: string }; onToggle: (id: string) => void; onEdit: (id: string) => void; onDelete: (id: string) => void; onTest: (id: string) => void }) => (
     <div data-testid={`server-card-${server.id}`}>
       <span>{server.name}</span>
       <button onClick={() => onToggle(server.id)} data-testid={`toggle-${server.id}`}>
@@ -343,7 +343,7 @@ describe('MCPServerList', () => {
           id: 'server-1',
           name: 'Minimal Server',
         },
-      ] as any
+      ] as { id: string; name: string }[]
 
       expect(() => {
         render(

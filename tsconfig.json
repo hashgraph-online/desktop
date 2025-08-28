@@ -1,17 +1,28 @@
 {
   "include": ["src/**/*"],
   "compilerOptions": {
-    "target": "ESNext",
+    "target": "ES2022",
     "module": "ESNext",
+    "useDefineForClassFields": true,
+    "isolatedModules": true,
     "allowJs": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "noImplicitAny": true,
     "sourceMap": true,
     "jsx": "react-jsx",
     "baseUrl": ".",
     "outDir": "dist",
-    "moduleResolution": "bundler",
+    "moduleResolution": "node",
     "resolveJsonModule": true,
+    "paths": {
+      "@/*": ["./src/*"],
+      "@/components/*": ["./src/renderer/components/*"],
+      "@/lib/*": ["./src/renderer/lib/*"],
+      "@/utils/*": ["./src/renderer/lib/utils/*"],
+      "@/hooks/*": ["./src/renderer/hooks/*"],
+      "@/types/*": ["./src/renderer/types/*"]
+    }
   }
 }

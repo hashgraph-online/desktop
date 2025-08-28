@@ -31,10 +31,8 @@ describe('Transaction Enrichment Registry', () => {
       const handler = getTransactionEnrichmentHandler('CONSENSUSCREATETOPIC');
       handler.enrich(parsedTransaction, mockMirrorTransaction, originalTransactionDetails);
 
-      // Check that details field is set
       expect(parsedTransaction.details.createdTopicId).toBe('0.0.12345');
       
-      // Check that transaction type object is properly enriched
       expect(parsedTransaction.consensusCreateTopic).toBeDefined();
       expect(parsedTransaction.consensusCreateTopic?.topicId).toBe('0.0.12345');
       expect(parsedTransaction.consensusCreateTopic?.memo).toBe('Test topic');

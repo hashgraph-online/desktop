@@ -525,7 +525,7 @@ export function ProfileRegistrationForm({
               </Label>
               <Input
                 id='website'
-                placeholder='https://yourwebsite.com'
+                placeholder='https://example.com'
                 disabled={isSubmitting}
                 value={socials?.website || ''}
                 onChange={(e) => handleSocialChange('website', e.target.value)}
@@ -540,7 +540,7 @@ export function ProfileRegistrationForm({
               </Label>
               <Input
                 id='twitter'
-                placeholder='https://twitter.com/username'
+                placeholder='https://example.com'
                 disabled={isSubmitting}
                 value={socials?.twitter || ''}
                 onChange={(e) => handleSocialChange('twitter', e.target.value)}
@@ -555,7 +555,7 @@ export function ProfileRegistrationForm({
               </Label>
               <Input
                 id='github'
-                placeholder='https://github.com/username'
+                placeholder='https://example.com'
                 disabled={isSubmitting}
                 value={socials?.github || ''}
                 onChange={(e) => handleSocialChange('github', e.target.value)}

@@ -1,7 +1,6 @@
 import { ipcMain } from 'electron';
 import { setupSecurityHandlers } from '../../src/main/ipc/handlers';
 import { CredentialManager } from '../../src/main/services/CredentialManager';
-import { IPCMessageSchema } from '../../src/shared/schemas';
 
 jest.mock('electron', () => ({
   ipcMain: {
@@ -14,12 +13,12 @@ jest.mock('../../../src/main/services/CredentialManager');
 describe('IPC Security Handlers', () => {
   const mockIpcMain = ipcMain as jest.Mocked<typeof ipcMain>;
   const mockCredentialManager = new CredentialManager('test-password') as jest.Mocked<CredentialManager>;
-  const handlers: Record<string, Function> = {};
+  const handlers: Record<string, (...args: unknown[]) => unknown> = {};
 
   beforeEach(() => {
     jest.clearAllMocks();
     
-    mockIpcMain.handle.mockImplementation((channel: string, handler: Function) => {
+    mockIpcMain.handle.mockImplementation((channel: string, handler: (...args: unknown[]) => unknown) => {
       handlers[channel] = handler;
     });
 

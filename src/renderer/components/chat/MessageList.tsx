@@ -1,13 +1,23 @@
 import React, { useEffect, useRef } from 'react';
 import Typography from '../ui/Typography';
 import MessageBubble from './MessageBubble';
-import { Spinner } from '../ui/Spinner';
+import { ScrollArea } from '../ui/scroll-area';
+import { motion } from 'framer-motion';
 import type { Message } from '../../stores/agentStore';
+import type { UserProfile } from '../../types/userProfile';
 import { FiMessageSquare } from 'react-icons/fi';
 
 interface MessageListProps {
   messages: Message[];
   isLoading?: boolean;
+  userProfile?: UserProfile | null;
+  isHCS10?: boolean;
+  agentName?: string;
+  onAgentProfileClick?: (
+    accountId: string,
+    agentName: string,
+    network: string
+  ) => void;
 }
 
 /**
@@ -16,6 +26,10 @@ interface MessageListProps {
 const MessageList: React.FC<MessageListProps> = ({
   messages,
   isLoading = false,
+  userProfile,
+  isHCS10,
+  agentName,
+  onAgentProfileClick,
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -34,7 +48,7 @@ const MessageList: React.FC<MessageListProps> = ({
       </div>
       <div className='text-center space-y-2'>
         <Typography variant='h5' className='font-semibold'>
-          Welcome to Conversational Agent
+          Welcome to HOL Desktop
         </Typography>
         <Typography variant='body1' color='secondary' className='max-w-md'>
           I can help you with Hedera Hashgraph operations, account management,
@@ -78,31 +92,79 @@ const MessageList: React.FC<MessageListProps> = ({
     </div>
   );
 
-  const LoadingIndicator = () => (
-    <div className='flex justify-start'>
-      <div className='flex items-center space-x-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-4 py-3 rounded-2xl rounded-bl-md shadow-sm'>
-        <Spinner size='sm' />
-        <Typography variant='body1' color='secondary'>
-          Agent is thinking...
-        </Typography>
-      </div>
-    </div>
-  );
-
   if (messages.length === 0) {
     return <EmptyState />;
   }
 
   return (
-    <div className='flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50 dark:bg-gray-900'>
-      {messages.map((message) => (
-        <MessageBubble key={message.id} message={message} />
-      ))}
+    <ScrollArea className='flex-1 bg-gray-50 dark:bg-gray-900'>
+      <div className='p-6 space-y-4'>
+        {messages.map((message) => (
+          <MessageBubble
+            key={message.id}
+            message={message}
+            userProfile={userProfile}
+            isHCS10={isHCS10}
+            agentName={agentName}
+            onAgentProfileClick={onAgentProfileClick}
+          />
+        ))}
 
-      {isLoading && <LoadingIndicator />}
+        {isLoading && (
+          <motion.div
+            className='flex justify-start'
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <div className='bg-white/90 dark:bg-gray-900/70 backdrop-blur-md border border-gray-200/60 dark:border-gray-800/60 rounded-3xl px-6 py-4 shadow-xl shadow-gray-200/20 dark:shadow-gray-900/30'>
+              <div className='flex items-center gap-4'>
+                <div className='flex gap-1.5'>
+                  <motion.div
+                    className='w-2.5 h-2.5 bg-gradient-to-br from-[#a679f0] to-[#5599fe] rounded-full'
+                    animate={{ y: [-4, 0, -4] }}
+                    transition={{
+                      duration: 0.8,
+                      repeat: Infinity,
+                      delay: 0,
+                      ease: 'easeInOut',
+                    }}
+                  />
+                  <motion.div
+                    className='w-2.5 h-2.5 bg-gradient-to-br from-[#5599fe] to-[#48df7b] rounded-full'
+                    animate={{ y: [-4, 0, -4] }}
+                    transition={{
+                      duration: 0.8,
+                      repeat: Infinity,
+                      delay: 0.2,
+                      ease: 'easeInOut',
+                    }}
+                  />
+                  <motion.div
+                    className='w-2.5 h-2.5 bg-gradient-to-br from-[#48df7b] to-[#a679f0] rounded-full'
+                    animate={{ y: [-4, 0, -4] }}
+                    transition={{
+                      duration: 0.8,
+                      repeat: Infinity,
+                      delay: 0.4,
+                      ease: 'easeInOut',
+                    }}
+                  />
+                </div>
+                <Typography
+                  variant='caption'
+                  className='text-gray-700 dark:text-gray-300 font-semibold tracking-wide'
+                >
+                  Assistant is thinking...
+                </Typography>
+              </div>
+            </div>
+          </motion.div>
+        )}
 
-      <div ref={messagesEndRef} />
-    </div>
+        <div ref={messagesEndRef} />
+      </div>
+    </ScrollArea>
   );
 };
 

@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Upload, X, Image as ImageIcon } from 'lucide-react';
+import { Upload, X, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import Typography from '../ui/Typography';
 import { cn } from '../../lib/utils';
@@ -126,7 +126,7 @@ export function ProfileImageUpload({
           <div className='flex flex-col items-center justify-center text-center space-y-2'>
             <div className='p-3 bg-muted rounded-full'>
               {isUploading ? (
-                <div className='animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full' />
+                <Loader2 className='h-8 w-8 animate-spin text-primary' />
               ) : (
                 <Upload className='h-8 w-8 text-muted-foreground' />
               )}

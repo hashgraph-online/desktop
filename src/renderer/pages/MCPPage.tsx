@@ -30,6 +30,15 @@ import { useMCPStore } from '../stores/mcpStore';
 import { MCPServerConfig, MCPServerFormData } from '../types/mcp';
 import { cn } from '../lib/utils';
 
+interface MCPServerQuickInstall {
+  name: string;
+  template: {
+    type: string;
+    config: Record<string, unknown>;
+  };
+  requirements?: string[];
+}
+
 type ViewMode = 'servers' | 'browse';
 
 interface Tab {
@@ -55,8 +64,8 @@ const tabs: Tab[] = [
 ];
 
 const tabGradients = {
-  servers: 'from-[#5599fe] to-[#48df7b]',
-  browse: 'from-[#48df7b] to-[#a679f0]',
+  servers: 'from-hgo-blue to-hgo-green',
+  browse: 'from-hgo-green to-hgo-purple',
 };
 
 /**
@@ -165,7 +174,7 @@ const MCPPage: React.FC = () => {
     setServerTemplate(null);
   };
 
-  const handleQuickInstall = (server: any) => {
+  const handleQuickInstall = (server: MCPServerQuickInstall) => {
     setServerTemplate({
       name: server.name,
       type: server.template.type,
@@ -175,7 +184,7 @@ const MCPPage: React.FC = () => {
     setViewMode('servers');
   };
 
-  const handleRegistryInstall = async (server: any) => {
+  const handleRegistryInstall = async (server: { id: string; name: string; description: string; author?: string; version?: string }) => {
     await loadServers();
     setViewMode('servers');
   };
@@ -187,7 +196,7 @@ const MCPPage: React.FC = () => {
           <div className='flex items-center justify-center min-h-[400px]'>
             <div className='text-center space-y-4'>
               <motion.div
-                className='w-16 h-16 bg-gradient-to-br from-[#5599fe] to-[#48df7b] rounded-2xl flex items-center justify-center mx-auto'
+                className='w-16 h-16 bg-gradient-to-br from-hgo-blue to-hgo-green rounded-2xl flex items-center justify-center mx-auto'
                 animate={{ rotate: 360 }}
                 transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
               >
@@ -210,7 +219,7 @@ const MCPPage: React.FC = () => {
         <div className='mb-8'>
           <Typography
             variant='h1'
-            className='text-3xl font-bold mb-4 bg-gradient-to-r from-[#a679f0] via-[#5599fe] to-[#48df7b] bg-clip-text text-transparent'
+            className='text-3xl font-bold mb-4 bg-gradient-to-r from-hgo-purple via-hgo-blue to-hgo-green bg-clip-text text-transparent'
             noMargin
           >
             MCP Servers
@@ -254,10 +263,10 @@ const MCPPage: React.FC = () => {
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className='mb-6 p-4 bg-gradient-to-br from-[#5599fe]/10 to-[#48df7b]/10 rounded-lg border border-[#5599fe]/20'
+            className='mb-6 p-4 bg-gradient-to-br from-hgo-blue/10 to-hgo-green/10 rounded-lg border border-hgo-blue/20'
           >
             <div className='flex items-start gap-3'>
-              <div className='w-10 h-10 bg-gradient-to-br from-[#5599fe] to-[#48df7b] rounded-lg flex items-center justify-center flex-shrink-0'>
+              <div className='w-10 h-10 bg-gradient-to-br from-hgo-blue to-hgo-green rounded-lg flex items-center justify-center flex-shrink-0'>
                 <FiInfo className='w-5 h-5 text-white' />
               </div>
               <div>
@@ -344,7 +353,7 @@ const MCPPage: React.FC = () => {
                     variant='default'
                     size='sm'
                     onClick={() => setIsAddModalOpen(true)}
-                    className='bg-gradient-to-r from-[#5599fe] to-[#48df7b] text-white hover:opacity-90 transition-opacity'
+                    className='bg-gradient-to-r from-hgo-blue to-hgo-green text-white hover:opacity-90 transition-opacity'
                   >
                     <FiPlus className='w-4 h-4 mr-1.5' />
                     Add Server
@@ -438,7 +447,7 @@ const MCPPage: React.FC = () => {
             {/* Modal Header */}
             <div className='flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-800'>
               <div className='flex items-center gap-3'>
-                <div className='w-10 h-10 bg-gradient-to-br from-[#5599fe] to-[#48df7b] rounded-lg flex items-center justify-center'>
+                <div className='w-10 h-10 bg-gradient-to-br from-hgo-blue to-hgo-green rounded-lg flex items-center justify-center'>
                   <FiInfo className='w-5 h-5 text-white' />
                 </div>
                 <div>
@@ -462,7 +471,7 @@ const MCPPage: React.FC = () => {
                 <div>
                   <Typography
                     variant='h3'
-                    className='text-lg font-semibold mb-2 text-[#5599fe]'
+                    className='text-lg font-semibold mb-2 text-hgo-blue'
                   >
                     Model Context Protocol
                   </Typography>
@@ -480,27 +489,27 @@ const MCPPage: React.FC = () => {
                 <div>
                   <Typography
                     variant='h3'
-                    className='text-lg font-semibold mb-2 text-[#48df7b]'
+                    className='text-lg font-semibold mb-2 text-hgo-green'
                   >
                     Key Benefits
                   </Typography>
                   <ul className='space-y-2 text-gray-600 dark:text-gray-400'>
                     <li className='flex items-start gap-2'>
-                      <FiZap className='w-4 h-4 text-[#48df7b] mt-0.5 flex-shrink-0' />
+                      <FiZap className='w-4 h-4 text-hgo-green mt-0.5 flex-shrink-0' />
                       <Typography variant='body2'>
                         <strong>Enhanced Capabilities:</strong> Connect your
                         agent to databases, APIs, file systems, and more
                       </Typography>
                     </li>
                     <li className='flex items-start gap-2'>
-                      <FiShield className='w-4 h-4 text-[#48df7b] mt-0.5 flex-shrink-0' />
+                      <FiShield className='w-4 h-4 text-hgo-green mt-0.5 flex-shrink-0' />
                       <Typography variant='body2'>
                         <strong>Secure Integration:</strong> Maintain control
                         over what data and tools your agent can access
                       </Typography>
                     </li>
                     <li className='flex items-start gap-2'>
-                      <FiPackage className='w-4 h-4 text-[#48df7b] mt-0.5 flex-shrink-0' />
+                      <FiPackage className='w-4 h-4 text-hgo-green mt-0.5 flex-shrink-0' />
                       <Typography variant='body2'>
                         <strong>Modular Design:</strong> Add or remove
                         capabilities without modifying core agent logic
@@ -512,14 +521,14 @@ const MCPPage: React.FC = () => {
                 <div>
                   <Typography
                     variant='h3'
-                    className='text-lg font-semibold mb-2 text-[#a679f0]'
+                    className='text-lg font-semibold mb-2 text-hgo-purple'
                   >
                     Popular MCP Servers
                   </Typography>
                   <div className='grid grid-cols-2 gap-3'>
                     <div className='p-3 bg-gray-50 dark:bg-gray-800 rounded-lg'>
                       <div className='flex items-center gap-2 mb-1'>
-                        <FiHardDrive className='w-4 h-4 text-[#5599fe]' />
+                        <FiHardDrive className='w-4 h-4 text-hgo-blue' />
                         <Typography variant='body2' className='font-medium'>
                           Filesystem
                         </Typography>
@@ -533,7 +542,7 @@ const MCPPage: React.FC = () => {
                     </div>
                     <div className='p-3 bg-gray-50 dark:bg-gray-800 rounded-lg'>
                       <div className='flex items-center gap-2 mb-1'>
-                        <FiGithub className='w-4 h-4 text-[#5599fe]' />
+                        <FiGithub className='w-4 h-4 text-hgo-blue' />
                         <Typography variant='body2' className='font-medium'>
                           GitHub
                         </Typography>
@@ -547,7 +556,7 @@ const MCPPage: React.FC = () => {
                     </div>
                     <div className='p-3 bg-gray-50 dark:bg-gray-800 rounded-lg'>
                       <div className='flex items-center gap-2 mb-1'>
-                        <FiDatabase className='w-4 h-4 text-[#5599fe]' />
+                        <FiDatabase className='w-4 h-4 text-hgo-blue' />
                         <Typography variant='body2' className='font-medium'>
                           PostgreSQL
                         </Typography>
@@ -561,7 +570,7 @@ const MCPPage: React.FC = () => {
                     </div>
                     <div className='p-3 bg-gray-50 dark:bg-gray-800 rounded-lg'>
                       <div className='flex items-center gap-2 mb-1'>
-                        <FiServer className='w-4 h-4 text-[#5599fe]' />
+                        <FiServer className='w-4 h-4 text-hgo-blue' />
                         <Typography variant='body2' className='font-medium'>
                           Custom
                         </Typography>
@@ -576,7 +585,7 @@ const MCPPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className='p-4 bg-gradient-to-br from-[#5599fe]/10 to-[#48df7b]/10 rounded-lg border border-[#5599fe]/20'>
+                <div className='p-4 bg-gradient-to-br from-hgo-blue/10 to-hgo-green/10 rounded-lg border border-hgo-blue/20'>
                   <Typography
                     variant='body2'
                     className='text-gray-700 dark:text-gray-300'
@@ -593,10 +602,10 @@ const MCPPage: React.FC = () => {
             {/* Modal Footer */}
             <div className='flex justify-between items-center p-6 border-t border-gray-200 dark:border-gray-800'>
               <a
-                href='https://modelcontextprotocol.io/'
+                href='https://modelcontextprotocol.io'
                 target='_blank'
                 rel='noopener noreferrer'
-                className='text-sm text-[#5599fe] hover:text-[#4488ed] transition-colors'
+                className='text-sm text-hgo-blue hover:text-hgo-blue-dark transition-colors'
               >
                 Learn more at modelcontextprotocol.io →
               </a>
@@ -604,7 +613,7 @@ const MCPPage: React.FC = () => {
                 variant='default'
                 size='sm'
                 onClick={() => setIsLearnMCPModalOpen(false)}
-                className='bg-gradient-to-r from-[#5599fe] to-[#48df7b] text-white hover:opacity-90'
+                className='bg-gradient-to-r from-hgo-blue to-hgo-green text-white hover:opacity-90'
               >
                 Got it
               </Button>

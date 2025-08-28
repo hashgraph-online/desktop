@@ -6,6 +6,5 @@ import { createElectronRendererLogger } from './electron-logger-adapter';
  * This should be called once at the very beginning of the renderer process
  */
 export function initializeRendererLogger(): void {
-  // @ts-ignore
   setLoggerFactory(createElectronRendererLogger);
 }

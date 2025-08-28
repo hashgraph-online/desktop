@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
   FiExternalLink,
-  FiChevronRight,
   FiCheck,
   FiCopy,
   FiEye,
@@ -98,7 +97,7 @@ const OpenAIGuide: React.FC = () => {
             </Typography>
           </div>
           <a
-            href='https://platform.openai.com/account/billing/overview'
+            href='https://platform.openai.com/account/billing'
             target='_blank'
             rel='noopener noreferrer'
             className='inline-flex items-center space-x-2 text-brand-blue hover:text-brand-blue-dark underline'
@@ -211,7 +210,7 @@ const AnthropicGuide: React.FC = () => {
             Sign up for an Anthropic account to access Claude's API.
           </Typography>
           <a
-            href='https://console.anthropic.com/'
+            href='https://console.anthropic.com/account'
             target='_blank'
             rel='noopener noreferrer'
             className='inline-flex items-center space-x-2 text-brand-blue hover:text-brand-blue-dark underline'
@@ -241,7 +240,7 @@ const AnthropicGuide: React.FC = () => {
             </Typography>
           </div>
           <a
-            href='https://console.anthropic.com/settings/billing'
+            href='https://console.anthropic.com/account/billing'
             target='_blank'
             rel='noopener noreferrer'
             className='inline-flex items-center space-x-2 text-brand-blue hover:text-brand-blue-dark underline'

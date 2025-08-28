@@ -1,13 +1,10 @@
-import { defineConfig } from 'drizzle-kit'
-import path from 'path'
+import { defineConfig } from 'drizzle-kit';
 
 export default defineConfig({
+  dialect: 'sqlite',
   schema: './src/main/db/schema.ts',
   out: './src/main/db/migrations',
-  dialect: 'sqlite',
   dbCredentials: {
-    url: './mcp-registry.db'
+    url: './temp/mcp-registry.db',
   },
-  verbose: true,
-  strict: true,
-})
+});

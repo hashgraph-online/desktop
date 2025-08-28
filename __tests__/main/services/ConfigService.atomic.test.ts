@@ -103,7 +103,7 @@ describe('ConfigService Atomic Write Operations', () => {
       await configService.save(testConfig);
       const originalContent = fs.readFileSync(configPath, 'utf8');
 
-      const originalRename = fs.promises.rename;
+      const _originalRename = fs.promises.rename;
       jest.spyOn(fs.promises, 'rename').mockRejectedValueOnce(new Error('Rename failed'));
 
       const newConfig = { ...testConfig, hedera: { ...testConfig.hedera, accountId: '0.0.9999' } };
@@ -136,7 +136,7 @@ describe('ConfigService Atomic Write Operations', () => {
       fs.writeFileSync(incompleteLog.data.tempPath, JSON.stringify({ hedera: { accountId: '0.0.temp' } }));
 
       jest.spyOn(app, 'getPath').mockReturnValue(userDataPath);
-      const newConfigService = new (ConfigService as any)();
+      const _newConfigService = new (ConfigService as unknown as new () => ConfigService)();
 
       await new Promise(resolve => setTimeout(resolve, 100));
 

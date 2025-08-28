@@ -19,6 +19,7 @@ import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { StatusIndicator } from '../ui/StatusIndicator';
 import Typography from '../ui/Typography';
+import { Switch } from '../ui/switch';
 import { cn } from '../../lib/utils';
 import { MCPServerCardProps, MCPServerType } from '../../types/mcp';
 import { useMCPStore } from '../../stores/mcpStore';
@@ -66,11 +67,6 @@ export const MCPServerCard: React.FC<MCPServerCardProps> = ({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isToolsModalOpen, setIsToolsModalOpen] = useState(false);
 
-  const handleToggle = async () => {
-    try {
-      await onToggle(server.id, !server.enabled);
-    } catch (error) {}
-  };
 
   const handleTest = async () => {
     setIsRefreshing(true);
@@ -94,19 +90,39 @@ export const MCPServerCard: React.FC<MCPServerCardProps> = ({
   const getConfigSummary = () => {
     switch (server.type) {
       case 'filesystem':
-        return server.config.rootPath || 'No path configured';
+        if (server.config.type === 'filesystem') {
+          return server.config.rootPath || 'No path configured';
+        }
+        return 'No path configured';
       case 'github':
-        return server.config.owner && server.config.repo
-          ? `${server.config.owner}/${server.config.repo}`
-          : 'No repository configured';
+        if (server.config.type === 'github') {
+          return server.config.owner && server.config.repo
+            ? `${server.config.owner}/${server.config.repo}`
+            : 'No repository configured';
+        }
+        return 'No repository configured';
       case 'postgres':
-        return server.config.host && server.config.database
-          ? `${server.config.host}/${server.config.database}`
-          : 'No database configured';
+        if (server.config.type === 'postgres') {
+          return server.config.host && server.config.database
+            ? `${server.config.host}/${server.config.database}`
+            : 'No database configured';
+        }
+        return 'No database configured';
       case 'sqlite':
-        return server.config.path || 'No database path configured';
+        if (server.config.type === 'sqlite') {
+          return server.config.path || 'No database path configured';
+        }
+        return 'No database path configured';
       case 'custom':
-        return server.config.command || 'No command configured';
+        if (server.config.type === 'custom') {
+          const command = server.config.command || 'No command configured';
+          const args = server.config.args;
+          if (args && args.length > 0) {
+            return `${command} ${args.join(' ')}`;
+          }
+          return command;
+        }
+        return 'No command configured';
       default:
         return 'Configuration not set';
     }
@@ -227,14 +243,14 @@ export const MCPServerCard: React.FC<MCPServerCardProps> = ({
             noMargin
             variant='caption'
             color='muted'
-            className='text-xs mb-0.5'
+            className='block text-xs mb-2'
           >
             Configuration
           </Typography>
           <Typography
             noMargin
             variant='caption'
-            className='font-mono text-xs text-gray-700 dark:text-gray-300'
+            className='block font-mono text-xs text-gray-700 dark:text-gray-300'
           >
             {getConfigSummary()}
           </Typography>
@@ -339,23 +355,20 @@ export const MCPServerCard: React.FC<MCPServerCardProps> = ({
         )}
 
         <div className='flex items-center justify-between pt-2 mt-2 border-t border-gray-200 dark:border-gray-700'>
-          <div className='text-xs text-gray-500 dark:text-gray-400'>
-            <span>{formatLastConnected(server.lastConnected)}</span>
-          </div>
+          <Typography variant='caption' className='text-gray-500 dark:text-gray-400'>
+            {formatLastConnected(server.lastConnected)}
+          </Typography>
 
           <div className='flex items-center gap-2'>
-            <label className='relative inline-flex items-center cursor-pointer'>
-              <input
-                type='checkbox'
+            <div className='flex items-center gap-2'>
+              <Switch
                 checked={server.enabled}
-                onChange={handleToggle}
-                className='sr-only peer'
+                onCheckedChange={(checked) => onToggle(server.id, checked)}
               />
-              <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-blue-500"></div>
-              <span className='ml-2 text-xs font-medium text-gray-700 dark:text-gray-300'>
+              <Typography variant='caption' className='font-medium text-gray-700 dark:text-gray-300'>
                 {server.enabled ? 'Enabled' : 'Disabled'}
-              </span>
-            </label>
+              </Typography>
+            </div>
           </div>
         </div>
       </div>

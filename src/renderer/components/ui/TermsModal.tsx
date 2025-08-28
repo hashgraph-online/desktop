@@ -33,7 +33,6 @@ export const TermsModal: React.FC<TermsModalProps> = ({
   const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
   const { legalAcceptance } = useLegalStore();
   
-  // Terms content is now embedded at build time
   const termsContent = TERMS_OF_SERVICE;
   const isLoading = false;
 
@@ -56,7 +55,7 @@ export const TermsModal: React.FC<TermsModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className='!max-w-none w-[95vw] h-[90vh] overflow-hidden flex flex-col p-0' showCloseButton={false}>
+      <DialogContent className='!max-w-none w-[95vw] h-[90vh] overflow-hidden flex flex-col p-0' showCloseButton={false} transparentOverlay={true}>
         {/* Clean header */}
         <div className='bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 p-6'>
           <div className='flex items-center gap-4'>

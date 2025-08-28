@@ -2,6 +2,8 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { StatusIndicator } from '../../../src/renderer/components/ui/StatusIndicator';
 
+type StatusType = 'online' | 'offline' | 'connecting' | 'error' | 'warning';
+
 describe('StatusIndicator', () => {
   it('renders with default status', () => {
     render(<StatusIndicator />);
@@ -123,7 +125,7 @@ describe('StatusIndicator', () => {
     ];
 
     statuses.forEach(({ status, class: className, classes }) => {
-      const { unmount } = render(<StatusIndicator status={status as any} />);
+      const { unmount } = render(<StatusIndicator status={status as StatusType} />);
       const indicator = screen.getByTestId('status-indicator');
 
       if (classes) {

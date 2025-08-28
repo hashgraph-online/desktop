@@ -6,7 +6,7 @@ interface ProgressProps {
   value: number;
   max?: number;
   size?: 'sm' | 'md' | 'lg';
-  variant?: 'default' | 'gradient' | 'success' | 'warning' | 'error';
+  variant?: 'default' | 'gradient' | 'purple-orange' | 'success' | 'warning' | 'error';
   showValue?: boolean;
   animated?: boolean;
   className?: string;
@@ -35,9 +35,10 @@ export const Progress: React.FC<ProgressProps> = ({
   const variantClasses = {
     default: 'bg-blue-500',
     gradient: 'bg-gradient-to-r from-blue-500 via-purple-500 to-blue-600',
-    success: 'bg-green-500',
+    'purple-orange': 'bg-gradient-to-r from-purple-600 to-orange-500',
+    success: 'bg-green-600',
     warning: 'bg-yellow-500',
-    error: 'bg-red-500'
+    error: 'bg-red-600'
   };
 
   return (

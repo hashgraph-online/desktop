@@ -22,7 +22,6 @@ export const TransactionSection: React.FC<{
 );
 
 const formatCryptographicKey = (key: string): { formatted: string; isKey: boolean } => {
-  // Check if this looks like a cryptographic key (starts with algorithm prefix and has long hex)
   const keyMatch = key.match(/^([A-Z0-9_]+):\s*([a-fA-F0-9]{32,})$/);
   if (keyMatch) {
     const [, algorithm, hexKey] = keyMatch;

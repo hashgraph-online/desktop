@@ -54,7 +54,6 @@ export function useTokenInfo(tokenId: string | undefined): TokenInfo | null {
             loading: false,
           };
           
-          // Cache the result
           tokenInfoCache.set(tokenId, {
             info: tokenData,
             timestamp: Date.now(),
@@ -85,7 +84,6 @@ export function useTokenInfo(tokenId: string | undefined): TokenInfo | null {
   return tokenInfo;
 }
 
-// Batch fetch multiple token infos
 export function useTokenInfoBatch(tokenIds: string[]): Map<string, TokenInfo> {
   const [tokenInfoMap, setTokenInfoMap] = useState<Map<string, TokenInfo>>(new Map());
   const config = useConfigStore((state) => state.config);
@@ -104,18 +102,15 @@ export function useTokenInfoBatch(tokenIds: string[]): Map<string, TokenInfo> {
       
       const newMap = new Map<string, TokenInfo>();
       
-      // Process unique token IDs
       const uniqueTokenIds = [...new Set(tokenIds)];
       
       for (const tokenId of uniqueTokenIds) {
-        // Check cache first
         const cached = tokenInfoCache.get(tokenId);
         if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
           newMap.set(tokenId, cached.info);
           continue;
         }
         
-        // Set loading state
         newMap.set(tokenId, {
           tokenId,
           decimals: 0,
@@ -134,7 +129,6 @@ export function useTokenInfoBatch(tokenIds: string[]): Map<string, TokenInfo> {
               loading: false,
             };
             
-            // Cache the result
             tokenInfoCache.set(tokenId, {
               info: tokenData,
               timestamp: Date.now(),
@@ -168,7 +162,6 @@ export function useTokenInfoBatch(tokenIds: string[]): Map<string, TokenInfo> {
   return tokenInfoMap;
 }
 
-// Helper function to format token amount with decimals
 export function formatTokenAmount(amount: string | number, decimals: number): string {
   const amountBigInt = typeof amount === 'string' ? BigInt(amount) : BigInt(Math.floor(amount));
   
@@ -184,9 +177,7 @@ export function formatTokenAmount(amount: string | number, decimals: number): st
     return wholePart.toString();
   }
   
-  // Format fractional part with leading zeros if needed
   const fractionalStr = fractionalPart.toString().padStart(decimals, '0');
-  // Remove trailing zeros
   const trimmedFractional = fractionalStr.replace(/0+$/, '');
   
   return `${wholePart}.${trimmedFractional}`;

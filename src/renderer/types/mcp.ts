@@ -5,7 +5,24 @@ export type MCPServerStatus = 'connected' | 'disconnected' | 'connecting' | 'han
 export interface MCPServerTool {
   name: string
   description: string
-  inputSchema: Record<string, any>
+  inputSchema: JSONSchema
+}
+
+interface JSONSchema {
+  type: 'object' | 'string' | 'number' | 'boolean' | 'array' | 'null'
+  properties?: Record<string, JSONSchema>
+  required?: string[]
+  items?: JSONSchema
+  enum?: unknown[]
+  description?: string
+  default?: unknown
+  format?: string
+  minimum?: number
+  maximum?: number
+  minLength?: number
+  maxLength?: number
+  pattern?: string
+  additionalProperties?: boolean | JSONSchema
 }
 
 export interface MCPServerConfig {
@@ -15,7 +32,7 @@ export interface MCPServerConfig {
   type: MCPServerType
   status: MCPServerStatus
   enabled: boolean
-  config: Record<string, any>
+  config: MCPServerConfigType
   tools?: MCPServerTool[]
   lastConnected?: Date
   errorMessage?: string
@@ -81,7 +98,7 @@ export interface MCPConnectionTest {
     success: boolean
     tools?: MCPServerTool[]
     error?: string
-    details?: any
+    details?: MCPConnectionTestDetails
     latency?: number
   }
 }
@@ -100,7 +117,7 @@ export interface MCPConnectionHealth {
 export interface MCPServerFormData {
   name: string
   type: MCPServerType
-  config: Record<string, any>
+  config: MCPServerConfigType
 }
 
 export interface MCPServerCardProps {
@@ -133,4 +150,15 @@ export interface MCPTestConnectionProps {
   onTest: () => void
   result?: MCPConnectionTest
   loading?: boolean
+}
+
+interface MCPConnectionTestDetails {
+  latency?: number
+  serverVersion?: string
+  capabilities?: string[]
+  errorDetails?: {
+    stack?: string
+    code?: string | number
+    context?: Record<string, unknown>
+  }
 }

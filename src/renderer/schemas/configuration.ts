@@ -43,7 +43,5 @@ export const appConfigSchema = z.object({
 })
 
 export type HederaConfigForm = z.infer<typeof hederaConfigSchema>
-export type OpenAIConfigForm = z.infer<typeof openAIConfigSchema>
-export type AnthropicConfigForm = z.infer<typeof anthropicConfigSchema>
 export type AdvancedConfigForm = z.infer<typeof advancedConfigSchema>
 export type AppConfigForm = z.infer<typeof appConfigSchema>

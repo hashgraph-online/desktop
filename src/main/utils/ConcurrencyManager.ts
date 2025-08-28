@@ -1,9 +1,16 @@
 import { Logger } from './logger';
-import type { 
-  ConcurrencyManagerConfig, 
-  ConcurrentTask, 
-  ConcurrencyStats 
+import type {
+  ConcurrencyManagerConfig,
+  ConcurrentTask,
+  ConcurrencyStats,
 } from '../../shared/types/mcp-performance';
+
+interface QueueItem {
+  task: ConcurrentTask<unknown>;
+  resolve: (value: unknown) => void;
+  reject: (error: Error) => void;
+  queuedAt: Date;
+}
 
 /**
  * Semaphore-based concurrency manager for parallel MCP server operations
@@ -14,23 +21,26 @@ export class ConcurrencyManager {
   private config: ConcurrencyManagerConfig;
   private semaphore: number;
   private taskQueue: Array<{
-    task: ConcurrentTask<any>;
-    resolve: (value: any) => void;
-    reject: (error: any) => void;
+    task: ConcurrentTask<unknown>;
+    resolve: (value: unknown) => void;
+    reject: (error: Error) => void;
     queuedAt: Date;
   }> = [];
-  private activeTasks: Map<string, { 
-    task: ConcurrentTask<any>; 
-    startedAt: Date;
-    timeoutHandle?: NodeJS.Timeout;
-  }> = new Map();
+  private activeTasks: Map<
+    string,
+    {
+      task: ConcurrentTask<unknown>;
+      startedAt: Date;
+      timeoutHandle?: NodeJS.Timeout;
+    }
+  > = new Map();
   private stats: ConcurrencyStats = {
     activeTaskCount: 0,
     queuedTaskCount: 0,
     completedTaskCount: 0,
     failedTaskCount: 0,
     averageExecutionTime: 0,
-    averageQueueTime: 0
+    averageQueueTime: 0,
   };
 
   private constructor(config?: Partial<ConcurrencyManagerConfig>) {
@@ -39,18 +49,20 @@ export class ConcurrencyManager {
       maxConcurrency: 5,
       queueTimeoutMs: 30000,
       priorityLevels: 3,
-      ...config
+      ...config,
     };
     this.semaphore = this.config.maxConcurrency;
-    
+
     this.logger.info('ConcurrencyManager initialized', {
       maxConcurrency: this.config.maxConcurrency,
       queueTimeoutMs: this.config.queueTimeoutMs,
-      priorityLevels: this.config.priorityLevels
+      priorityLevels: this.config.priorityLevels,
     });
   }
 
-  static getInstance(config?: Partial<ConcurrencyManagerConfig>): ConcurrencyManager {
+  static getInstance(
+    config?: Partial<ConcurrencyManagerConfig>
+  ): ConcurrencyManager {
     if (!ConcurrencyManager.instance) {
       ConcurrencyManager.instance = new ConcurrencyManager(config);
     }
@@ -63,35 +75,42 @@ export class ConcurrencyManager {
   async execute<T>(task: ConcurrentTask<T>): Promise<T> {
     return new Promise<T>((resolve, reject) => {
       const queuedAt = new Date();
-      
+
       const queueItem = { task, resolve, reject, queuedAt };
       this.insertTaskByPriority(queueItem);
-      
+
       this.stats.queuedTaskCount++;
-      
+
       const queueTimeout = setTimeout(() => {
         this.removeFromQueue(task.id);
-        reject(new Error(`Task ${task.id} timed out in queue after ${this.config.queueTimeoutMs}ms`));
+        reject(
+          new Error(
+            `Task ${task.id} timed out in queue after ${this.config.queueTimeoutMs}ms`
+          )
+        );
       }, this.config.queueTimeoutMs);
 
       const originalResolve = resolve;
       const originalReject = reject;
-      
+
       queueItem.resolve = (value: T | PromiseLike<T>) => {
         clearTimeout(queueTimeout);
         originalResolve(value);
       };
-      
-      queueItem.reject = (error: any) => {
+
+      queueItem.reject = (error: Error) => {
         clearTimeout(queueTimeout);
         originalReject(error);
       };
 
-      this.logger.debug(`Task ${task.id} queued with priority ${task.priority}`, {
-        queueLength: this.taskQueue.length,
-        activeTasks: this.activeTasks.size,
-        availableSlots: this.semaphore
-      });
+      this.logger.debug(
+        `Task ${task.id} queued with priority ${task.priority}`,
+        {
+          queueLength: this.taskQueue.length,
+          activeTasks: this.activeTasks.size,
+          availableSlots: this.semaphore,
+        }
+      );
 
       this.processQueue();
     });
@@ -102,19 +121,25 @@ export class ConcurrencyManager {
    */
   async executeParallel<T>(
     tasks: ConcurrentTask<T>[],
-    options?: { 
-      failFast?: boolean; 
+    options?: {
+      failFast?: boolean;
       maxRetries?: number;
       retryDelayMs?: number;
     }
-  ): Promise<Array<{ success: boolean; result?: T; error?: Error; taskId: string }>> {
-    const { failFast = false, maxRetries = 2, retryDelayMs = 1000 } = options || {};
-    
+  ): Promise<
+    Array<{ success: boolean; result?: T; error?: Error; taskId: string }>
+  > {
+    const {
+      failFast = false,
+      maxRetries = 2,
+      retryDelayMs = 1000,
+    } = options || {};
+
     this.logger.info(`Executing ${tasks.length} tasks in parallel`, {
       failFast,
       maxRetries,
       retryDelayMs,
-      maxConcurrency: this.config.maxConcurrency
+      maxConcurrency: this.config.maxConcurrency,
     });
 
     const taskPromises = tasks.map(async (task) => {
@@ -124,27 +149,30 @@ export class ConcurrencyManager {
       while (attempts <= (task.retryAttempts ?? maxRetries)) {
         try {
           const result = await this.execute(task);
-          return { 
-            success: true, 
-            result, 
-            taskId: task.id 
+          return {
+            success: true,
+            result,
+            taskId: task.id,
           };
         } catch (error) {
           lastError = error instanceof Error ? error : new Error(String(error));
           attempts++;
-          
-          this.logger.warn(`Task ${task.id} failed (attempt ${attempts}/${maxRetries + 1}):`, error);
-          
+
+          this.logger.warn(
+            `Task ${task.id} failed (attempt ${attempts}/${maxRetries + 1}):`,
+            error
+          );
+
           if (attempts <= (task.retryAttempts ?? maxRetries)) {
             await this.delay(retryDelayMs * attempts);
           }
         }
       }
 
-      return { 
-        success: false, 
-        error: lastError!, 
-        taskId: task.id 
+      return {
+        success: false,
+        error: lastError!,
+        taskId: task.id,
       };
     });
 
@@ -163,10 +191,11 @@ export class ConcurrencyManager {
         } else {
           return {
             success: false,
-            error: result.reason instanceof Error 
-              ? result.reason 
-              : new Error(String(result.reason)),
-            taskId: tasks[index].id
+            error:
+              result.reason instanceof Error
+                ? result.reason
+                : new Error(String(result.reason)),
+            taskId: tasks[index].id,
           };
         }
       });
@@ -176,11 +205,11 @@ export class ConcurrencyManager {
   /**
    * Insert task into queue maintaining priority order
    */
-  private insertTaskByPriority(queueItem: any): void {
+  private insertTaskByPriority(queueItem: QueueItem): void {
     const insertIndex = this.taskQueue.findIndex(
-      item => item.task.priority < queueItem.task.priority
+      (item) => item.task.priority < queueItem.task.priority
     );
-    
+
     if (insertIndex === -1) {
       this.taskQueue.push(queueItem);
     } else {
@@ -192,7 +221,7 @@ export class ConcurrencyManager {
    * Remove task from queue by ID
    */
   private removeFromQueue(taskId: string): boolean {
-    const index = this.taskQueue.findIndex(item => item.task.id === taskId);
+    const index = this.taskQueue.findIndex((item) => item.task.id === taskId);
     if (index !== -1) {
       this.taskQueue.splice(index, 1);
       this.stats.queuedTaskCount--;
@@ -209,10 +238,10 @@ export class ConcurrencyManager {
       const queueItem = this.taskQueue.shift()!;
       this.semaphore--;
       this.stats.queuedTaskCount--;
-      
+
       const queueTime = Date.now() - queueItem.queuedAt.getTime();
       this.updateAverageQueueTime(queueTime);
-      
+
       this.executeTask(queueItem);
     }
   }
@@ -220,15 +249,17 @@ export class ConcurrencyManager {
   /**
    * Execute a single task
    */
-  private async executeTask(queueItem: any): Promise<void> {
+  private async executeTask(queueItem: QueueItem): Promise<void> {
     const { task, resolve, reject } = queueItem;
     const startedAt = new Date();
-    
+
     let timeoutHandle: NodeJS.Timeout | undefined;
     if (task.timeoutMs) {
       timeoutHandle = setTimeout(() => {
         this.handleTaskCompletion(task.id, false);
-        reject(new Error(`Task ${task.id} timed out after ${task.timeoutMs}ms`));
+        reject(
+          new Error(`Task ${task.id} timed out after ${task.timeoutMs}ms`)
+        );
       }, task.timeoutMs);
     }
 
@@ -239,32 +270,32 @@ export class ConcurrencyManager {
       priority: task.priority,
       queueTimeMs: Date.now() - queueItem.queuedAt.getTime(),
       activeTasks: this.activeTasks.size,
-      remainingSlots: this.semaphore
+      remainingSlots: this.semaphore,
     });
 
     try {
       const result = await task.execute();
-      
+
       if (timeoutHandle) {
         clearTimeout(timeoutHandle);
       }
-      
+
       this.handleTaskCompletion(task.id, true);
       resolve(result);
-      
+
       this.logger.debug(`Task ${task.id} completed successfully`, {
-        executionTimeMs: Date.now() - startedAt.getTime()
+        executionTimeMs: Date.now() - startedAt.getTime(),
       });
     } catch (error) {
       if (timeoutHandle) {
         clearTimeout(timeoutHandle);
       }
-      
+
       this.handleTaskCompletion(task.id, false);
       reject(error);
-      
+
       this.logger.error(`Task ${task.id} failed:`, error, {
-        executionTimeMs: Date.now() - startedAt.getTime()
+        executionTimeMs: Date.now() - startedAt.getTime(),
       });
     }
   }
@@ -299,12 +330,15 @@ export class ConcurrencyManager {
    * Update average execution time
    */
   private updateAverageExecutionTime(executionTime: number): void {
-    const totalCompleted = this.stats.completedTaskCount + this.stats.failedTaskCount;
+    const totalCompleted =
+      this.stats.completedTaskCount + this.stats.failedTaskCount;
     if (totalCompleted === 0) {
       this.stats.averageExecutionTime = executionTime;
     } else {
-      this.stats.averageExecutionTime = 
-        (this.stats.averageExecutionTime * (totalCompleted - 1) + executionTime) / totalCompleted;
+      this.stats.averageExecutionTime =
+        (this.stats.averageExecutionTime * (totalCompleted - 1) +
+          executionTime) /
+        totalCompleted;
     }
   }
 
@@ -312,12 +346,14 @@ export class ConcurrencyManager {
    * Update average queue time
    */
   private updateAverageQueueTime(queueTime: number): void {
-    const totalTasks = this.stats.completedTaskCount + this.stats.failedTaskCount + 1;
+    const totalTasks =
+      this.stats.completedTaskCount + this.stats.failedTaskCount + 1;
     if (totalTasks === 1) {
       this.stats.averageQueueTime = queueTime;
     } else {
-      this.stats.averageQueueTime = 
-        (this.stats.averageQueueTime * (totalTasks - 1) + queueTime) / totalTasks;
+      this.stats.averageQueueTime =
+        (this.stats.averageQueueTime * (totalTasks - 1) + queueTime) /
+        totalTasks;
     }
   }
 
@@ -338,7 +374,7 @@ export class ConcurrencyManager {
       priority: options?.priority ?? 1,
       execute,
       timeoutMs: options?.timeoutMs,
-      retryAttempts: options?.retryAttempts
+      retryAttempts: options?.retryAttempts,
     };
   }
 
@@ -347,12 +383,14 @@ export class ConcurrencyManager {
    */
   async waitForCompletion(timeoutMs?: number): Promise<void> {
     const startTime = Date.now();
-    
+
     while (this.activeTasks.size > 0 || this.taskQueue.length > 0) {
-      if (timeoutMs && (Date.now() - startTime > timeoutMs)) {
-        throw new Error(`Timeout waiting for task completion after ${timeoutMs}ms`);
+      if (timeoutMs && Date.now() - startTime > timeoutMs) {
+        throw new Error(
+          `Timeout waiting for task completion after ${timeoutMs}ms`
+        );
       }
-      
+
       await this.delay(100);
     }
   }
@@ -377,20 +415,20 @@ export class ConcurrencyManager {
     return {
       stats: this.getStats(),
       config: this.config,
-      activeTasks: Array.from(this.activeTasks.keys()).map(id => {
+      activeTasks: Array.from(this.activeTasks.keys()).map((id) => {
         const info = this.activeTasks.get(id)!;
         return {
           id,
           priority: info.task.priority,
-          startedAt: info.startedAt
+          startedAt: info.startedAt,
         };
       }),
-      queuedTasks: this.taskQueue.map(item => ({
+      queuedTasks: this.taskQueue.map((item) => ({
         id: item.task.id,
         priority: item.task.priority,
-        queuedAt: item.queuedAt
+        queuedAt: item.queuedAt,
       })),
-      availableSlots: this.semaphore
+      availableSlots: this.semaphore,
     };
   }
 
@@ -399,7 +437,7 @@ export class ConcurrencyManager {
    */
   clearQueue(): void {
     const clearedCount = this.taskQueue.length;
-    this.taskQueue.forEach(item => {
+    this.taskQueue.forEach((item) => {
       item.reject(new Error('Task queue cleared'));
     });
     this.taskQueue = [];
@@ -414,25 +452,27 @@ export class ConcurrencyManager {
     if (newLimit < 1) {
       throw new Error('Concurrency limit must be at least 1');
     }
-    
+
     const oldLimit = this.config.maxConcurrency;
     this.config.maxConcurrency = newLimit;
-    
+
     const difference = newLimit - oldLimit;
     this.semaphore += difference;
-    
+
     if (difference > 0) {
       this.processQueue();
     }
-    
-    this.logger.info(`Updated concurrency limit from ${oldLimit} to ${newLimit}`);
+
+    this.logger.info(
+      `Updated concurrency limit from ${oldLimit} to ${newLimit}`
+    );
   }
 
   /**
    * Utility delay function
    */
   private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   /**
@@ -440,25 +480,28 @@ export class ConcurrencyManager {
    */
   async shutdown(): Promise<void> {
     this.logger.info('Shutting down ConcurrencyManager');
-    
+
     this.clearQueue();
-    
+
     try {
       await this.waitForCompletion(10000);
     } catch (error) {
-      this.logger.warn('Timeout waiting for active tasks during shutdown:', error);
+      this.logger.warn(
+        'Timeout waiting for active tasks during shutdown:',
+        error
+      );
     }
-    
+
     this.activeTasks.forEach((taskInfo, taskId) => {
       if (taskInfo.timeoutHandle) {
         clearTimeout(taskInfo.timeoutHandle);
       }
       this.logger.warn(`Forcefully terminating active task: ${taskId}`);
     });
-    
+
     this.activeTasks.clear();
     this.semaphore = this.config.maxConcurrency;
-    
+
     this.logger.info('ConcurrencyManager shutdown complete');
   }
 }

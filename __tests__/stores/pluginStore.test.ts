@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react'
 import { usePluginStore } from '../../src/renderer/stores/pluginStore'
-import { mockElectronBridge, factories, delay } from '../utils/testHelpers'
+import { mockElectronBridge, factories } from '../utils/testHelpers'
 
 describe('pluginStore', () => {
   let mockElectron: ReturnType<typeof mockElectronBridge>
@@ -16,21 +16,20 @@ describe('pluginStore', () => {
 
   describe('initialization', () => {
     it('should initialize with empty state', () => {
-      const { result } = renderHook(() => usePluginStore())
+      const state = usePluginStore.getState()
 
-      expect(result.current.plugins).toEqual({})
-      expect(result.current.searchResults).toEqual([])
-      expect(result.current.isSearching).toBe(false)
-      expect(result.current.isInstalling).toBe(false)
-      expect(result.current.isLoading).toBe(false)
-      expect(result.current.error).toBeNull()
-      expect(result.current.initializationState).toBe('pending')
+      expect(state.plugins).toEqual({})
+      expect(state.searchResults).toEqual([])
+      expect(state.isSearching).toBe(false)
+      expect(state.isInstalling).toBe(false)
+      expect(state.isLoading).toBe(false)
+      expect(state.error).toBeNull()
+      expect(state.initializationState).toBe('pending')
     })
   })
 
   describe('searchPlugins', () => {
     it('should search plugins successfully', async () => {
-      const { result } = renderHook(() => usePluginStore())
       const mockResults = [
         { name: 'test-plugin', version: '1.0.0', description: 'Test plugin' },
       ]
@@ -41,19 +40,18 @@ describe('pluginStore', () => {
       })
 
       await act(async () => {
-        await result.current.searchPlugins('test')
+        await usePluginStore.getState().searchPlugins('test')
       })
 
+      const state = usePluginStore.getState()
       expect(mockElectron.searchPlugins).toHaveBeenCalledWith('test')
-      expect(result.current.searchResults).toEqual(mockResults)
-      expect(result.current.isSearching).toBe(false)
-      expect(result.current.searchError).toBeNull()
-      expect(result.current.searchQuery).toBe('test')
+      expect(state.searchResults).toEqual(mockResults)
+      expect(state.isSearching).toBe(false)
+      expect(state.searchError).toBeNull()
+      expect(state.searchQuery).toBe('test')
     })
 
     it('should handle search errors', async () => {
-      const { result } = renderHook(() => usePluginStore())
-
       mockElectron.searchPlugins.mockResolvedValue({
         success: false,
         error: 'Search failed',
@@ -61,14 +59,15 @@ describe('pluginStore', () => {
 
       await act(async () => {
         try {
-          await result.current.searchPlugins('test')
-        } catch (error) {
+          await usePluginStore.getState().searchPlugins('test')
+        } catch (_error) {
         }
       })
 
-      expect(result.current.isSearching).toBe(false)
-      expect(result.current.searchError).toBe('Search failed')
-      expect(result.current.searchResults).toEqual([])
+      const state = usePluginStore.getState()
+      expect(state.isSearching).toBe(false)
+      expect(state.searchError).toBe('Search failed')
+      expect(state.searchResults).toEqual([])
     })
 
     it('should set loading state during search', async () => {
@@ -91,7 +90,6 @@ describe('pluginStore', () => {
 
   describe('installPlugin', () => {
     it('should install plugin successfully', async () => {
-      const { result } = renderHook(() => usePluginStore())
       const mockPlugin = factories.plugin({
         id: 'test-plugin',
         name: 'Test Plugin',
@@ -104,18 +102,17 @@ describe('pluginStore', () => {
       })
 
       await act(async () => {
-        await result.current.installPlugin('test-plugin')
+        await usePluginStore.getState().installPlugin('test-plugin')
       })
 
+      const state = usePluginStore.getState()
       expect(mockElectron.installPlugin).toHaveBeenCalledWith('test-plugin', undefined)
-      expect(result.current.plugins['test-plugin']).toEqual(mockPlugin)
-      expect(result.current.isInstalling).toBe(false)
-      expect(result.current.installError).toBeNull()
+      expect(state.plugins['test-plugin']).toEqual(mockPlugin)
+      expect(state.isInstalling).toBe(false)
+      expect(state.installError).toBeNull()
     })
 
     it('should handle installation errors', async () => {
-      const { result } = renderHook(() => usePluginStore())
-
       mockElectron.installPlugin.mockResolvedValue({
         success: false,
         error: 'Installation failed',
@@ -123,13 +120,14 @@ describe('pluginStore', () => {
 
       await act(async () => {
         try {
-          await result.current.installPlugin('test-plugin')
-        } catch (error) {
+          await usePluginStore.getState().installPlugin('test-plugin')
+        } catch (_error) {
         }
       })
 
-      expect(result.current.isInstalling).toBe(false)
-      expect(result.current.installError).toBe('Installation failed')
+      const state = usePluginStore.getState()
+      expect(state.isInstalling).toBe(false)
+      expect(state.installError).toBe('Installation failed')
     })
 
     it('should track installation progress', async () => {
@@ -210,7 +208,7 @@ describe('pluginStore', () => {
       await act(async () => {
         try {
           await result.current.uninstallPlugin('test-plugin')
-        } catch (error) {
+        } catch (_error) {
         }
       })
 
@@ -255,7 +253,7 @@ describe('pluginStore', () => {
       await act(async () => {
         try {
           await result.current.enablePlugin('test-plugin')
-        } catch (error) {
+        } catch (_error) {
         }
       })
 

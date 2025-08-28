@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from '../ui/Button';
 import Typography from '../ui/Typography';
+import { Card, CardContent } from '../ui/Card';
 import { FiCheck, FiX, FiCopy, FiExternalLink } from 'react-icons/fi';
 import { cn } from '../../lib/utils';
 
@@ -8,6 +9,7 @@ interface TransactionDisplayProps {
   transactionBytes?: string;
   transactionId?: string;
   scheduleId?: string;
+  network?: string;
   onApprove?: () => void;
   onReject?: () => void;
   className?: string;
@@ -20,6 +22,7 @@ export const TransactionDisplay: React.FC<TransactionDisplayProps> = ({
   transactionBytes,
   transactionId,
   scheduleId,
+  network = 'testnet',
   onApprove,
   onReject,
   className
@@ -37,11 +40,9 @@ export const TransactionDisplay: React.FC<TransactionDisplayProps> = ({
   if (!transactionBytes && !transactionId && !scheduleId) return null;
 
   return (
-    <div className={cn(
-      "bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-4 mt-2",
-      className
-    )}>
-      <div className="flex items-start justify-between mb-3">
+    <Card className={cn("mt-2", className)}>
+      <CardContent className="pt-6">
+        <div className="flex items-start justify-between mb-3">
         <Typography variant="body2" className="font-semibold">
           Transaction Details
         </Typography>
@@ -85,7 +86,7 @@ export const TransactionDisplay: React.FC<TransactionDisplayProps> = ({
           <div className="flex items-center gap-2">
             <code className="text-xs font-mono">{transactionId}</code>
             <a
-              href={`https://hashscan.io/testnet/transaction/${transactionId}`}
+              href={`https://hashscan.io/${network === 'testnet' ? 'testnet/' : ''}transaction/${transactionId}`}
               target="_blank"
               rel="noopener noreferrer"
               className="text-white hover:text-white/80"
@@ -106,7 +107,7 @@ export const TransactionDisplay: React.FC<TransactionDisplayProps> = ({
           <div className="flex items-center gap-2">
             <code className="text-xs font-mono">{scheduleId}</code>
             <a
-              href={`https://hashscan.io/testnet/schedule/${scheduleId}`}
+              href={`https://hashscan.io/${network === 'testnet' ? 'testnet/' : ''}transaction/${transactionId}`}
               target="_blank"
               rel="noopener noreferrer"
               className="text-white hover:text-white/80"
@@ -139,7 +140,8 @@ export const TransactionDisplay: React.FC<TransactionDisplayProps> = ({
           </Button>
         </div>
       )}
-    </div>
+      </CardContent>
+    </Card>
   );
 };
 

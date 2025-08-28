@@ -49,9 +49,9 @@ export function InscriptionSelect({
    */
   const handleManualTopicIdSubmit = useCallback(() => {
     if (manualTopicId.trim()) {
-      const formattedUrl = manualTopicId.startsWith('hcs://1/')
+      const formattedUrl = manualTopicId.startsWith('hcs://')
         ? manualTopicId
-        : `hcs://1/${manualTopicId}`;
+        : `hcs://${manualTopicId}`;
       onChange(formattedUrl);
       setManualTopicId('');
     }
@@ -119,9 +119,9 @@ export function InscriptionSelect({
     setUploadError(null);
   }, [onChange]);
 
-  const isExistingPfp = formData && formData.startsWith('hcs://1/');
+  const isExistingPfp = formData && formData.startsWith('hcs://');
   const isDataUrl = formData && formData.startsWith('data:');
-  const pfpTopicId = isExistingPfp ? formData.replace('hcs://1/', '') : '';
+  const pfpTopicId = isExistingPfp ? formData.replace('hcs://', '') : null;
 
   return (
     <div className='space-y-4'>

@@ -165,7 +165,7 @@ export const UpdateDialog: React.FC<UpdateDialogProps> = ({
                 <Typography variant="caption" color="secondary">v{currentVersion}</Typography>
               </div>
             </div>
-            {updateInfo && (
+            {updateInfo ? (
               <div className="text-right">
                 <Typography variant="body2" className="font-medium">Latest Version</Typography>
                 <div className="flex items-center space-x-2">
@@ -173,11 +173,11 @@ export const UpdateDialog: React.FC<UpdateDialogProps> = ({
                   <Badge variant="secondary" className="text-xs">New</Badge>
                 </div>
               </div>
-            )}
+            ) : null}
           </div>
 
 
-          {updateInfo && updateState === 'available' && (
+          {updateInfo && updateState === 'available' ? (
             <div className="p-3 border rounded-lg">
               <div className="flex items-center space-x-2 mb-2">
                 <FiClock className="w-4 h-4 text-gray-500" />
@@ -186,7 +186,7 @@ export const UpdateDialog: React.FC<UpdateDialogProps> = ({
                 </Typography>
               </div>
               
-              {updateInfo.releaseNotes && (
+              {updateInfo.releaseNotes ? (
                 <div>
                   <Typography variant="caption" color="secondary" className="block mb-2">
                     Release Notes:
@@ -198,7 +198,7 @@ export const UpdateDialog: React.FC<UpdateDialogProps> = ({
                         : truncateText(updateInfo.releaseNotes)
                       }
                     </Typography>
-                    {updateInfo.releaseNotes.length > 200 && (
+                    {updateInfo.releaseNotes.length > 200 ? (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -207,15 +207,15 @@ export const UpdateDialog: React.FC<UpdateDialogProps> = ({
                       >
                         {showFullNotes ? 'Show less' : 'Show more'}
                       </Button>
-                    )}
+                    ) : null}
                   </div>
                 </div>
-              )}
+              ) : null}
             </div>
-          )}
+          ) : null}
 
 
-          {updateState === 'downloading' && progress && (
+          {updateState === 'downloading' && progress ? (
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span>Progress</span>
@@ -234,10 +234,10 @@ export const UpdateDialog: React.FC<UpdateDialogProps> = ({
                 <span>{formatBytes(progress.transferred)} / {formatBytes(progress.total)}</span>
               </div>
             </div>
-          )}
+          ) : null}
 
 
-          {updateState === 'error' && error && (
+          {updateState === 'error' && error ? (
             <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
               <Typography variant="body2" className="font-medium text-red-800 dark:text-red-200 mb-1">
                 Error Details
@@ -246,12 +246,12 @@ export const UpdateDialog: React.FC<UpdateDialogProps> = ({
                 {error.message}
               </Typography>
             </div>
-          )}
+          ) : null}
         </div>
 
         <DialogFooter>
           <div className="flex items-center space-x-2 w-full">
-            {onViewReleases && (
+            {onViewReleases ? (
               <Button
                 variant="ghost"
                 size="sm"
@@ -261,35 +261,35 @@ export const UpdateDialog: React.FC<UpdateDialogProps> = ({
                 <FiExternalLink className="w-4 h-4 mr-2" />
                 View All Releases
               </Button>
-            )}
+            ) : null}
 
-            {updateState === 'not-available' && onCheckForUpdates && (
+            {updateState === 'not-available' && onCheckForUpdates ? (
               <Button variant="outline" onClick={onCheckForUpdates}>
                 <FiRefreshCw className="w-4 h-4 mr-2" />
                 Check Again
               </Button>
-            )}
+            ) : null}
 
-            {updateState === 'available' && onDownload && (
+            {updateState === 'available' && onDownload ? (
               <Button variant="default" onClick={onDownload}>
                 <FiDownload className="w-4 h-4 mr-2" />
                 Download Update
               </Button>
-            )}
+            ) : null}
 
-            {updateState === 'downloaded' && onInstall && (
+            {updateState === 'downloaded' && onInstall ? (
               <Button variant="gradient" onClick={onInstall}>
                 <FiRefreshCw className="w-4 h-4 mr-2" />
                 Install & Restart
               </Button>
-            )}
+            ) : null}
 
-            {updateState === 'error' && onCheckForUpdates && (
+            {updateState === 'error' && onCheckForUpdates ? (
               <Button variant="outline" onClick={onCheckForUpdates}>
                 <FiRefreshCw className="w-4 h-4 mr-2" />
                 Try Again
               </Button>
-            )}
+            ) : null}
           </div>
         </DialogFooter>
       </DialogContent>

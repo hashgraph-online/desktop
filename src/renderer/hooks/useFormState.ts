@@ -8,9 +8,9 @@ import { useState, useCallback, ChangeEvent } from 'react';
  * @param validators - Optional validation functions for each field
  * @returns Object containing form state, handlers, and validation methods
  */
-export function useFormState<T extends Record<string, any>>(
+export function useFormState<T extends Record<string, unknown>>(
   initialValues: T,
-  validators?: Partial<Record<keyof T, (value: any) => string | null>>
+  validators?: Partial<Record<keyof T, (value: T[keyof T]) => string | null>>
 ) {
   const [values, setValues] = useState<T>(initialValues);
   const [errors, setErrors] = useState<Partial<Record<keyof T, string>>>({});

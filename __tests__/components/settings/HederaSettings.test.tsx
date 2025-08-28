@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { HederaSettings } from '../../../src/renderer/pages/settings/HederaSettings'
 import { useConfigStore } from '../../../src/renderer/stores/configStore'
+import type { ConfigStore } from '../../../src/renderer/stores/configStore'
 
 jest.mock('../../../src/renderer/stores/configStore')
 
@@ -33,7 +34,25 @@ describe('HederaSettings', () => {
       setHederaNetwork: mockSetHederaNetwork,
       testHederaConnection: mockTestHederaConnection,
       isHederaConfigValid: mockIsHederaConfigValid,
-    } as any)
+      isLoading: false,
+      error: null,
+      isConfigured: () => true,
+      setOpenAIApiKey: jest.fn(),
+      setOpenAIModel: jest.fn(),
+      setAnthropicApiKey: jest.fn(),
+      setAnthropicModel: jest.fn(),
+      setLLMProvider: jest.fn(),
+      setTheme: jest.fn().mockResolvedValue(void 0),
+      setAutoStart: jest.fn(),
+      setLogLevel: jest.fn(),
+      setOperationalMode: jest.fn(),
+      setAutonomousMode: jest.fn(),
+      saveConfig: jest.fn().mockResolvedValue(void 0),
+      loadConfig: jest.fn().mockResolvedValue(void 0),
+      testOpenAIConnection: jest.fn().mockResolvedValue({ success: true }),
+      testAnthropicConnection: jest.fn().mockResolvedValue({ success: true }),
+      reset: jest.fn(),
+    } as ConfigStore)
 
     mockIsHederaConfigValid.mockReturnValue(false)
   })
@@ -200,7 +219,25 @@ describe('HederaSettings', () => {
       setHederaNetwork: mockSetHederaNetwork,
       testHederaConnection: mockTestHederaConnection,
       isHederaConfigValid: mockIsHederaConfigValid,
-    } as any)
+      isLoading: false,
+      error: null,
+      isConfigured: () => true,
+      setOpenAIApiKey: jest.fn(),
+      setOpenAIModel: jest.fn(),
+      setAnthropicApiKey: jest.fn(),
+      setAnthropicModel: jest.fn(),
+      setLLMProvider: jest.fn(),
+      setTheme: jest.fn().mockResolvedValue(void 0),
+      setAutoStart: jest.fn(),
+      setLogLevel: jest.fn(),
+      setOperationalMode: jest.fn(),
+      setAutonomousMode: jest.fn(),
+      saveConfig: jest.fn().mockResolvedValue(void 0),
+      loadConfig: jest.fn().mockResolvedValue(void 0),
+      testOpenAIConnection: jest.fn().mockResolvedValue({ success: true }),
+      testAnthropicConnection: jest.fn().mockResolvedValue({ success: true }),
+      reset: jest.fn(),
+    } as ConfigStore)
 
     render(<HederaSettings />)
 

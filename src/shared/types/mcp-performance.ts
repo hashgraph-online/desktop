@@ -23,13 +23,37 @@ export interface MCPConnectionPool {
 export interface MCPPooledConnection {
   id: string;
   serverId: string;
-  process: any;
+  process: MCPProcess;
   status: 'idle' | 'active' | 'initializing' | 'error' | 'disposed';
   createdAt: Date;
   lastUsedAt: Date;
   connectionAttempts: number;
   errorCount: number;
-  tools?: any[];
+  tools?: MCPTool[];
+}
+
+export interface MCPProcess {
+  pid?: number;
+  command: string;
+  args?: string[];
+  env?: Record<string, string>;
+  cwd?: string;
+  stdin?: NodeJS.WritableStream;
+  stdout?: NodeJS.ReadableStream;
+  stderr?: NodeJS.ReadableStream;
+  kill?: (signal?: NodeJS.Signals) => boolean;
+  on?: (event: string, listener: (...args: unknown[]) => void) => void;
+  connected?: boolean;
+}
+
+export interface MCPTool {
+  name: string;
+  description?: string;
+  inputSchema?: {
+    type: string;
+    properties?: Record<string, unknown>;
+    required?: string[];
+  };
 }
 
 export interface MCPConnectionStats {

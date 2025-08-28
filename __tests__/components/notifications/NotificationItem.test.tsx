@@ -16,7 +16,7 @@ jest.mock('../../../src/renderer/stores/notificationStore', () => ({
  */
 jest.mock('framer-motion', () => ({
   motion: {
-    div: ({ children, className, role, ...props }: any) => (
+    div: ({ children, className, role, ...props }: { children: React.ReactNode; className?: string; role?: string; [key: string]: unknown }) => (
       <div className={className} role={role} {...props}>
         {children}
       </div>
@@ -29,7 +29,7 @@ jest.mock('framer-motion', () => ({
  */
 jest.mock('../../../src/renderer/components/ui/Typography', () => ({
   __esModule: true,
-  default: ({ children, variant, color, className }: any) => (
+  default: ({ children, variant, color, className }: { children: React.ReactNode; variant?: string; color?: string; className?: string }) => (
     <span className={`typography ${variant} ${color} ${className || ''}`}>
       {children}
     </span>
@@ -111,7 +111,7 @@ describe('NotificationItem', () => {
     it('should default to info type when type is not recognized', () => {
       const notification = {
         ...factories.notification(),
-        type: 'unknown' as any,
+        type: 'unknown' as 'info' | 'success' | 'warning' | 'error',
       }
 
       const { container } = render(<NotificationItem notification={notification} />)

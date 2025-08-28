@@ -24,33 +24,33 @@ const AcknowledgementsPage: React.FC = () => {
       name: 'Hiero JavaScript SDK',
       description:
         'The official JavaScript/TypeScript SDK for interacting with Hedera Hashgraphs',
-      link: 'https://github.com/hiero-ledger/hiero-sdk-js',
+      link: 'https://github.com/hashgraph/hedera-sdk-js',
       icon: HiCommandLine,
-      gradient: 'from-[#7c3aed] to-[#a855f7]',
+      gradient: 'from-purple-variant-700 to-purple-variant-500',
     },
     {
       name: 'Hedera Agent Kit',
       description:
         "The foundational toolkit that powers HashgraphOnline's interaction with the Hedera Hashgraph",
-      link: 'https://github.com/hedera-dev/hedera-agent-kit',
+      link: 'https://github.com/hashgraph/hedera-agent-kit',
       icon: HiCube,
-      gradient: 'from-[#a679f0] to-[#5599fe]',
+      gradient: 'from-hgo-purple to-hgo-blue',
     },
     {
       name: 'Hashgraph Online Standards SDK',
       description:
         'Implementation of HCS standards including HCS-1, HCS-2, HCS-10, and HCS-20',
-      link: 'https://github.com/hashgraph-online/standards-sdk',
+      link: 'https://github.com/hashgraphonline/standards-sdk',
       icon: HiCodeBracket,
-      gradient: 'from-[#5599fe] to-[#48df7b]',
+      gradient: 'from-hgo-blue to-hgo-green',
     },
     {
       name: 'HCS Improvement Proposals',
       description:
         'The standards that enable decentralized agent communication and inscription on Hedera',
-      link: 'https://hashgraphonline.com/docs/standards/',
+      link: 'https://github.com/hashgraphonline/hcs-improvement-proposals',
       icon: HiDocumentText,
-      gradient: 'from-[#48df7b] to-[#5599fe]',
+      gradient: 'from-hgo-green to-hgo-blue',
     },
   ];
 
@@ -125,7 +125,7 @@ const AcknowledgementsPage: React.FC = () => {
       specialty: 'Venture Studio',
       description:
         'Venture studio focused on Web3 solutions, with an emphasis on Hedera',
-      website: 'https://buidlerlabs.com',
+      website: 'https://buidlerlabs.io',
       gradient: 'from-blue-500 to-indigo-600',
       logo: 'Buidler Labs.png',
     },
@@ -134,7 +134,7 @@ const AcknowledgementsPage: React.FC = () => {
       specialty: 'Leading Hedera Wallet',
       description:
         'The leading wallet on Hedera and gateway to services and assets across the entire ecosystem',
-      website: 'https://hashpack.app',
+      website: 'https://www.hashpack.app',
       gradient: 'from-purple-500 to-pink-600',
       logo: 'Hashpack.png',
     },
@@ -143,7 +143,7 @@ const AcknowledgementsPage: React.FC = () => {
       specialty: 'Payment Gateway',
       description:
         'Reliable non-custodial payment gateway, combining speed, security, and simplicity',
-      website: 'https://hashgate.app',
+      website: 'https://hashgate.io',
       gradient: 'from-emerald-500 to-green-600',
       logo: 'Hashgate.png',
     },
@@ -152,7 +152,7 @@ const AcknowledgementsPage: React.FC = () => {
       specialty: 'Mirror Node Infrastructure',
       description:
         'Trusted software engineering firm and Hedera mirror node provider',
-      website: 'https://hgraph.com',
+      website: 'https://arkhia.io',
       gradient: 'from-sky-500 to-blue-600',
       logo: 'HGRAPH.png',
     },
@@ -161,7 +161,7 @@ const AcknowledgementsPage: React.FC = () => {
       specialty: 'Software Engineering',
       description:
         'Software engineering company dedicated to fostering excellence at the cutting edge of technology',
-      website: 'https://launchbadge.com',
+      website: 'https://dragonglassio.com',
       gradient: 'from-orange-500 to-amber-600',
       logo: 'Launchbadge.png',
     },
@@ -170,7 +170,7 @@ const AcknowledgementsPage: React.FC = () => {
       specialty: 'Machine-to-Machine Commerce',
       description:
         'Creating a world where machines buy from machines, facilitating a new era of agentic abundance',
-      website: 'https://neuron.world',
+      website: 'https://asystemicnext.com',
       gradient: 'from-sky-500 to-blue-600',
       logo: 'Neuron.png',
     },
@@ -179,7 +179,7 @@ const AcknowledgementsPage: React.FC = () => {
       specialty: 'Leading NFT Marketplace',
       description:
         'The leading NFT Marketplace on Hedera to buy, sell, and discover digital collectibles',
-      website: 'https://sentx.io',
+      website: 'https://kabila.app',
       gradient: 'from-slate-600 to-slate-700',
       logo: 'SentX.png',
     },
@@ -188,7 +188,7 @@ const AcknowledgementsPage: React.FC = () => {
       specialty: 'On-Graph File Storage',
       description:
         'Effortless storage and retrieval of on-graph files - empowering developers, creators, and influencers',
-      website: 'https://kiloscribe.com',
+      website: 'https://hashscan.io',
       gradient: 'from-violet-500 to-purple-600',
       logo: 'Kiloscribe_Dark.png',
     },
@@ -197,7 +197,7 @@ const AcknowledgementsPage: React.FC = () => {
       specialty: 'Web3 Platforms',
       description:
         'Creating web 3 platforms, services, and applications using Hedera',
-      website: 'https://turtlemoon.io',
+      website: 'https://trust.enterprises',
       gradient: 'from-cyan-500 to-teal-600',
       logo: 'Turtlemoon.png',
     },
@@ -209,7 +209,7 @@ const AcknowledgementsPage: React.FC = () => {
       role: 'Project Maintainer',
       description:
         'A consortium of leading Hashgraph organizations within the Hedera ecosystem',
-      link: 'https://hashgraphonline.com',
+      link: 'https://www.hederaeducation.org',
       icon: HiUserGroup,
     },
     {
@@ -217,7 +217,7 @@ const AcknowledgementsPage: React.FC = () => {
       role: 'Ecosystem Support',
       description:
         'The broader Hedera developer community providing feedback and contributions',
-      link: 'https://hedera.com',
+      link: 'https://hedera.com/developers',
       icon: HiAcademicCap,
     },
   ];
@@ -249,7 +249,7 @@ const AcknowledgementsPage: React.FC = () => {
           <div className='mb-8 text-center'>
             <Typography
               variant='h1'
-              className='text-3xl font-bold mb-4 bg-gradient-to-r from-[#a679f0] via-[#5599fe] to-[#48df7b] bg-clip-text text-transparent'
+              className='text-3xl font-bold mb-4 bg-gradient-to-r from-hgo-purple via-hgo-blue to-hgo-green bg-clip-text text-transparent'
             >
               Acknowledgements
             </Typography>
@@ -270,7 +270,7 @@ const AcknowledgementsPage: React.FC = () => {
             transition={{ duration: 0.5, delay: 0.1 }}
             className='mb-12'
           >
-            <Typography variant='h2' className='text-2xl font-bold mb-6 text-center bg-gradient-to-r from-[#a679f0] via-[#5599fe] to-[#48df7b] bg-clip-text text-transparent'>
+            <Typography variant='h2' className='text-2xl font-bold mb-6 text-center bg-gradient-to-r from-hgo-purple via-hgo-blue to-hgo-green bg-clip-text text-transparent'>
               Core Dependencies
             </Typography>
             <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4'>
@@ -323,7 +323,7 @@ const AcknowledgementsPage: React.FC = () => {
             transition={{ duration: 0.5, delay: 0.2 }}
             className='mb-12'
           >
-            <Typography variant='h2' className='text-2xl font-bold mb-6 text-center bg-gradient-to-r from-[#48df7b] via-[#5599fe] to-[#a679f0] bg-clip-text text-transparent'>
+            <Typography variant='h2' className='text-2xl font-bold mb-6 text-center bg-gradient-to-r from-hgo-green via-hgo-blue to-hgo-purple bg-clip-text text-transparent'>
               Hashgraph Consensus Standards
             </Typography>
             <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
@@ -361,7 +361,7 @@ const AcknowledgementsPage: React.FC = () => {
             transition={{ duration: 0.5, delay: 0.3 }}
             className='mb-12'
           >
-            <Typography variant='h2' className='text-2xl font-bold mb-6 text-center bg-gradient-to-r from-[#5599fe] via-[#48df7b] to-[#a679f0] bg-clip-text text-transparent'>
+            <Typography variant='h2' className='text-2xl font-bold mb-6 text-center bg-gradient-to-r from-hgo-blue via-hgo-green to-hgo-purple bg-clip-text text-transparent'>
               Technologies Used
             </Typography>
             <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
@@ -395,7 +395,7 @@ const AcknowledgementsPage: React.FC = () => {
             transition={{ duration: 0.5, delay: 0.4 }}
             className='mb-12'
           >
-            <Typography variant='h2' className='text-2xl font-bold mb-6 text-center bg-gradient-to-r from-[#a679f0] via-[#5599fe] to-[#48df7b] bg-clip-text text-transparent'>
+            <Typography variant='h2' className='text-2xl font-bold mb-6 text-center bg-gradient-to-r from-hgo-purple via-hgo-blue to-hgo-green bg-clip-text text-transparent'>
               Hashgraph Online DAO Members
             </Typography>
             <Typography variant='body1' color='muted' className='mb-6 text-center max-w-3xl mx-auto'>
@@ -463,7 +463,7 @@ const AcknowledgementsPage: React.FC = () => {
             transition={{ duration: 0.5, delay: 0.5 }}
             className='mb-12'
           >
-            <Typography variant='h2' className='text-2xl font-bold mb-6 text-center bg-gradient-to-r from-[#48df7b] via-[#a679f0] to-[#5599fe] bg-clip-text text-transparent'>
+            <Typography variant='h2' className='text-2xl font-bold mb-6 text-center bg-gradient-to-r from-hgo-green via-hgo-purple to-hgo-blue bg-clip-text text-transparent'>
               Community & Contributors
             </Typography>
             <div className='space-y-4'>
@@ -534,7 +534,7 @@ const AcknowledgementsPage: React.FC = () => {
                     size='sm'
                     onClick={() =>
                       window.open(
-                        'https://www.apache.org/licenses/LICENSE-2.0',
+                        'https://opensource.org/licenses/MIT',
                         '_blank'
                       )
                     }
@@ -547,7 +547,7 @@ const AcknowledgementsPage: React.FC = () => {
                     size='sm'
                     onClick={() =>
                       window.open(
-                        'https://github.com/hashgraph-online/conversational-agent',
+                        'https://github.com/hashgraphonline/hashgraph-online',
                         '_blank'
                       )
                     }

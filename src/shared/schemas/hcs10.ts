@@ -6,10 +6,6 @@ import {
   AIAgentCapability,
   AIAgentType,
   ProfileType,
-  BaseProfileSchema,
-  PersonalProfileSchema,
-  AIAgentProfileSchema,
-  HCS11ProfileSchema,
   type HCS11Profile,
   type AIAgentProfile,
   type PersonalProfile,
@@ -94,7 +90,7 @@ export function formDataToHCS11Profile(formData: HCS10ProfileFormData): HCS11Pro
     properties: formData.customProperties,
     socials: formData.socials ? 
       Object.entries(formData.socials)
-        .filter(([_, value]) => value)
+        .filter(([, value]) => value)
         .map(([platform, handle]) => ({
           platform: platform as 'twitter' | 'github' | 'website',
           handle: handle!
@@ -191,5 +187,5 @@ export const CAPABILITY_OPTIONS = [
 export const SOCIAL_PLATFORMS = [
   { value: 'twitter', label: 'Twitter', placeholder: '@username' },
   { value: 'github', label: 'GitHub', placeholder: 'username' },
-  { value: 'website', label: 'Website', placeholder: 'https://example.com' }
+  { value: 'website', label: 'Website', placeholder: 'https://example.com' },
 ] as const;

@@ -1,4 +1,4 @@
-import { MCPRegistryService } from '../../src/main/services/MCPRegistryService'
+import { MCPRegistryService } from "./mcp-registry-service";
 import { MCPCacheManager } from '../../src/main/services/MCPCacheManager'
 
 jest.mock('../../../src/main/services/MCPCacheManager', () => ({
@@ -20,7 +20,14 @@ global.fetch = jest.fn()
 
 describe('MCPRegistryService Enhanced', () => {
   let registryService: MCPRegistryService
-  let mockCacheManager: any
+  let mockCacheManager: {
+    searchServers: jest.Mock,
+    isRegistryFresh: jest.Mock,
+    updateRegistrySync: jest.Mock,
+    bulkCacheServers: jest.Mock,
+    clearRegistryCache: jest.Mock,
+    getCacheStats: jest.Mock
+  }
 
   beforeEach(() => {
     mockCacheManager = {
@@ -122,7 +129,7 @@ describe('MCPRegistryService Enhanced', () => {
     it('should skip sync when registry is fresh', async () => {
       mockCacheManager.isRegistryFresh.mockResolvedValueOnce(true)
 
-      const service = registryService as any
+      const service = registryService as unknown as { cacheManager: typeof mockCacheManager }
       await service.syncRegistry('pulsemcp')
 
       expect(mockCacheManager.isRegistryFresh).toHaveBeenCalledWith('pulsemcp')
@@ -165,7 +172,7 @@ describe('MCPRegistryService Enhanced', () => {
           json: () => Promise.resolve(mockApiResponse2)
         })
 
-      const service = registryService as any
+      const service = registryService as unknown as { cacheManager: typeof mockCacheManager }
       await service.syncRegistry('pulsemcp')
 
       expect(mockCacheManager.updateRegistrySync).toHaveBeenCalledWith('pulsemcp', 'syncing')
@@ -180,7 +187,7 @@ describe('MCPRegistryService Enhanced', () => {
       mockCacheManager.isRegistryFresh.mockResolvedValueOnce(false)
       ;(global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'))
 
-      const service = registryService as any
+      const service = registryService as unknown as { cacheManager: typeof mockCacheManager }
       
       await expect(service.syncRegistry('pulsemcp')).rejects.toThrow('Network error')
       
@@ -205,7 +212,7 @@ describe('MCPRegistryService Enhanced', () => {
         () => new Promise(resolve => setTimeout(resolve, 3000))
       )
 
-      const service = registryService as any
+      const service = registryService as unknown as { cacheManager: typeof mockCacheManager }
       const result = await service.searchRegistriesWithTimeout({
         query: 'test',
         limit: 10
@@ -241,7 +248,7 @@ describe('MCPRegistryService Enhanced', () => {
         rating: 4.5
       }
 
-      const service = registryService as any
+      const service = registryService as unknown as { cacheManager: typeof mockCacheManager }
       const result = service.convertToCachedServer(registryServer, 'pulsemcp')
 
       expect(result).toEqual({
@@ -292,7 +299,7 @@ describe('MCPRegistryService Enhanced', () => {
         isActive: true
       }
 
-      const service = registryService as any
+      const service = registryService as unknown as { cacheManager: typeof mockCacheManager }
       const result = service.convertFromCachedServer(cachedServer)
 
       expect(result).toEqual({
@@ -427,7 +434,7 @@ describe('MCPRegistryService Enhanced', () => {
         json: () => Promise.resolve(mockApiResponse)
       })
 
-      const service = registryService as any
+      const service = registryService as unknown as { cacheManager: typeof mockCacheManager }
       const result = await service.searchPulseMCP({ limit: 10 })
 
       expect(result.servers).toHaveLength(1)
@@ -441,7 +448,7 @@ describe('MCPRegistryService Enhanced', () => {
         )
       )
 
-      const service = registryService as any
+      const service = registryService as unknown as { cacheManager: typeof mockCacheManager }
       const result = await service.searchOfficialRegistry({ limit: 10 })
 
       expect(result.servers).toEqual([])

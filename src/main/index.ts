@@ -1,28 +1,30 @@
+import { config as dotenvConfig } from 'dotenv';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 import './init-logger';
 import { app, BrowserWindow, shell, ipcMain, nativeImage } from 'electron';
 import started from 'electron-squirrel-startup';
 import electronLog from 'electron-log';
-import { Logger } from '@hashgraphonline/standards-sdk';
+import { Logger } from './utils/logger';
 import { setupIPCHandlers } from './ipc/handlers';
-import { UpdateService } from './services/UpdateService';
-import { fileURLToPath } from 'node:url';
-import { dirname, resolve, join } from 'node:path';
-
-electronLog.transports.file.level = 'info';
-electronLog.transports.console.level = 'info';
+import { UpdateService } from './services/update-service';
 
 const __filename = fileURLToPath(import.meta.url);
 const currentDir = dirname(__filename);
 
-// Ensure the app name shows as HOL Desktop as early as possible (affects macOS dock hover in dev)
+const envPath = join(currentDir, '..', '..', '.env');
+dotenvConfig({ path: envPath });
+
+electronLog.transports.file.level = 'info';
+electronLog.transports.console.level = 'info';
+
 try {
   app.setName('HOL Desktop');
-  // Helps macOS About panel and other UI surfaces
   app.setAboutPanelOptions({ applicationName: 'HOL Desktop' });
 
-  // Improves some OS displays and dev tools labels
   process.title = 'HOL Desktop';
-} catch {}
+} catch {
+}
 
 if (started) {
   app.quit();
@@ -34,7 +36,7 @@ let logger: {
   error: (message: string, ...args: unknown[]) => void;
 };
 
-function createWindow() {
+function createWindow(): void {
   logger.info('Creating main window...');
   logger.info('Preload path:', join(currentDir, 'preload.cjs'));
 
@@ -58,9 +60,35 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegrationInWorker: true,
       sandbox: false,
+      webSecurity: false,
       preload: join(currentDir, 'preload.cjs'),
+      webgl: true,
+      plugins: true,
+      enableWebSQL: false,
     },
   });
+
+  mainWindow.webContents.session.webRequest.onHeadersReceived(
+    (details, callback) => {
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          'Content-Security-Policy': [
+            "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; " +
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: data:; " +
+              "worker-src 'self' blob: data:; " +
+              "style-src 'self' 'unsafe-inline' blob: data: https://fonts.googleapis.com; " +
+              "img-src 'self' data: blob: https:; " +
+              "font-src 'self' data: blob: https://fonts.gstatic.com; " +
+              "connect-src 'self' https: ws: wss: wss://inscribe.kiloscribe.com; " +
+              "media-src 'self' blob: data:; " +
+              "object-src 'none'; " +
+              "base-uri 'self';",
+          ],
+        },
+      });
+    }
+  );
 
   mainWindow.show();
   mainWindow.focus();
@@ -116,6 +144,12 @@ function createWindow() {
         mainWindow.close();
         break;
     }
+  });
+
+  ipcMain.on('app:reload', () => {
+    if (!mainWindow) return;
+    logger.info('Reloading app due to error boundary request');
+    mainWindow.reload();
   });
 }
 

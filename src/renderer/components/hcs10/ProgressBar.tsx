@@ -2,6 +2,7 @@ import React from 'react';
 import Typography from '../ui/Typography';
 import { CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { Progress } from '../ui/Progress';
 
 interface ProgressBarProps {
   message: string;
@@ -28,10 +29,10 @@ export function ProgressBar({ message, percent, stage }: ProgressBarProps) {
     }
   };
 
-  const getProgressColor = () => {
-    if (percent === 100) return 'bg-green-600';
-    if (stage === 'failed' || stage === 'error') return 'bg-red-600';
-    return 'bg-gradient-to-r from-purple-600 to-orange-500';
+  const getProgressVariant = () => {
+    if (percent === 100) return 'success';
+    if (stage === 'failed' || stage === 'error') return 'error';
+    return 'purple-orange';
   };
 
   return (
@@ -53,15 +54,12 @@ export function ProgressBar({ message, percent, stage }: ProgressBarProps) {
           </Typography>
         </div>
 
-        <div className='w-full bg-gray-200 rounded-full h-2'>
-          <div
-            className={cn(
-              'h-2 rounded-full transition-all duration-300 ease-in-out',
-              getProgressColor()
-            )}
-            style={{ width: `${Math.min(100, Math.max(0, percent))}%` }}
-          />
-        </div>
+        <Progress
+          value={percent}
+          variant={getProgressVariant()}
+          size="md"
+          animated={true}
+        />
 
         {stage && (
           <Typography

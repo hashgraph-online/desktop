@@ -1,6 +1,6 @@
 import { AppConfig } from '../stores/configStore'
 import { Message } from '../stores/agentStore'
-import { MCPServerConfig, MCPServerTool, MCPConnectionTest } from './mcp'
+import { MCPServerConfig, MCPServerTool } from './mcp'
 import { 
   PluginConfig, 
   PluginSearchResult, 
@@ -9,6 +9,52 @@ import {
   PluginUpdateInfo,
   PluginRuntimeContext 
 } from '../../shared/types/plugin'
+
+interface AgentConfig {
+  accountId: string;
+  privateKey: string;
+  network: 'mainnet' | 'testnet';
+  openAIApiKey: string;
+  openAIModelName?: string;
+  llmProvider?: 'openai' | 'anthropic';
+  userAccountId?: string;
+  verbose?: boolean;
+  disableLogging?: boolean;
+}
+
+interface ChatSession {
+  id: string;
+  title?: string;
+  messages: Message[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface ScheduleInfo {
+  scheduleId: string;
+  scheduledTransactionBody: string;
+  memo?: string;
+  adminKey?: string;
+  payerAccountId?: string;
+  expirationTime?: string;
+}
+
+interface TransactionInfo {
+  transactionId: string;
+  timestamp: string;
+  type: string;
+  result: string;
+  payerAccountId: string;
+  fee: string;
+}
+
+interface AgentResponse<T = unknown> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
+type ElectronIPCData = string | number | boolean | null | undefined | Record<string, unknown> | unknown[];
 
 export interface CredentialAPI {
   store: (service: string, account: string, password: string) => Promise<{ success: boolean; data?: boolean; error?: string }>
@@ -23,9 +69,9 @@ export interface ElectronAPI {
     chrome: string
     electron: string
   }
-  send: (channel: string, data?: any) => void
-  on: (channel: string, callback: (...args: any[]) => void) => () => void
-  invoke: (channel: string, data?: any) => Promise<any>
+  send: (channel: string, data?: ElectronIPCData) => void
+  on: (channel: string, callback: (...args: ElectronIPCData[]) => void) => () => void
+  invoke: (channel: string, data?: ElectronIPCData) => Promise<ElectronIPCData>
   credentials: CredentialAPI
 }
 
@@ -60,11 +106,11 @@ declare global {
       disconnectAgent: () => Promise<void>
       sendMessage: (data: { content: string; sessionId: string }) => Promise<Message>
       
-      initializeAgent: (config: any) => Promise<{ success: boolean; data?: { sessionId?: string }; error?: string }>
-      preloadAgent: (config: any) => Promise<{ success: boolean; error?: string }>
-      sendAgentMessage: (data: any) => Promise<{ success: boolean; data?: any; error?: string }>
+      initializeAgent: (config: AgentConfig) => Promise<{ success: boolean; data?: { sessionId?: string }; error?: string }>
+      preloadAgent: (config: AgentConfig) => Promise<{ success: boolean; error?: string }>
+      sendAgentMessage: (data: { content: string; sessionId: string }) => Promise<{ success: boolean; data?: Message; error?: string }>
       disconnectAgentNew: () => Promise<{ success: boolean; error?: string }>
-      getAgentStatus: () => Promise<{ success: boolean; data?: any; error?: string }>
+      getAgentStatus: () => Promise<{ success: boolean; data?: { connected: boolean; sessionId?: string; status?: string }; error?: string }>
       
       loadMCPServers: () => Promise<{ success: boolean; data?: MCPServerConfig[]; error?: string }>
       saveMCPServers: (servers: MCPServerConfig[]) => Promise<{ success: boolean; error?: string }>
@@ -79,15 +125,23 @@ declare global {
       updatePlugin: (pluginId: string) => Promise<{ success: boolean; data?: PluginConfig; error?: string }>
       enablePlugin: (pluginId: string) => Promise<{ success: boolean; data?: PluginRuntimeContext; error?: string }>
       disablePlugin: (pluginId: string) => Promise<{ success: boolean; error?: string }>
-      configurePlugin: (pluginId: string, config: Record<string, any>) => Promise<{ success: boolean; error?: string }>
+      configurePlugin: (pluginId: string, config: Record<string, unknown>) => Promise<{ success: boolean; error?: string }>
       grantPluginPermissions: (pluginId: string, permissions: PluginPermissions) => Promise<{ success: boolean; error?: string }>
       revokePluginPermissions: (pluginId: string, permissions: PluginPermissions) => Promise<{ success: boolean; data?: PluginPermissions; error?: string }>
       getInstalledPlugins: () => Promise<{ success: boolean; data?: PluginConfig[]; error?: string }>
       checkPluginUpdates: () => Promise<{ success: boolean; data?: PluginUpdateInfo[]; error?: string }>
       
+      'chat:create-session': (data: { title?: string }) => Promise<{ success: boolean; data?: ChatSession; error?: string }>
+      'chat:load-session': (data: { sessionId: string }) => Promise<{ success: boolean; data?: ChatSession; error?: string }>
+      'chat:save-session': (data: ChatSession) => Promise<{ success: boolean; error?: string }>
+      'chat:delete-session': (data: { sessionId: string }) => Promise<{ success: boolean; error?: string }>
+      'chat:load-all-sessions': () => Promise<{ success: boolean; data?: ChatSession[]; error?: string }>
+      'chat:save-message': (data: { sessionId: string; message: Message }) => Promise<{ success: boolean; error?: string }>
+      'chat:load-session-messages': (data: { sessionId: string }) => Promise<{ success: boolean; data?: Message[]; error?: string }>
+      
       mirrorNode: {
-        getScheduleInfo: (scheduleId: string, network?: 'mainnet' | 'testnet') => Promise<{ success: boolean; data?: any; error?: string }>
-        getTransactionByTimestamp: (timestamp: string, network?: 'mainnet' | 'testnet') => Promise<{ success: boolean; data?: any[]; error?: string }>
+        getScheduleInfo: (scheduleId: string, network?: 'mainnet' | 'testnet') => Promise<{ success: boolean; data?: ScheduleInfo; error?: string }>
+        getTransactionByTimestamp: (timestamp: string, network?: 'mainnet' | 'testnet') => Promise<{ success: boolean; data?: TransactionInfo[]; error?: string }>
       }
       
       executeScheduledTransaction: (scheduleId: string) => Promise<{
@@ -101,7 +155,7 @@ declare global {
       }>
       getScheduledTransaction: (scheduleId: string) => Promise<{
         success: boolean
-        info?: any
+        info?: ScheduleInfo
         error?: string
       }>
       executeTransactionBytes: (transactionBytes: string, entityContext?: { name?: string, description?: string }) => Promise<{
@@ -113,17 +167,17 @@ declare global {
         entityType?: string
       }>
       
-      send: (channel: string, data?: any) => void
-      invoke: (channel: string, data?: any) => Promise<any>
-      on: (channel: string, callback: (...args: any[]) => void) => () => void
-      removeListener: (channel: string, callback: (...args: any[]) => void) => void
+      send: (channel: string, data?: ElectronIPCData) => void
+      invoke: (channel: string, data?: ElectronIPCData) => Promise<ElectronIPCData>
+      on: (channel: string, callback: (...args: ElectronIPCData[]) => void) => () => void
+      removeListener: (channel: string, callback: (...args: ElectronIPCData[]) => void) => void
       openExternal: (url: string) => Promise<void>
     }
     
     api: {
-      invoke: (channel: string, data?: any) => Promise<any>
-      on: (channel: string, callback: (...args: any[]) => void) => () => void
-      removeListener: (channel: string, callback: (...args: any[]) => void) => void
+      invoke: (channel: string, data?: ElectronIPCData) => Promise<ElectronIPCData>
+      on: (channel: string, callback: (...args: ElectronIPCData[]) => void) => () => void
+      removeListener: (channel: string, callback: (...args: ElectronIPCData[]) => void) => void
     }
   }
 }

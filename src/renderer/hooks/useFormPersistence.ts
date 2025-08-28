@@ -46,14 +46,14 @@ export function useFormPersistence<T extends Record<string, unknown>>(
       const filteredData = (Object.entries(currentData) as Array<[string, unknown]>).reduce((acc, [key, value]) => {
         if (value !== undefined && value !== null && value !== '') {
           if (Array.isArray(value) && value.length > 0) {
-            (acc as any)[key] = value as any;
+            acc[key] = value;
           } else if (typeof value === 'object' && value !== null) {
             const hasValues = Object.values(value).some(v => v !== undefined && v !== null && v !== '');
             if (hasValues) {
-              (acc as any)[key] = value as any;
+              acc[key] = value;
             }
           } else if (typeof value !== 'object') {
-            (acc as any)[key] = value as any;
+            acc[key] = value;
           }
         }
         return acc;

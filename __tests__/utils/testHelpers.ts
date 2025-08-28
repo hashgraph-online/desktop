@@ -24,7 +24,7 @@ export function createMockStore<T>(initialState: Partial<T>): T {
 /**
  * Helper to create mock functions with type safety
  */
-export function createMockFn<T extends (...args: any[]) => any>(): jest.MockedFunction<T> {
+export function createMockFn<T extends (...args: unknown[]) => unknown>(): jest.MockedFunction<T> {
   return jest.fn() as jest.MockedFunction<T>
 }
 

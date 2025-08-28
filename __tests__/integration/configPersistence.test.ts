@@ -12,11 +12,29 @@ jest.mock('electron', () => ({
 jest.mock('../../../src/main/utils/logger')
 
 import { ConfigService as MainConfigService } from '../../src/main/services/ConfigService'
-import { configService as rendererConfigService } from '../../src/renderer/services/configService'
+import { configService as _rendererConfigService } from '../../src/renderer/services/configService'
 import { app, safeStorage } from 'electron'
 import * as fs from 'fs'
 import * as path from 'path'
 import * as os from 'os'
+import type { AppConfig, AdvancedConfig } from '../../src/renderer/stores/configStore'
+
+interface ExtendedAdvancedConfig extends AdvancedConfig {
+  customField?: string
+}
+
+interface _TestAppConfig extends AppConfig {
+  advanced: ExtendedAdvancedConfig
+}
+
+interface FutureAppConfig extends AppConfig {
+  futureFeature?: {
+    subConfig?: {
+      option1: string
+    }
+  }
+  deprecatedField?: string
+}
 
 /**
  * Integration test for config persistence to verify the full flow
@@ -67,7 +85,7 @@ describe('Config Persistence Integration Tests', () => {
     
     jest.spyOn(app, 'getPath').mockReturnValue(tempDir)
     
-    ;(MainConfigService as any).instance = undefined
+    ;(MainConfigService as { instance?: MainConfigService }).instance = undefined
     mainConfigService = MainConfigService.getInstance()
     
     jest.spyOn(safeStorage, 'isEncryptionAvailable').mockReturnValue(true)
@@ -260,13 +278,13 @@ describe('Config Persistence Integration Tests', () => {
         advanced: {
           ...testConfig.advanced,
           customField: '你好世界 🌍 émojis 🚀'
-        } as any
+        } as ExtendedAdvancedConfig
       }
       
       await mainConfigService.save(unicodeConfig)
       const loaded = await mainConfigService.load()
       
-      expect((loaded.advanced as any).customField).toBe('你好世界 🌍 émojis 🚀')
+      expect((loaded.advanced as ExtendedAdvancedConfig).customField).toBe('你好世界 🌍 émojis 🚀')
     })
   })
 
@@ -303,14 +321,14 @@ describe('Config Persistence Integration Tests', () => {
         deprecatedField: 'should be ignored'
       }
       
-      await mainConfigService.save(configWithExtras as any)
+      await mainConfigService.save(configWithExtras as FutureAppConfig)
       
       const loaded = await mainConfigService.load()
       
       expect(loaded.hedera).toEqual(testConfig.hedera)
       expect(loaded.openai).toEqual(testConfig.openai)
       
-      expect((loaded as any).futureFeature).toEqual(configWithExtras.futureFeature)
+      expect((loaded as FutureAppConfig).futureFeature).toEqual(configWithExtras.futureFeature)
     })
   })
 })

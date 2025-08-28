@@ -159,7 +159,7 @@ describe('notificationStore', () => {
       const { result } = renderHook(() => useNotificationStore())
       const types = ['success', 'error', 'info', 'warning'] as const
 
-      types.forEach((type, index) => {
+      types.forEach((type, _index) => {
         act(() => {
           result.current.addNotification({
             title: `${type} notification`,

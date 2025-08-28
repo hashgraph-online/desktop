@@ -96,9 +96,11 @@ The app requires terms of service and privacy policy files:
 ### Start Development Server
 
 ```bash
-pnpm dev     # Starts Electron app in dev mode (RECOMMENDED)
+pnpm dev         # Starts Electron app in dev mode (RECOMMENDED)
 # or
-pnpm start   # Same as above
+pnpm start       # Same as above
+
+pnpm dev:log     # Starts Electron app with comprehensive logging
 ```
 
 **Development Mode Features:**
@@ -109,6 +111,14 @@ pnpm start   # Same as above
 - ✅ DevTools available for debugging
 - ✅ Auto-restart on code changes
 - ✅ All dependencies available (including local file dependencies)
+
+**Logging Mode Features (`pnpm dev:log`):**
+
+- ✅ All development mode features above
+- ✅ Runs on http://localhost:5174 (different port to avoid conflicts)
+- ✅ Comprehensive logging to `dev.log` file
+- ✅ Can run alongside regular dev server
+- ✅ Timestamps and formatted log output for debugging
 
 ### Other Development Commands
 
@@ -260,6 +270,7 @@ set ENABLE_MAINNET=true && pnpm build
 | **pnpm not found**                                                            | Run `npm install -g pnpm` or use setup script                                                                                                                                                                                                                                                                                                                          |
 | **Electron fails to start**                                                   | Clear and reinstall: `rm -rf node_modules && pnpm install`                                                                                                                                                                                                                                                                                                             |
 | **Port 5173 in use**                                                          | Kill process: `lsof -ti:5173 \| xargs kill`                                                                                                                                                                                                                                                                                                                            |
+| **Port 5174 in use (dev:log)**                                                | Kill process: `lsof -ti:5174 \| xargs kill`                                                                                                                                                                                                                                                                                                                            |
 | **Packaged app error: `Cannot find module '@hashgraphonline/standards-sdk'`** | This happens if the SDK was externalized from the main bundle. Fix: in `vite.main.config.ts`, do not list `@hashgraphonline/*` under `rollupOptions.external` so Vite bundles the module. Ensure it’s in `dependencies` (not `devDependencies`). Rebuild with `pnpm make`. See electron-vite docs: [Troubleshooting](https://electron-vite.org/guide/troubleshooting). |
 
 ### Notes on native modules (e.g., better-sqlite3)
@@ -296,6 +307,7 @@ app/
 | Script            | Description                            |
 | ----------------- | -------------------------------------- |
 | `pnpm dev`        | Start development server (recommended) |
+| `pnpm dev:log`    | Start development server with logging (port 5174) |
 | `pnpm start`      | Alias for dev                          |
 | `pnpm test`       | Run tests                              |
 | `pnpm typecheck`  | Check TypeScript types                 |

@@ -3,8 +3,8 @@
  * Focuses on testing the exact IPC message flow and data transformation
  */
 
-const mockIpcMainHandlers = new Map<string, Function>()
-const mockIpcRendererListeners = new Map<string, Function[]>()
+const mockIpcMainHandlers = new Map<string, (...args: unknown[]) => unknown>()
+const mockIpcRendererListeners = new Map<string, ((...args: unknown[]) => unknown)[]>()
 
 jest.mock('electron', () => {
   return {
@@ -17,7 +17,7 @@ jest.mock('electron', () => {
       decryptString: jest.fn()
     },
     ipcMain: {
-      handle: jest.fn((channel: string, handler: Function) => {
+      handle: jest.fn((channel: string, handler: (...args: unknown[]) => unknown) => {
         mockIpcMainHandlers.set(channel, handler)
       }),
       removeHandler: jest.fn((channel: string) => {
@@ -25,7 +25,7 @@ jest.mock('electron', () => {
       })
     },
     ipcRenderer: {
-      invoke: jest.fn(async (channel: string, ...args: any[]) => {
+      invoke: jest.fn(async (channel: string, ...args: unknown[]) => {
         const handler = mockIpcMainHandlers.get(channel)
         if (!handler) {
           throw new Error(`No handler registered for channel: ${channel}`)
@@ -33,13 +33,13 @@ jest.mock('electron', () => {
         const event = { sender: { send: jest.fn() } }
         return handler(event, ...args)
       }),
-      send: jest.fn((channel: string, ...args: any[]) => {
+      send: jest.fn((channel: string, ...args: unknown[]) => {
         const listeners = mockIpcRendererListeners.get(channel) || []
         listeners.forEach(listener => {
           listener({ channel }, ...args)
         })
       }),
-      on: jest.fn((channel: string, listener: Function) => {
+      on: jest.fn((channel: string, listener: (...args: unknown[]) => unknown) => {
         const listeners = mockIpcRendererListeners.get(channel) || []
         listeners.push(listener)
         mockIpcRendererListeners.set(channel, listeners)
@@ -51,7 +51,7 @@ jest.mock('electron', () => {
   }
 })
 
-jest.mock('../../../src/main/utils/logger')
+jest.mock('../../src/main/utils/logger')
 
 import { ConfigService as MainConfigService } from '../../src/main/services/ConfigService'
 import { setupConfigHandlers } from '../../src/main/ipc/handlers'
@@ -59,12 +59,39 @@ import { app, safeStorage, ipcRenderer } from 'electron'
 import * as fs from 'fs'
 import * as path from 'path'
 import * as os from 'os'
-import type { AppConfig } from '../../src/renderer/stores/configStore'
+import type { AppConfig, AdvancedConfig } from '../../src/renderer/stores/configStore'
+
+interface ExtendedAdvancedConfig extends AdvancedConfig {
+  customNumber?: number
+  customBoolean?: boolean
+  customArray?: number[]
+  customObject?: {
+    nested: {
+      value: string
+    }
+  }
+  customDate?: string
+}
+
+interface ExtendedAppConfig extends AppConfig {
+  advanced: ExtendedAdvancedConfig
+  largeData?: {
+    array: string[]
+    nested: Record<string, unknown>
+  }
+}
+
+interface PartialInvalidConfig {
+  notAValidField?: string
+  hedera?: {
+    network?: string
+  }
+}
 
 describe('IPC Config Boundary Tests', () => {
   let tempDir: string
   let configPath: string
-  let mainConfigService: MainConfigService
+  let _mainConfigService: MainConfigService
   
   const testConfig: AppConfig = {
     hedera: {
@@ -112,7 +139,7 @@ describe('IPC Config Boundary Tests', () => {
     
     setupMockEncryption()
     
-    ;(MainConfigService as any).instance = undefined
+    ;(MainConfigService as { instance?: MainConfigService }).instance = undefined
     mainConfigService = MainConfigService.getInstance()
     
     setupConfigHandlers()
@@ -168,7 +195,7 @@ describe('IPC Config Boundary Tests', () => {
         customField: undefined
       }
       
-      const result = await ipcRenderer.invoke('config:save', configWithNulls)
+      await ipcRenderer.invoke('config:save', configWithNulls)
       
       const loaded = await ipcRenderer.invoke('config:load')
       
@@ -221,19 +248,19 @@ describe('IPC Config Boundary Tests', () => {
           },
           customDate: new Date().toISOString()
         }
-      } as any
+      } as ExtendedAppConfig
       
       await ipcRenderer.invoke('config:save', complexConfig)
       
       const loaded = await ipcRenderer.invoke('config:load')
       
-      expect(typeof (loaded.advanced as any).customNumber).toBe('number')
-      expect((loaded.advanced as any).customNumber).toBe(42)
-      expect(typeof (loaded.advanced as any).customBoolean).toBe('boolean')
-      expect((loaded.advanced as any).customBoolean).toBe(true)
-      expect(Array.isArray((loaded.advanced as any).customArray)).toBe(true)
-      expect((loaded.advanced as any).customArray).toEqual([1, 2, 3])
-      expect((loaded.advanced as any).customObject.nested.value).toBe('deep')
+      expect(typeof (loaded.advanced as ExtendedAdvancedConfig).customNumber).toBe('number')
+      expect((loaded.advanced as ExtendedAdvancedConfig).customNumber).toBe(42)
+      expect(typeof (loaded.advanced as ExtendedAdvancedConfig).customBoolean).toBe('boolean')
+      expect((loaded.advanced as ExtendedAdvancedConfig).customBoolean).toBe(true)
+      expect(Array.isArray((loaded.advanced as ExtendedAdvancedConfig).customArray)).toBe(true)
+      expect((loaded.advanced as ExtendedAdvancedConfig).customArray).toEqual([1, 2, 3])
+      expect((loaded.advanced as ExtendedAdvancedConfig).customObject?.nested.value).toBe('deep')
     })
 
     it('should handle large payloads across IPC', async () => {
@@ -247,7 +274,7 @@ describe('IPC Config Boundary Tests', () => {
           array: new Array(1000).fill('test-data'),
           nested: {}
         }
-      } as any
+      } as ExtendedAppConfig
       
       let current = largeConfig.largeData.nested
       for (let i = 0; i < 100; i++) {
@@ -259,7 +286,7 @@ describe('IPC Config Boundary Tests', () => {
       const loaded = await ipcRenderer.invoke('config:load')
       
       expect(loaded.hedera.privateKey).toBe(largeConfig.hedera.privateKey)
-      expect((loaded as any).largeData.array.length).toBe(1000)
+      expect((loaded as ExtendedAppConfig).largeData?.array.length).toBe(1000)
     })
   })
 
@@ -280,7 +307,7 @@ describe('IPC Config Boundary Tests', () => {
         }
       }
       
-      await ipcRenderer.invoke('config:save', invalidConfig as any)
+      await ipcRenderer.invoke('config:save', invalidConfig as PartialInvalidConfig)
       
       const loaded = await ipcRenderer.invoke('config:load')
       
@@ -313,7 +340,7 @@ describe('IPC Config Boundary Tests', () => {
     })
 
     it('should handle interleaved save/load operations', async () => {
-      const operations: Promise<any>[] = []
+      const operations: Promise<unknown>[] = []
       
       for (let i = 0; i < 10; i++) {
         if (i % 3 === 0) {

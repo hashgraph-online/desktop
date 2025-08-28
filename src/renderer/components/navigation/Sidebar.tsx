@@ -1,41 +1,93 @@
-import React from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import React, { useState, useCallback, useMemo } from 'react';
+import { Link, useLocation, useNavigate, Location } from 'react-router-dom';
 import { cn } from '../../lib/utils';
 import Logo from '../ui/Logo';
-import { FiChevronLeft, FiChevronRight, FiSend } from 'react-icons/fi';
+import { Button } from '../ui/Button';
+import Typography from '../ui/Typography';
+import {
+  FiChevronLeft,
+  FiChevronRight,
+  FiSend,
+  FiRefreshCw,
+  FiMessageSquare,
+  FiPlus,
+  FiUserPlus,
+  FiTool,
+} from 'react-icons/fi';
 import {
   HiChatBubbleBottomCenterText,
   HiServerStack,
   HiPuzzlePiece,
-  HiUserCircle,
   HiCog6Tooth,
   HiQuestionMarkCircle,
+  HiLink,
+  HiMagnifyingGlass,
+  HiUserCircle,
   HiHeart,
 } from 'react-icons/hi2';
+import { IconType } from 'react-icons';
+import { toast } from 'sonner';
+import { useHCS10 } from '../../contexts/HCS10Context';
+import { SessionCreationModal } from '../chat/SessionCreationModal';
+import AgentItem from './AgentItem';
+import ConnectionRequestItem from './ConnectionRequestItem';
+import NavItem from './NavItem';
+
+// Use the ConnectionRequest type from HCS10Context
+interface ConnectionRequest {
+  id: string;
+  requesting_account_id: string;
+  sequence_number: number;
+  memo?: string;
+  operator_id?: string;
+}
+
+interface NavigationState {
+  [key: string]: boolean;
+}
 
 interface SidebarProps {
   className?: string;
 }
 
-interface NavItem {
+interface NavSubItem {
   id: string;
   path: string;
   label: string;
-  icon: React.ElementType;
+  icon: IconType;
+  description?: string;
+  gradient?: string;
+}
+
+interface NavItemType {
+  id: string;
+  path: string;
+  label: string;
+  icon: IconType;
   description?: string;
   gradient?: string;
   iconBg?: string;
+  subItems?: NavSubItem[];
 }
 
-const primaryNavItems: NavItem[] = [
+const primaryNavItems: NavItemType[] = [
   {
-    id: 'chat',
-    path: '/chat',
-    label: 'Agent Chat',
-    icon: HiChatBubbleBottomCenterText,
-    description: 'Interact with AI agents',
-    gradient: 'from-[#c89fff] to-[#a679f0]',
-    iconBg: 'from-[#c89fff] to-[#a679f0]',
+    id: 'discover',
+    path: '/discover',
+    label: 'Discover',
+    icon: HiMagnifyingGlass,
+    description: 'Find new agents',
+    gradient: 'from-[#ff9b50] to-[#ff6b6b]',
+    iconBg: 'from-[#ff9b50] to-[#ff6b6b]',
+  },
+  {
+    id: 'connections',
+    path: '/connections',
+    label: 'Connections',
+    icon: HiLink,
+    description: 'Manage connections',
+    gradient: 'from-[#4facfe] to-[#00f2fe]',
+    iconBg: 'from-[#4facfe] to-[#00f2fe]',
   },
   {
     id: 'mcp',
@@ -56,6 +108,15 @@ const primaryNavItems: NavItem[] = [
     iconBg: 'from-[#7eb9ff] to-[#5599fe]',
   },
   {
+    id: 'tools',
+    path: '/tools',
+    label: 'Tools',
+    icon: FiTool,
+    description: 'Development tools',
+    gradient: 'from-[#ff9b50] to-[#ff6b6b]',
+    iconBg: 'from-[#ff9b50] to-[#ff6b6b]',
+  },
+  {
     id: 'hcs10',
     path: '/hcs10-profile',
     label: 'My Profile',
@@ -66,7 +127,7 @@ const primaryNavItems: NavItem[] = [
   },
 ];
 
-const secondaryNavItems: NavItem[] = [
+const secondaryNavItems: NavItemType[] = [
   {
     id: 'settings',
     path: '/settings',
@@ -96,7 +157,7 @@ const secondaryNavItems: NavItem[] = [
   },
   {
     id: 'telegram',
-    path: 'https://t.me/hashinals',
+    path: 'https://t.me/hashgraphonline',
     label: 'Telegram',
     icon: FiSend,
     description: 'Join our community',
@@ -105,230 +166,403 @@ const secondaryNavItems: NavItem[] = [
   },
 ];
 
-const SidebarContent: React.FC<SidebarProps & { location: any }> = ({
-  className,
-  location,
-}) => {
-  const [isCollapsed, setIsCollapsed] = React.useState(false);
-  const isActive = (path: string) => {
-    if (path === '/') {
-      return location.pathname === '/';
-    }
-    return location.pathname.startsWith(path);
-  };
+const SidebarContent: React.FC<SidebarProps & { location: Location }> = React.memo(
+  ({ className, location }) => {
+    const navigate = useNavigate();
+    const {
+      agents,
+      connectionRequests,
+      isLoadingAgents,
+      activeTopicId,
+      refreshConnections,
 
-  const renderNavItem = (item: NavItem) => {
-    const Icon = item.icon;
-    const active = isActive(item.path);
+      onSelectAgent,
+      onAcceptRequest,
+      onRejectRequest,
+    } = useHCS10();
 
-    if (item.id === 'help' || item.id === 'telegram') {
-      const href =
-        item.id === 'help'
-          ? 'https://hashgraphonline.com/docs/standards/'
-          : item.path;
-      return (
-        <a
-          key={item.id}
-          href={href}
-          target='_blank'
-          rel='noopener noreferrer'
-          className={cn(
-            'group relative flex items-center gap-4 rounded-2xl transition-all duration-300',
-            isCollapsed ? 'px-4 py-4 justify-center' : 'px-4 py-3.5',
-            !isCollapsed && 'hover:translate-x-1',
-            'hover:scale-[1.02]',
-            'hover:bg-gray-100/50 dark:hover:bg-white/5'
-          )}
-          title={isCollapsed ? item.label : undefined}
-        >
-          <div
-            className={cn(
-              'rounded-lg flex items-center justify-center transition-all duration-200',
-              isCollapsed ? 'w-12 h-12' : 'w-10 h-10',
-              `bg-gradient-to-br ${
-                item.iconBg ||
-                'from-gray-100/50 to-gray-200/50 dark:from-white/5 dark:to-white/10'
-              }`,
-              'group-hover:scale-110 group-hover:shadow-lg'
-            )}
-          >
-            <Icon className='w-5 h-5 text-white transition-all duration-300' />
-          </div>
+    const [isCollapsed, setIsCollapsed] = React.useState(false);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const [actionLoading, setActionLoading] = useState<Record<string, boolean>>(
+      {}
+    );
+    const [expandedSections, setExpandedSections] = useState<NavigationState>(
+      {}
+    );
+    const [isSessionCreationModalOpen, setIsSessionCreationModalOpen] =
+      useState(false);
+    const isActive = (path: string) => {
+      if (path === '/') {
+        return location.pathname === '/';
+      }
+      return location.pathname.startsWith(path);
+    };
 
-          {!isCollapsed && (
-            <div className='flex-1 min-w-0'>
-              <div className='text-sm font-semibold text-gray-900 dark:text-white leading-tight font-mono tracking-wide group-hover:text-transparent group-hover:bg-gradient-to-r group-hover:from-[#5599fe] group-hover:to-[#a679f0] group-hover:bg-clip-text transition-all duration-300'>
-                {item.label}
-              </div>
-              {item.description && (
-                <div className='text-xs text-gray-500 dark:text-gray-400 leading-tight font-mono opacity-75 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors duration-300'>
-                  {item.description}
-                </div>
-              )}
-            </div>
-          )}
-        </a>
-      );
-    }
+    const handleRefresh = useCallback(async () => {
+      if (isRefreshing) return;
+      setIsRefreshing(true);
+      try {
+        await refreshConnections();
+      } catch {
+        // Silently handle refresh errors
+      }
+      setTimeout(() => setIsRefreshing(false), 1500);
+    }, [isRefreshing, refreshConnections]);
+
+    const activeAgents = useMemo(() => {
+      return agents.filter((agent) => agent.type === 'active');
+    }, [agents]);
+
+    const runAction = useCallback(
+      async (actionId: string, actionFn: () => Promise<void>) => {
+        setActionLoading((prev) => ({ ...prev, [actionId]: true }));
+        try {
+          await actionFn();
+        } catch {
+          // Action errors are handled elsewhere
+        } finally {
+          setActionLoading((prev) => ({ ...prev, [actionId]: false }));
+        }
+      },
+      []
+    );
+
+    const handleAccept = useCallback(
+      (request: ConnectionRequest) =>
+        runAction(
+          `accept_${request.sequence_number}`,
+          async () => {
+            if (onAcceptRequest) {
+              await onAcceptRequest(request);
+            }
+          }
+        ),
+      [runAction, onAcceptRequest]
+    );
+
+    const handleReject = useCallback(
+      (request: ConnectionRequest) =>
+        runAction(
+          `reject_${request.sequence_number}`,
+          async () => {
+            if (onRejectRequest) {
+              await onRejectRequest(request);
+            }
+          }
+        ),
+      [runAction, onRejectRequest]
+    );
+
+    const toggleNavSection = useCallback((sectionId: string) => {
+      setExpandedSections((prev) => ({
+        ...prev,
+        [sectionId]: !prev[sectionId],
+      }));
+    }, []);
+
+    const isActiveAgent = useCallback(
+      (agentId: string) => activeTopicId === agentId,
+      [activeTopicId]
+    );
+
+    const handleStartPersonalChat = useCallback(() => {
+      setIsSessionCreationModalOpen(true);
+    }, []);
+
+    const handleSessionCreated = useCallback(
+      async () => {
+        try {
+          navigate('/chat');
+          toast.success('New session created successfully!');
+        } catch {
+          // Navigation errors are handled by router
+        }
+        setIsSessionCreationModalOpen(false);
+      },
+      [navigate]
+    );
+
+    const formatTimestamp = useCallback(
+      (timestamp: Date | number | undefined) => {
+        if (!timestamp) return '';
+        const date =
+          typeof timestamp === 'number' ? new Date(timestamp) : timestamp;
+        const now = new Date();
+        const diff = now.getTime() - date.getTime();
+
+        if (diff < 60000) return 'Just now';
+        if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+        if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+        return date.toLocaleDateString();
+      },
+      []
+    );
 
     return (
-      <Link
-        key={item.id}
-        to={item.path}
+      <aside
         className={cn(
-          'group relative flex items-center gap-4 rounded-2xl transition-all duration-300',
-          isCollapsed ? 'px-4 py-4 justify-center' : 'px-4 py-3.5',
-          !isCollapsed && 'hover:translate-x-1',
-          'hover:scale-[1.02]',
-          active &&
-            'bg-gradient-to-r from-white/10 to-white/5 backdrop-blur-sm border border-white/10 shadow-lg'
+          'h-full bg-white/95 dark:bg-black/40 backdrop-blur-xl border-r border-gray-200/50 dark:border-white/[0.06]',
+          'flex flex-col relative overflow-hidden transition-all duration-300',
+          isCollapsed ? 'w-24' : 'w-72',
+          className
         )}
-        title={isCollapsed ? item.label : undefined}
       >
-        {active && (
-          <div className='absolute left-0 top-1/2 -translate-y-1/2 w-1 h-10 bg-gradient-to-b from-[#a679f0] via-[#5599fe] to-[#48df7b] rounded-r-full shadow-[0_0_20px_rgba(85,153,254,0.8)]' />
-        )}
-
-        <div
-          className={cn(
-            'relative rounded-xl flex items-center justify-center transition-all duration-300',
-            'before:absolute before:inset-0 before:rounded-xl before:opacity-0 before:transition-opacity before:duration-300',
-            isCollapsed ? 'w-12 h-12' : 'w-10 h-10',
-            active
-              ? `before:opacity-100 before:bg-gradient-to-br ${
-                  item.gradient || 'from-[#5599fe] to-[#a679f0]'
-                } text-white shadow-2xl shadow-[#5599fe]/30`
-              : '',
-            !active && 'group-hover:before:opacity-100 group-hover:shadow-lg'
-          )}
-        >
+        <div className='absolute inset-0 opacity-[0.03] dark:opacity-[0.02]'>
+          <div className='absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-[#a679f0] to-[#5599fe] rounded-full blur-3xl animate-pulse' />
           <div
-            className={cn(
-              'absolute inset-0 rounded-xl transition-all duration-300',
-              active
-                ? `bg-gradient-to-br ${
-                    item.gradient || 'from-[#5599fe] to-[#a679f0]'
-                  }`
-                : `bg-gradient-to-br ${
-                    item.gradient || 'from-[#5599fe] to-[#a679f0]'
-                  } opacity-70`,
-              !active &&
-                'group-hover:scale-110 group-hover:rotate-3 group-hover:opacity-100'
-            )}
-          />
-          <Icon
-            className={cn(
-              'relative z-10 w-5 h-5 transition-all duration-300 text-white',
-              !active && 'group-hover:scale-110'
-            )}
+            className='absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-tr from-[#48df7b] to-[#5599fe] rounded-full blur-3xl animate-pulse'
+            style={{ animationDelay: '2s' }}
           />
         </div>
-
-        {!isCollapsed && (
-          <div className='flex-1 min-w-0'>
-            <div
-              className={cn(
-                'text-sm font-semibold leading-tight font-mono tracking-wide',
-                active
-                  ? 'text-transparent bg-gradient-to-r from-[#5599fe] to-[#a679f0] bg-clip-text'
-                  : 'text-gray-900 dark:text-white',
-                !active &&
-                  'group-hover:text-transparent group-hover:bg-gradient-to-r group-hover:from-[#5599fe] group-hover:to-[#a679f0] group-hover:bg-clip-text'
-              )}
-            >
-              {item.label}
-            </div>
-            {item.description && (
-              <div
-                className={cn(
-                  'text-xs leading-tight font-mono opacity-75 transition-colors duration-300',
-                  active
-                    ? 'text-gray-600 dark:text-gray-300'
-                    : 'text-gray-500 dark:text-gray-400',
-                  !active &&
-                    'group-hover:text-gray-600 dark:group-hover:text-gray-300'
-                )}
-              >
-                {item.description}
-              </div>
+        <div className='relative p-4 border-b border-gray-200/50 dark:border-white/[0.06]'>
+          <button
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className={cn(
+              'absolute top-2 right-2 w-7 h-7',
+              'bg-white/90 dark:bg-gray-800/90',
+              'border border-gray-200 dark:border-gray-700',
+              'rounded-md flex items-center justify-center shadow-sm hover:shadow-md',
+              'transition-all duration-300 hover:scale-105 z-10',
+              'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white',
+              'backdrop-blur-sm'
             )}
-          </div>
-        )}
-      </Link>
-    );
-  };
+            aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {isCollapsed ? (
+              <FiChevronRight className='w-3 h-3' />
+            ) : (
+              <FiChevronLeft className='w-3 h-3' />
+            )}
+          </button>
 
-  return (
-    <aside
-      className={cn(
-        'h-full bg-white/95 dark:bg-black/40 backdrop-blur-xl border-r border-gray-200/50 dark:border-white/[0.06]',
-        'flex flex-col relative overflow-hidden transition-all duration-300',
-        isCollapsed ? 'w-24' : 'w-72',
-        className
-      )}
-    >
-      <div className='absolute inset-0 opacity-[0.03] dark:opacity-[0.02]'>
-        <div className='absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-[#a679f0] to-[#5599fe] rounded-full blur-3xl animate-pulse' />
-        <div
-          className='absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-tr from-[#48df7b] to-[#5599fe] rounded-full blur-3xl animate-pulse'
-          style={{ animationDelay: '2s' }}
-        />
-      </div>
-      <div className='relative p-4 border-b border-gray-200/50 dark:border-white/[0.06]'>
-        <button
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className={cn(
-            'absolute top-2 right-2 w-7 h-7',
-            'bg-white/90 dark:bg-gray-800/90',
-            'border border-gray-200 dark:border-gray-700',
-            'rounded-md flex items-center justify-center shadow-sm hover:shadow-md',
-            'transition-all duration-300 hover:scale-105 z-10',
-            'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white',
-            'backdrop-blur-sm'
-          )}
-          aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
           {isCollapsed ? (
-            <FiChevronRight className='w-3 h-3' />
-          ) : (
-            <FiChevronLeft className='w-3 h-3' />
-          )}
-        </button>
-
-        {isCollapsed ? (
-          <Link to='/dashboard' className='flex justify-center pt-2 group'>
-            <Logo
-              variant='icon'
-              size='md-lg'
-              className='transform transition-transform duration-200 group-hover:scale-105'
-            />
-          </Link>
-        ) : (
-          <div className='flex justify-start px-4'>
-            <Link to='/dashboard' className='group'>
+            <Link to='/dashboard' className='flex justify-center pt-2 group'>
               <Logo
-                size='lg'
+                variant='icon'
+                size='md-lg'
                 className='transform transition-transform duration-200 group-hover:scale-105'
               />
             </Link>
+          ) : (
+            <div className='flex justify-start px-4'>
+              <Link to='/dashboard' className='group'>
+                <Logo
+                  size='lg'
+                  className='transform transition-transform duration-200 group-hover:scale-105'
+                />
+              </Link>
+            </div>
+          )}
+        </div>
+
+        <nav className='relative flex-1 p-4 space-y-2 overflow-y-auto'>
+          {!isCollapsed && (
+            <Link
+              to='/chat'
+              className={cn(
+                'group relative flex items-center gap-4 rounded-2xl transition-all duration-300 px-4 py-3.5',
+                'hover:translate-x-1 hover:scale-[1.02] mb-4',
+                isActive('/chat')
+                  ? 'bg-gradient-to-r from-white/10 to-white/5 backdrop-blur-sm border border-white/10 shadow-lg'
+                  : 'hover:bg-gray-100/50 dark:hover:bg-white/5'
+              )}
+            >
+              {isActive('/chat') && (
+                <div className='absolute left-0 top-1/2 -translate-y-1/2 w-1 h-10 bg-gradient-to-b from-[#a679f0] via-[#5599fe] to-[#48df7b] rounded-r-full shadow-[0_0_20px_rgba(85,153,254,0.8)]' />
+              )}
+              <div
+                className={cn(
+                  'relative rounded-xl flex items-center justify-center transition-all duration-300 w-10 h-10',
+                  isActive('/chat')
+                    ? 'bg-gradient-to-br from-[#c89fff] to-[#a679f0] text-white shadow-2xl shadow-[#5599fe]/30'
+                    : 'bg-gradient-to-br from-[#c89fff] to-[#a679f0] opacity-70 text-white group-hover:scale-110 group-hover:rotate-3 group-hover:opacity-100'
+                )}
+              >
+                <HiChatBubbleBottomCenterText className='w-5 h-5' />
+              </div>
+              <div className='flex-1 min-w-0'>
+                <div
+                  className={cn(
+                    'text-sm font-semibold leading-tight font-mono tracking-wide',
+                    isActive('/chat')
+                      ? 'text-transparent bg-gradient-to-r from-[#5599fe] to-[#a679f0] bg-clip-text'
+                      : 'text-gray-900 dark:text-white group-hover:text-transparent group-hover:bg-gradient-to-r group-hover:from-[#5599fe] group-hover:to-[#a679f0] group-hover:bg-clip-text'
+                  )}
+                >
+                  Personal Assistant
+                </div>
+                <div
+                  className={cn(
+                    'text-xs leading-tight font-mono opacity-75 transition-colors duration-300',
+                    isActive('/chat')
+                      ? 'text-gray-600 dark:text-gray-300'
+                      : 'text-gray-500 dark:text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300'
+                  )}
+                >
+                  Your private AI assistant
+                </div>
+              </div>
+            </Link>
+          )}
+
+          {!isCollapsed && (
+            <div className='border-t border-gray-200/50 dark:border-white/[0.06] my-4' />
+          )}
+
+          {!isCollapsed && (
+            <div className='space-y-2'>
+              <div className='flex items-center justify-between px-2 py-1'>
+                <div className='flex items-center gap-2'>
+                  <div className='w-6 h-6 rounded-lg bg-gradient-to-br from-[#7eb9ff] to-[#5599fe] flex items-center justify-center'>
+                    <FiMessageSquare className='w-3 h-3 text-white' />
+                  </div>
+                  <Typography
+                    variant='caption'
+                    className='font-medium text-gray-900 dark:text-white text-xs uppercase tracking-wider'
+                  >
+                    Conversations{' '}
+                    {activeAgents.length > 0 && `(${activeAgents.length})`}
+                  </Typography>
+                </div>
+
+                <div className='flex gap-1'>
+                  <Button
+                    variant='ghost'
+                    size='icon'
+                    onClick={handleStartPersonalChat}
+                    className='h-6 w-6 rounded-md'
+                    title='Start new chat'
+                  >
+                    <FiPlus className='h-3 w-3' />
+                  </Button>
+                  <Button
+                    variant='ghost'
+                    size='icon'
+                    onClick={handleRefresh}
+                    disabled={isRefreshing}
+                    className='h-6 w-6 rounded-md'
+                    title='Refresh connections'
+                  >
+                    <FiRefreshCw
+                      className={cn('h-3 w-3', isRefreshing && 'animate-spin')}
+                    />
+                  </Button>
+                </div>
+              </div>
+
+              <div className='px-1 space-y-0.5'>
+                {isLoadingAgents ? (
+                  <div className='flex items-center justify-center py-3'>
+                    <FiRefreshCw className='w-3 h-3 animate-spin text-gray-400' />
+                    <Typography
+                      variant='caption'
+                      className='ml-2 text-gray-500 text-xs'
+                    >
+                      Loading...
+                    </Typography>
+                  </div>
+                ) : activeAgents.length > 0 ? (
+                  activeAgents.map((agent) => (
+                    <AgentItem
+                      key={agent.id}
+                      agent={agent}
+                      isSelected={isActiveAgent(agent.id)}
+                      onSelect={onSelectAgent!}
+                      formatTimestamp={formatTimestamp}
+                    />
+                  ))
+                ) : (
+                  <div className='text-center py-3'>
+                    <FiMessageSquare className='w-6 h-6 text-gray-300 dark:text-gray-600 mx-auto mb-1' />
+                    <Typography
+                      variant='caption'
+                      className='text-gray-500 dark:text-gray-400 text-xs block'
+                    >
+                      No active conversations
+                    </Typography>
+                    <Typography
+                      variant='caption'
+                      className='text-gray-400 dark:text-gray-500 text-[10px] block'
+                    >
+                      Use Discover to find agents
+                    </Typography>
+                  </div>
+                )}
+              </div>
+
+              {connectionRequests.length > 0 && (
+                <>
+                  <div className='border-t border-gray-200/50 dark:border-white/[0.06] pt-2 mt-2'>
+                    <div className='flex items-center gap-2 px-2 py-1 mb-2'>
+                      <div className='w-6 h-6 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center'>
+                        <FiUserPlus className='w-3 h-3 text-white' />
+                      </div>
+                      <Typography
+                        variant='caption'
+                        className='font-medium text-gray-900 dark:text-white text-xs uppercase tracking-wider'
+                      >
+                        Requests ({connectionRequests.length})
+                      </Typography>
+                    </div>
+                    <div className='px-1 space-y-0.5'>
+                      {connectionRequests.map((request) => (
+                        <ConnectionRequestItem
+                          key={request.id}
+                          request={request}
+                          actionLoading={actionLoading}
+                          onAccept={handleAccept}
+                          onReject={handleReject}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          <div className='space-y-2'>
+            {primaryNavItems.map((item) => (
+              <NavItem
+                key={item.id}
+                item={item}
+                isActive={isActive}
+                isCollapsed={isCollapsed}
+                expandedSections={expandedSections}
+                onToggleSection={toggleNavSection}
+              />
+            ))}
           </div>
-        )}
-      </div>
+        </nav>
 
-      <nav className='relative flex-1 p-4 space-y-2 overflow-y-auto'>
-        {primaryNavItems.map(renderNavItem)}
-      </nav>
+        <div className='relative border-t border-gray-200/50 dark:border-white/[0.06]'>
+          <div className='p-4 space-y-2'>
+            {secondaryNavItems.map((item) => (
+              <NavItem
+                key={item.id}
+                item={item}
+                isActive={isActive}
+                isCollapsed={isCollapsed}
+                expandedSections={expandedSections}
+                onToggleSection={toggleNavSection}
+              />
+            ))}
+          </div>
+        </div>
 
-      <div className='relative p-4 border-t border-gray-200/50 dark:border-white/[0.06] space-y-2'>
-        {secondaryNavItems.map(renderNavItem)}
-      </div>
-    </aside>
-  );
-};
+        <SessionCreationModal
+          isOpen={isSessionCreationModalOpen}
+          onClose={() => setIsSessionCreationModalOpen(false)}
+          onSessionCreated={handleSessionCreated}
+        />
+      </aside>
+    );
+  }
+);
 
-const Sidebar: React.FC<SidebarProps> = (props) => {
+const Sidebar: React.FC<SidebarProps> = React.memo((props) => {
   const location = useLocation();
   return <SidebarContent {...props} location={location} />;
-};
+});
 
 export default Sidebar;

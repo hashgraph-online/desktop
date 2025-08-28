@@ -175,6 +175,9 @@ describe('useFormState', () => {
 
       act(() => {
         result.current.setValue('email', 'invalid-email')
+      })
+      
+      act(() => {
         result.current.handleBlur('email')()
       })
 
@@ -187,6 +190,9 @@ describe('useFormState', () => {
 
       act(() => {
         result.current.setValue('email', 'valid@example.com')
+      })
+      
+      act(() => {
         result.current.handleBlur('email')()
       })
 
@@ -303,6 +309,9 @@ describe('useFormState', () => {
 
       act(() => {
         result.current.setValue('email', 'valid@example.com')
+      })
+      
+      act(() => {
         result.current.handleBlur('email')()
       })
 
@@ -332,7 +341,7 @@ describe('useFormState', () => {
     it('should handle interdependent field validation', () => {
       const validatorsWithConfirm = {
         ...validators,
-        confirmPassword: (value: string, formValues?: TestFormData) => {
+        confirmPassword: (value: string, _formValues?: TestFormData) => {
           if (!value) return 'Confirm password is required'
           return null
         },
@@ -343,6 +352,9 @@ describe('useFormState', () => {
       act(() => {
         result.current.setValue('password', 'password123')
         result.current.setValue('confirmPassword', 'different')
+      })
+      
+      act(() => {
         result.current.validate()
       })
 

@@ -1,7 +1,6 @@
 import '@testing-library/jest-dom';
 import { TextEncoder, TextDecoder } from 'util';
 
-// Fix Node.js globals in jsdom environment
 if (typeof setImmediate === 'undefined') {
   global.setImmediate = (callback: Function, ...args: any[]) => {
     return setTimeout(callback, 0, ...args);
@@ -9,7 +8,6 @@ if (typeof setImmediate === 'undefined') {
   global.clearImmediate = clearTimeout;
 }
 
-// Mock Electron APIs globally
 const mockElectron = {
   saveConfig: jest.fn(),
   loadConfig: jest.fn(),
@@ -26,32 +24,34 @@ const mockElectron = {
   getAppVersion: jest.fn(() => '1.0.0'),
   isPackaged: false,
   platform: 'darwin',
-  // MCP related methods
   listMCPServers: jest.fn(),
   addMCPServer: jest.fn(),
   removeMCPServer: jest.fn(),
   testMCPServer: jest.fn(),
   startMCPServer: jest.fn(),
   stopMCPServer: jest.fn(),
-  // HCS10 related methods
   registerHCS10Profile: jest.fn(),
   getHCS10Status: jest.fn(),
   cancelHCS10Registration: jest.fn(),
-  // Agent methods
   sendMessage: jest.fn(),
   startAgent: jest.fn(),
   stopAgent: jest.fn(),
   getAgentStatus: jest.fn(),
-  // Update methods
   checkForUpdates: jest.fn(),
   downloadUpdate: jest.fn(),
   installUpdate: jest.fn(),
-  // File system methods
   readFile: jest.fn(),
   writeFile: jest.fn(),
   selectDirectory: jest.fn(),
-  // Notification methods
   showNotification: jest.fn(),
+  
+  'chat:create-session': jest.fn(),
+  'chat:load-session': jest.fn(),
+  'chat:save-session': jest.fn(),
+  'chat:delete-session': jest.fn(),
+  'chat:load-all-sessions': jest.fn(),
+  'chat:save-message': jest.fn(),
+  'chat:load-session-messages': jest.fn(),
 };
 
 Object.defineProperty(window, 'electron', {
@@ -60,7 +60,6 @@ Object.defineProperty(window, 'electron', {
   configurable: true,
 });
 
-// Mock matchMedia
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
   value: jest.fn().mockImplementation(query => ({
@@ -73,32 +72,26 @@ Object.defineProperty(window, 'matchMedia', {
   }))
 });
 
-// Mock ResizeObserver
 global.ResizeObserver = jest.fn().mockImplementation(() => ({
   observe: jest.fn(),
   unobserve: jest.fn(),
   disconnect: jest.fn(),
 }));
 
-// Mock IntersectionObserver  
 global.IntersectionObserver = jest.fn().mockImplementation(() => ({
   observe: jest.fn(),
   unobserve: jest.fn(),
   disconnect: jest.fn(),
 }));
 
-// Text encoding/decoding
 global.TextEncoder = TextEncoder;
 global.TextDecoder = TextDecoder as any;
 
-// Mock URL.createObjectURL
 global.URL.createObjectURL = jest.fn(() => 'mock-object-url');
 global.URL.revokeObjectURL = jest.fn();
 
-// Mock HTMLCanvasElement methods
 HTMLCanvasElement.prototype.getContext = jest.fn();
 
-// Mock crypto for tests that need it
 Object.defineProperty(window, 'crypto', {
   value: {
     getRandomValues: jest.fn((arr: any) => {
@@ -111,7 +104,16 @@ Object.defineProperty(window, 'crypto', {
   },
 });
 
-// Reset all mocks before each test
+// Mock import.meta.url for ES modules
+Object.defineProperty(global, 'import', {
+  value: {
+    meta: {
+      url: 'file:///mock/filename.js'
+    }
+  },
+  configurable: true
+});
+
 beforeEach(() => {
   jest.clearAllMocks();
 });

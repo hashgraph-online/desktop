@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { OpenAISettings } from '../../../src/renderer/pages/settings/OpenAISettings';
 import { useConfigStore } from '../../../src/renderer/stores/configStore';
+import type { ConfigStore } from '../../../src/renderer/stores/configStore';
 
 jest.mock('../../../src/renderer/stores/configStore');
 
@@ -32,7 +33,26 @@ describe('OpenAISettings', () => {
       setOpenAIModel: mockSetOpenAIModel,
       testOpenAIConnection: mockTestOpenAIConnection,
       isOpenAIConfigValid: mockIsOpenAIConfigValid,
-    } as any);
+      isLoading: false,
+      error: null,
+      isConfigured: () => true,
+      setHederaAccountId: jest.fn(),
+      setHederaPrivateKey: jest.fn(),
+      setHederaNetwork: jest.fn(),
+      setAnthropicApiKey: jest.fn(),
+      setAnthropicModel: jest.fn(),
+      setLLMProvider: jest.fn(),
+      setTheme: jest.fn().mockResolvedValue(void 0),
+      setAutoStart: jest.fn(),
+      setLogLevel: jest.fn(),
+      setOperationalMode: jest.fn(),
+      setAutonomousMode: jest.fn(),
+      saveConfig: jest.fn().mockResolvedValue(void 0),
+      loadConfig: jest.fn().mockResolvedValue(void 0),
+      testHederaConnection: jest.fn().mockResolvedValue({ success: true }),
+      testAnthropicConnection: jest.fn().mockResolvedValue({ success: true }),
+      reset: jest.fn(),
+    } as ConfigStore);
 
     mockIsOpenAIConfigValid.mockReturnValue(false);
   });
@@ -186,7 +206,26 @@ describe('OpenAISettings', () => {
       setOpenAIModel: mockSetOpenAIModel,
       testOpenAIConnection: mockTestOpenAIConnection,
       isOpenAIConfigValid: mockIsOpenAIConfigValid,
-    } as any);
+      isLoading: false,
+      error: null,
+      isConfigured: () => true,
+      setHederaAccountId: jest.fn(),
+      setHederaPrivateKey: jest.fn(),
+      setHederaNetwork: jest.fn(),
+      setAnthropicApiKey: jest.fn(),
+      setAnthropicModel: jest.fn(),
+      setLLMProvider: jest.fn(),
+      setTheme: jest.fn().mockResolvedValue(void 0),
+      setAutoStart: jest.fn(),
+      setLogLevel: jest.fn(),
+      setOperationalMode: jest.fn(),
+      setAutonomousMode: jest.fn(),
+      saveConfig: jest.fn().mockResolvedValue(void 0),
+      loadConfig: jest.fn().mockResolvedValue(void 0),
+      testHederaConnection: jest.fn().mockResolvedValue({ success: true }),
+      testAnthropicConnection: jest.fn().mockResolvedValue({ success: true }),
+      reset: jest.fn(),
+    } as ConfigStore);
 
     render(<OpenAISettings />);
 
@@ -229,7 +268,7 @@ describe('OpenAISettings', () => {
   });
 
   it('should set default model to gpt-4o when empty', async () => {
-    const user = userEvent.setup();
+    const _user = userEvent.setup();
     render(<OpenAISettings />);
 
     const modelSelect = screen.getByRole('combobox');

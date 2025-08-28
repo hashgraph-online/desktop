@@ -24,6 +24,10 @@ const electronAPI = {
   removeAllListeners: (channel: string) => {
     ipcRenderer.removeAllListeners(channel);
   },
+  loadConfig: () => ipcRenderer.invoke('config:load'),
+  initializeAgent: (config: Record<string, unknown>) =>
+    ipcRenderer.invoke('agent:initialize', config),
+  loadAllSessions: () => ipcRenderer.invoke('chat:load-all-sessions'),
 };
 
 const electronBridge = {
@@ -53,6 +57,12 @@ const electronBridge = {
   sendAgentMessage: (data: Record<string, unknown>) =>
     ipcRenderer.invoke('agent:send-message', data),
 
+  findFormById: (formId: string, sessionId?: string) =>
+    ipcRenderer.invoke('chat:find-form-by-id', { formId, sessionId }),
+  loadAllSessions: () => ipcRenderer.invoke('chat:load-all-sessions'),
+  updateFormState: (formId: string, completionState: 'active' | 'submitting' | 'completed' | 'failed', completionData?: { success?: boolean; message?: string; timestamp?: number }) =>
+    ipcRenderer.invoke('chat:update-form-state', { formId, completionState, completionData }),
+
   loadMCPServers: () => ipcRenderer.invoke('mcp:loadServers'),
   saveMCPServers: (servers: Record<string, unknown>[]) =>
     ipcRenderer.invoke('mcp:saveServers', servers),
@@ -79,6 +89,8 @@ const electronBridge = {
   getMCPCacheStats: () => ipcRenderer.invoke('mcp:getCacheStats'),
   triggerMCPBackgroundSync: () =>
     ipcRenderer.invoke('mcp:triggerBackgroundSync'),
+  enrichMCPMetrics: (options?: { limit?: number; concurrency?: number }) =>
+    ipcRenderer.invoke('mcp:enrichMetrics', options),
 
   searchPlugins: (query: string, registry?: string) =>
     ipcRenderer.invoke('plugin:search', { query, registry }),
@@ -165,6 +177,8 @@ const electronBridge = {
   mirrorNode: {
     getScheduleInfo: (scheduleId: string, network?: 'mainnet' | 'testnet') =>
       ipcRenderer.invoke('mirrorNode:getScheduleInfo', scheduleId, network),
+    getScheduledTransactionStatus: (scheduleId: string, network?: 'mainnet' | 'testnet') =>
+      ipcRenderer.invoke('mirrorNode:getScheduledTransactionStatus', scheduleId, network),
     getTransactionByTimestamp: (
       timestamp: string,
       network?: 'mainnet' | 'testnet'
@@ -190,12 +204,31 @@ const electronBridge = {
       ipcRenderer.invoke('hcs10:retrieveProfile', accountId, network),
   },
 
+  entity: {
+    getAll: (filters?: Record<string, unknown>) =>
+      ipcRenderer.invoke('entity:getAll', filters),
+    delete: (entityId: string) =>
+      ipcRenderer.invoke('entity:delete', entityId),
+    bulkDelete: (entityIds: string[]) =>
+      ipcRenderer.invoke('entity:bulkDelete', entityIds),
+    rename: (entityId: string, newName: string) =>
+      ipcRenderer.invoke('entity:rename', entityId, newName),
+    export: (filters?: Record<string, unknown>, format?: 'json' | 'csv') =>
+      ipcRenderer.invoke('entity:export', filters, format),
+    getById: (entityId: string) =>
+      ipcRenderer.invoke('entity:getById', entityId),
+    search: (query: string, entityType?: string) =>
+      ipcRenderer.invoke('entity:search', query, entityType),
+  },
+
   invoke: (channel: string, ...args: unknown[]) => {
     return ipcRenderer.invoke(channel, ...args);
   },
   send: (channel: string, ...args: unknown[]) => {
     ipcRenderer.send(channel, ...args);
   },
+
+  reloadApp: () => ipcRenderer.send('app:reload'),
 };
 
 contextBridge.exposeInMainWorld('api', electronAPI);

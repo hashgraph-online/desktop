@@ -1,29 +1,23 @@
-export default [
+import js from '@eslint/js';
+import globals from 'globals';
+import reactHooks from 'eslint-plugin-react-hooks';
+import reactRefresh from 'eslint-plugin-react-refresh';
+import tseslint from 'typescript-eslint';
+import { globalIgnores } from 'eslint/config';
+
+export default tseslint.config([
+  globalIgnores(['dist']),
   {
-    files: ["**/*.js", "**/*.jsx", "**/*.ts", "**/*.tsx"],
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      js.configs.recommended,
+      tseslint.configs.recommended,
+      reactHooks.configs['recommended-latest'],
+      reactRefresh.configs.vite,
+    ],
     languageOptions: {
-      ecmaVersion: 2022,
-      sourceType: "module",
-      globals: {
-        window: "readonly",
-        document: "readonly",
-        console: "readonly",
-        process: "readonly",
-        Buffer: "readonly",
-        __dirname: "readonly",
-        __filename: "readonly",
-        exports: "readonly",
-        module: "readonly",
-        require: "readonly",
-        global: "readonly",
-        URL: "readonly"
-      }
+      ecmaVersion: 2020,
+      globals: globals.browser,
     },
-    rules: {
-      "no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
-      "no-console": "off",
-      "semi": ["error", "always"],
-      "quotes": ["error", "single", { "avoidEscape": true, "allowTemplateLiterals": true }]
-    }
-  }
-];
+  },
+]);

@@ -33,8 +33,8 @@ const dashboardCards: DashboardCard[] = [
     icon: HiChatBubbleBottomCenterText,
     description:
       'Have conversations with your AI assistant powered by advanced language models',
-    gradient: 'from-[#c89fff] to-[#a679f0]',
-    iconBg: 'from-[#c89fff] to-[#a679f0]',
+    gradient: 'from-purple-600 to-hgo-purple',
+    iconBg: 'from-purple-600 to-hgo-purple',
     category: 'primary',
   },
   {
@@ -44,8 +44,8 @@ const dashboardCards: DashboardCard[] = [
     icon: HiServerStack,
     description:
       'Connect and manage extensions that give your assistant new capabilities',
-    gradient: 'from-[#5eef81] to-[#48df7b]',
-    iconBg: 'from-[#5eef81] to-[#48df7b]',
+    gradient: 'from-green-600 to-hgo-green',
+    iconBg: 'from-green-600 to-hgo-green',
     category: 'primary',
   },
   {
@@ -55,8 +55,8 @@ const dashboardCards: DashboardCard[] = [
     icon: HiPuzzlePiece,
     description:
       'Browse and install plugins to extend functionality and add new features',
-    gradient: 'from-[#7eb9ff] to-[#5599fe]',
-    iconBg: 'from-[#7eb9ff] to-[#5599fe]',
+    gradient: 'from-blue-500 to-hgo-blue',
+    iconBg: 'from-blue-500 to-hgo-blue',
     category: 'primary',
   },
   {
@@ -66,8 +66,8 @@ const dashboardCards: DashboardCard[] = [
     icon: HiUserCircle,
     description:
       'Manage your Hedera profile and customize your identity on the network',
-    gradient: 'from-[#6b73c1] to-[#5054a1]',
-    iconBg: 'from-[#6b73c1] to-[#5054a1]',
+    gradient: 'from-blue-600 to-blue-800',
+    iconBg: 'from-blue-600 to-blue-800',
     category: 'primary',
   },
   {
@@ -127,7 +127,7 @@ const DashboardPage: React.FC = () => {
     <div className='min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 relative overflow-hidden'>
       <div className='absolute inset-0 overflow-hidden pointer-events-none'>
         <motion.div
-          className='absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-[#a679f0]/10 to-[#5599fe]/10 rounded-full blur-3xl'
+          className='absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-hgo-purple/10 to-hgo-blue/10 rounded-full blur-3xl'
           animate={{
             x: [0, 50, 0],
             y: [0, 30, 0],
@@ -140,7 +140,7 @@ const DashboardPage: React.FC = () => {
           }}
         />
         <motion.div
-          className='absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-br from-[#48df7b]/10 to-[#5599fe]/10 rounded-full blur-3xl'
+          className='absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-br from-hgo-green/10 to-hgo-blue/10 rounded-full blur-3xl'
           animate={{
             x: [0, -50, 0],
             y: [0, -30, 0],
@@ -153,7 +153,7 @@ const DashboardPage: React.FC = () => {
           }}
         />
         <motion.div
-          className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-br from-[#5599fe]/5 to-[#a679f0]/5 rounded-full blur-3xl'
+          className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-br from-hgo-blue/5 to-hgo-purple/5 rounded-full blur-3xl'
           animate={{
             rotate: [0, 360],
             scale: [1, 1.2, 1],
@@ -191,7 +191,7 @@ const DashboardPage: React.FC = () => {
         {[...Array(6)].map((_, i) => (
           <motion.div
             key={i}
-            className='absolute w-1 h-1 bg-gradient-to-br from-[#5599fe] to-[#a679f0] rounded-full opacity-30'
+            className='absolute w-1 h-1 bg-gradient-to-br from-hgo-blue to-hgo-purple rounded-full opacity-30'
             style={{
               left: `${20 + i * 15}%`,
               top: `${10 + i * 12}%`,
@@ -219,7 +219,7 @@ const DashboardPage: React.FC = () => {
           className='text-center mb-12'
         >
           <Typography variant='h1' className='font-bold text-5xl mb-4'>
-            <span className='bg-gradient-to-r from-[#5599fe] to-[#48df7b] bg-clip-text text-transparent'>
+            <span className='bg-gradient-to-r from-blue-600 to-green-600 dark:from-hgo-blue dark:to-hgo-green bg-clip-text text-transparent'>
               Your personal decentralized AI assistant.
             </span>
           </Typography>

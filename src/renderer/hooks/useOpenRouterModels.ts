@@ -1,6 +1,19 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ModelInfo } from '../lib/models';
 
+interface OpenRouterAPIModel {
+  id: string;
+  description?: string;
+  context_length: number;
+  pricing: {
+    prompt: string;
+    completion: string;
+  };
+  architecture?: {
+    modality?: string;
+  };
+}
+
 interface UseOpenRouterModelsOptions {
   provider?: 'openai' | 'anthropic';
   autoLoad?: boolean;
@@ -34,7 +47,7 @@ export function useOpenRouterModels(options: UseOpenRouterModelsOptions = {}): U
       } else {
         const response = await window.electron.getOpenRouterModels(forceRefresh);
         if (response.success && response.data) {
-          const convertedModels = response.data.map((model: any) => ({
+          const convertedModels = response.data.map((model: OpenRouterAPIModel) => ({
             id: model.id,
             name: extractModelName(model.id),
             description: model.description || '',
@@ -111,7 +124,7 @@ function determineProvider(modelId: string): 'openai' | 'anthropic' {
   return 'anthropic';
 }
 
-function determineCategory(modelId: string, pricing: any): 'flagship' | 'efficient' | 'legacy' | 'specialized' {
+function determineCategory(modelId: string, pricing: OpenRouterAPIModel['pricing']): 'flagship' | 'efficient' | 'legacy' | 'specialized' {
   const costPerMillion = parseFloat(pricing.prompt);
   
   if (modelId.includes('mini') || modelId.includes('haiku') || costPerMillion < 1) {

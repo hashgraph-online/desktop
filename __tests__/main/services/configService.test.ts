@@ -1,8 +1,6 @@
 import { ConfigService } from '../../../src/main/services/ConfigService'
 import { app, safeStorage } from 'electron'
 import * as fs from 'fs'
-import * as path from 'path'
-import { Logger } from '../../../src/main/utils/logger'
 
 jest.mock('electron', () => ({
   app: {
@@ -59,7 +57,7 @@ describe('ConfigService - Main Process', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     
-    ;(ConfigService as any).instance = undefined
+    ;(ConfigService as unknown as { instance: undefined }).instance = undefined
     
     ;(app.getPath as jest.Mock).mockReturnValue(mockUserDataPath)
     ;(safeStorage.isEncryptionAvailable as jest.Mock).mockReturnValue(true)
@@ -73,7 +71,7 @@ describe('ConfigService - Main Process', () => {
     })
     
     const writtenFiles = new Map<string, string>()
-    ;(fs.promises.writeFile as jest.Mock).mockImplementation(async (path: string, data: string, options: any) => {
+    ;(fs.promises.writeFile as jest.Mock).mockImplementation(async (path: string, data: string, options: { flag?: string }) => {
       if (options?.flag === 'a') {
         return
       }
@@ -165,7 +163,7 @@ describe('ConfigService - Main Process', () => {
 
     it('should create user data directory if it does not exist', async () => {
       const writtenData = new Map<string, string>()
-      ;(fs.promises.writeFile as jest.Mock).mockImplementation(async (path: string, data: string, options: any) => {
+      ;(fs.promises.writeFile as jest.Mock).mockImplementation(async (path: string, data: string, options: { flag?: string }) => {
         if (options?.flag !== 'a') {
           writtenData.set(path, data)
         }
@@ -207,7 +205,7 @@ describe('ConfigService - Main Process', () => {
       ;(fs.promises.readFile as jest.Mock).mockResolvedValue(JSON.stringify(encryptedConfig))
 
       let decryptCallCount = 0
-      ;(safeStorage.decryptString as jest.Mock).mockImplementation((buffer: Buffer) => {
+      ;(safeStorage.decryptString as jest.Mock).mockImplementation((_buffer: Buffer) => {
         decryptCallCount++
         if (decryptCallCount === 1) return testConfig.hedera.privateKey
         if (decryptCallCount === 2) return testConfig.openai.apiKey
@@ -361,7 +359,7 @@ describe('ConfigService - Main Process', () => {
       let finalData: string = ''
       const tempFiles = new Map<string, string>()
       
-      ;(fs.promises.writeFile as jest.Mock).mockImplementation((path: string, data: string, options: any) => {
+      ;(fs.promises.writeFile as jest.Mock).mockImplementation((path: string, data: string, options: { flag?: string }) => {
         if (options?.flag !== 'a') {
           tempFiles.set(path, data)
         }
@@ -394,7 +392,7 @@ describe('ConfigService - Main Process', () => {
         encryptedValues.set(base64, str)
         return encrypted
       })
-      ;(safeStorage.decryptString as jest.Mock).mockImplementation((buffer: Buffer) => {
+      ;(safeStorage.decryptString as jest.Mock).mockImplementation((_buffer: Buffer) => {
         const base64 = buffer.toString('base64')
         return encryptedValues.get(base64) || ''
       })
@@ -409,7 +407,7 @@ describe('ConfigService - Main Process', () => {
       let finalData: string = ''
       const tempFiles = new Map<string, string>()
       
-      ;(fs.promises.writeFile as jest.Mock).mockImplementation((path: string, data: string, options: any) => {
+      ;(fs.promises.writeFile as jest.Mock).mockImplementation((path: string, data: string, options: { flag?: string }) => {
         if (options?.flag !== 'a') {
           tempFiles.set(path, data)
         }
@@ -443,7 +441,7 @@ describe('ConfigService - Main Process', () => {
         encryptedMap.set(base64, str)
         return buffer
       })
-      ;(safeStorage.decryptString as jest.Mock).mockImplementation((buffer: Buffer) => {
+      ;(safeStorage.decryptString as jest.Mock).mockImplementation((_buffer: Buffer) => {
         const base64 = buffer.toString('base64')
         return encryptedMap.get(base64) || ''
       })
@@ -503,14 +501,14 @@ describe('ConfigService - Main Process', () => {
         llmProvider: testConfig.llmProvider
       }
 
-      await configService.save(configWithMissingFields as any)
+      await configService.save(configWithMissingFields as Partial<typeof import('../../../src/main/services/config-service').AppConfig>)
 
       expect(safeStorage.encryptString).toHaveBeenCalledTimes(1)
     })
 
     it('should validate that config path uses app userData directory', () => {
       expect(app.getPath).toHaveBeenCalledWith('userData')
-      expect((configService as any).configPath).toBe(mockConfigPath)
+      expect((configService as unknown as { configPath: string }).configPath).toBe(mockConfigPath)
     })
   })
 })

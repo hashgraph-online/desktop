@@ -114,4 +114,75 @@ describe('MessageBubble', () => {
     // Verify all lines are present
     expect(content.textContent).toBe('Line 1\nLine 2\nLine 3');
   });
+
+  it('should render TransactionApprovalButton for HCS-10 transaction operations', () => {
+    const hcs10TransactionMessage: Message = {
+      ...baseMessage,
+      role: 'assistant',
+      content: '[Reply to #3]',
+      metadata: {
+        op: 'transaction',
+        schedule_id: '0.0.6589700',
+        data: '[Reply to #3]',
+        operator_id: '0.0.6391234@0.0.6391232',
+        isHCS10Message: true
+      }
+    };
+    
+    render(<MessageBubble message={hcs10TransactionMessage} isHCS10={true} />);
+    
+    // Should render TransactionApprovalButton instead of regular content
+    expect(screen.queryByText('[Reply to #3]')).not.toBeInTheDocument();
+    
+    // Should show transaction approval UI elements
+    expect(screen.getByText('Transaction Approval Required')).toBeInTheDocument();
+    expect(screen.getByText('Approve Transaction')).toBeInTheDocument();
+    expect(screen.getByText('Dismiss')).toBeInTheDocument();
+  });
+
+  it('should not render TransactionApprovalButton for regular HCS-10 messages', () => {
+    const hcs10RegularMessage: Message = {
+      ...baseMessage,
+      role: 'assistant',
+      content: 'Hello from HCS-10 agent',
+      metadata: {
+        op: 'message',
+        operator_id: '0.0.6391234@0.0.6391232',
+        isHCS10Message: true
+      }
+    };
+    
+    render(<MessageBubble message={hcs10RegularMessage} isHCS10={true} />);
+    
+    // Should render regular message content
+    expect(screen.getByText('Hello from HCS-10 agent')).toBeInTheDocument();
+    
+    // Should not show transaction approval UI
+    expect(screen.queryByText('Transaction Approval Required')).not.toBeInTheDocument();
+    expect(screen.queryByText('Approve Transaction')).not.toBeInTheDocument();
+  });
+
+  it('should not render TransactionApprovalButton for user messages even with transaction metadata', () => {
+    const userTransactionMessage: Message = {
+      ...baseMessage,
+      role: 'user',
+      content: 'Please send this transaction',
+      metadata: {
+        op: 'transaction',
+        schedule_id: '0.0.6589700',
+        data: 'Please send this transaction',
+        operator_id: '0.0.6391234@0.0.6391232',
+        isHCS10Message: true
+      }
+    };
+    
+    render(<MessageBubble message={userTransactionMessage} isHCS10={true} />);
+    
+    // Should render regular user message content
+    expect(screen.getByText('Please send this transaction')).toBeInTheDocument();
+    
+    // Should not show transaction approval UI for user messages
+    expect(screen.queryByText('Transaction Approval Required')).not.toBeInTheDocument();
+    expect(screen.queryByText('Approve Transaction')).not.toBeInTheDocument();
+  });
 });

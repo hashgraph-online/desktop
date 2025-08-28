@@ -37,18 +37,33 @@ jest.mock('../../../src/main/utils/logger')
 import { ConfigService as MainConfigService } from '../../src/main/services/ConfigService'
 import { ConfigService as RendererConfigService } from '../../src/renderer/services/configService'
 import { setupConfigHandlers } from '../../src/main/ipc/handlers'
-import { app, safeStorage, ipcMain, ipcRenderer } from 'electron'
+import { app, safeStorage, ipcMain } from 'electron'
 import * as fs from 'fs'
 import * as path from 'path'
 import * as os from 'os'
 import type { AppConfig } from '../../src/renderer/stores/configStore'
+
+interface ExtendedAppConfig extends AppConfig {
+  customData?: {
+    largeArray: string[]
+    nestedObject: {
+      deep: {
+        very: {
+          deep: {
+            data: string
+          }
+        }
+      }
+    }
+  }
+}
 
 describe('Config Flow Integration Tests', () => {
   let tempDir: string
   let configPath: string
   let mainConfigService: MainConfigService
   let rendererConfigService: RendererConfigService
-  let ipcHandlers: Map<string, Function>
+  let ipcHandlers: Map<string, (...args: unknown[]) => unknown>
   
   const testConfig: AppConfig = {
     hedera: {
@@ -111,13 +126,13 @@ describe('Config Flow Integration Tests', () => {
       return plaintext
     })
     
-    ;(MainConfigService as any).instance = undefined
+    ;(MainConfigService as { instance?: MainConfigService }).instance = undefined
     mainConfigService = MainConfigService.getInstance()
     
     rendererConfigService = new RendererConfigService()
     
     ipcHandlers = new Map()
-    ;(ipcMain.handle as jest.Mock).mockImplementation((channel: string, handler: Function) => {
+    ;(ipcMain.handle as jest.Mock).mockImplementation((channel: string, handler: (...args: unknown[]) => unknown) => {
       ipcHandlers.set(channel, handler)
     })
     
@@ -138,7 +153,7 @@ describe('Config Flow Integration Tests', () => {
       })
     }
     
-    ;(global as any).window = { electron: mockElectron }
+    ;(global as { window?: { electron: typeof mockElectron } }).window = { electron: mockElectron }
   })
 
   describe('Main Process → File → Main Process', () => {
@@ -204,7 +219,7 @@ describe('Config Flow Integration Tests', () => {
     })
 
     it('should handle IPC errors gracefully', async () => {
-      ;(window.electron as any).saveConfig = jest.fn().mockRejectedValue(new Error('IPC Error'))
+      ;(window as { electron?: { saveConfig?: jest.Mock } }).electron!.saveConfig = jest.fn().mockRejectedValue(new Error('IPC Error'))
       
       await expect(rendererConfigService.saveConfig(testConfig))
         .rejects.toThrow('Failed to save configuration: IPC Error')
@@ -231,7 +246,7 @@ describe('Config Flow Integration Tests', () => {
     it('should persist config across app restarts', async () => {
       await mainConfigService.save(testConfig)
       
-      ;(MainConfigService as any).instance = undefined
+      ;(MainConfigService as { instance?: MainConfigService }).instance = undefined
       ipcHandlers.clear()
       
       mainConfigService = MainConfigService.getInstance()
@@ -262,7 +277,7 @@ describe('Config Flow Integration Tests', () => {
       
       await mainConfigService.save(updatedConfig)
       
-      ;(MainConfigService as any).instance = undefined
+      ;(MainConfigService as { instance?: MainConfigService }).instance = undefined
       mainConfigService = MainConfigService.getInstance()
       
       const loaded = await mainConfigService.load()
@@ -332,13 +347,13 @@ describe('Config Flow Integration Tests', () => {
             }
           }
         }
-      } as any
+      } as ExtendedAppConfig
       
       await mainConfigService.save(largeConfig)
       const loaded = await mainConfigService.load()
       
       expect(loaded.hedera.privateKey).toBe(largeConfig.hedera.privateKey)
-      expect((loaded as any).customData).toEqual(largeConfig.customData)
+      expect((loaded as ExtendedAppConfig).customData).toEqual(largeConfig.customData)
     })
   })
 

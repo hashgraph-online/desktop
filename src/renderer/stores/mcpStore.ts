@@ -4,7 +4,7 @@ import {
   MCPServerFormData,
   MCPConnectionTest,
   MCPServerType,
-  MCPServerStatus,
+  MCPServerTool,
 } from '../types/mcp';
 
 /**
@@ -126,9 +126,9 @@ export const useMCPStore = create<MCPStore>((set, get) => ({
       const { servers } = get();
 
       const diskResult = await window.electron.loadMCPServers();
-      let diskTools: any = undefined;
+      let diskTools: MCPServerTool[] | undefined = undefined;
       if (diskResult.success) {
-        const diskServer = diskResult.data?.find((s: any) => s.id === serverId);
+        const diskServer = diskResult.data?.find((s: MCPServerConfig) => s.id === serverId);
         if (diskServer && diskServer.tools && diskServer.tools.length > 0) {
           diskTools = diskServer.tools;
         }
@@ -141,7 +141,7 @@ export const useMCPStore = create<MCPStore>((set, get) => ({
             ...updates,
             updatedAt: new Date(),
           };
-          if (!updates.hasOwnProperty('tools')) {
+          if (!Object.prototype.hasOwnProperty.call(updates, 'tools')) {
             updatedServer.tools = diskTools || server.tools || [];
             if (diskTools) {
             }

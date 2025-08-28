@@ -21,6 +21,4 @@ try {
     </React.StrictMode>
   );
 } catch (error) {
-  console.error('Failed to render app:', error);
-  console.error('Error stack:', error.stack);
 }

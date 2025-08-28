@@ -1,6 +1,9 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
+import monacoEditorPlugin from 'vite-plugin-monaco-editor-esm';
+import wasm from 'vite-plugin-wasm';
+import topLevelAwait from 'vite-plugin-top-level-await';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
@@ -12,7 +15,20 @@ export default defineConfig({
   base: './',
   assetsInclude: ['**/*.md'],
   plugins: [
+    wasm(),
+    topLevelAwait(),
     react(),
+    monacoEditorPlugin({
+      languageWorkers: [
+        'editorWorkerService',
+        'typescript',
+        'json',
+        'html',
+        'css',
+      ],
+      customWorkers: [],
+      forceBuildCDN: false,
+    }),
     nodePolyfills({
       protocolImports: true,
       globals: {
@@ -32,17 +48,27 @@ export default defineConfig({
       ),
       pino: resolve(currentDir, './src/lib/pino-stub.ts'),
       'thread-stream': resolve(currentDir, './src/lib/thread-stream-stub.ts'),
+      'fs/promises': resolve(currentDir, './src/lib/fs-promises-stub.ts'),
     },
     extensions: ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.json'],
   },
   optimizeDeps: {
-    include: ['react', 'react-dom'],
+    include: ['react', 'react-dom', 'monaco-editor', '@monaco-editor/react'],
     esbuildOptions: {
       target: 'esnext',
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          monaco: ['monaco-editor'],
+        },
+      },
+    },
+  },
   server: {
-    port: 5173,
-    strictPort: true,
+    port: parseInt(process.env.VITE_PORT) || 5173,
+    strictPort: false,
   },
 });

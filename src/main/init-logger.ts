@@ -1,4 +1,10 @@
-import { setLoggerFactory } from '@hashgraphonline/standards-sdk'
-import { createElectronLogger } from './utils/electron-logger-adapter'
+import { config } from 'dotenv';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
 
-setLoggerFactory(createElectronLogger)
+const __filename = fileURLToPath(import.meta.url);
+const currentDir = dirname(__filename);
+
+const envPath = resolve(currentDir, '../../../.env');
+config({ path: envPath });
+

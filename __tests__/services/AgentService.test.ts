@@ -1,5 +1,5 @@
-import { AgentService } from '../../src/main/services/AgentService';
-import type { AgentConfig } from '../../src/main/services/AgentService';
+import { AgentService } from "./agent-service";
+import type { AgentConfig } from "./agent-service";
 import { ConversationalAgent } from '@hashgraphonline/conversational-agent';
 
 jest.mock('@hashgraphonline/conversational-agent', () => ({
@@ -30,7 +30,7 @@ describe('AgentService', () => {
   };
 
   beforeEach(() => {
-    (AgentService as any).instance = undefined;
+    (AgentService as unknown as { instance: undefined }).instance = undefined;
     agentService = AgentService.getInstance();
   });
 
@@ -130,6 +130,131 @@ describe('AgentService', () => {
       expect(status).toHaveProperty('isInitialized');
       expect(status).toHaveProperty('isInitializing');
       expect(status).toHaveProperty('sessionId');
+    });
+  });
+
+  describe('minting context detection bug', () => {
+    it('should detect minting context for topic entities without explicit NFT keywords', () => {
+      const detectMintingContext = (agentService as unknown as { detectMintingContext: (input: string) => boolean }).detectMintingContext.bind(agentService);
+      
+      expect(detectMintingContext('Can you mint Forever #1 onto the Token Id we just created?')).toBe(true);
+      expect(detectMintingContext('mint Forever #1 onto token')).toBe(true);
+      expect(detectMintingContext('Please mint the Forever #1 topic')).toBe(true);
+    });
+  });
+
+  describe('Type Safety Validation', () => {
+    describe('method return types', () => {
+      it('should return properly typed status object', () => {
+        const status = agentService.getStatus();
+        expect(typeof status.isInitialized).toBe('boolean');
+        expect(typeof status.isInitializing).toBe('boolean');
+        expect(status.sessionId === null || typeof status.sessionId === 'string').toBe(true);
+      });
+
+      it('should return boolean for status methods', () => {
+        expect(typeof agentService.isInitialized()).toBe('boolean');
+        expect(typeof agentService.isInitializing()).toBe('boolean');
+        expect(typeof agentService.isCoreFunctionalityReady()).toBe('boolean');
+        expect(typeof agentService.entityExists('0.0.123456')).toBe('boolean');
+      });
+
+      it('should return properly typed LoadingState', () => {
+        const loadingState = agentService.getLoadingState();
+        expect(typeof loadingState.isLoading).toBe('boolean');
+        expect(typeof loadingState.status).toBe('string');
+        expect(loadingState.progress === undefined || typeof loadingState.progress === 'number').toBe(true);
+        expect(loadingState.phase === undefined || typeof loadingState.phase === 'string').toBe(true);
+      });
+
+      it('should return properly typed entity arrays', () => {
+        const entities = agentService.getStoredEntities();
+        expect(Array.isArray(entities)).toBe(true);
+        
+        const entitiesWithType = agentService.getStoredEntities('token');
+        expect(Array.isArray(entitiesWithType)).toBe(true);
+      });
+    });
+
+    describe('async method return types', () => {
+      it('should return properly typed Promise results', async () => {
+        const waitResult = await agentService.waitForBackgroundTasks(1000);
+        expect(typeof waitResult).toBe('boolean');
+
+        const entityResult = await agentService.findEntityByName('test', 'token');
+        expect(entityResult === null || typeof entityResult === 'object').toBe(true);
+
+        const disconnectResult = await agentService.disconnect();
+        expect(typeof disconnectResult.success).toBe('boolean');
+        expect(disconnectResult.error === undefined || typeof disconnectResult.error === 'string').toBe(true);
+      });
+
+      it('should handle MCP methods with proper return types', async () => {
+        const connectionStatus = await agentService.getMCPConnectionStatus();
+        expect(connectionStatus === null || connectionStatus instanceof Map).toBe(true);
+
+        const isConnected = await agentService.isMCPServerConnected('test-server');
+        expect(typeof isConnected).toBe('boolean');
+
+        const summary = await agentService.getMCPConnectionSummary();
+        expect(typeof summary.total).toBe('number');
+        expect(typeof summary.connected).toBe('number');
+        expect(typeof summary.pending).toBe('number');
+        expect(typeof summary.failed).toBe('number');
+      });
+    });
+
+    describe('type-safe parameter handling', () => {
+      it('should handle entity operations with proper typing', () => {
+        expect(() => {
+          agentService.storeEntityAssociation('0.0.123456', 'TestToken', 'tx-123');
+        }).not.toThrow();
+
+        expect(() => {
+          agentService.storeEntityAssociation('0.0.789012', 'TestTopic');
+        }).not.toThrow();
+
+        const recentEntity = agentService.getMostRecentEntity('token');
+        expect(recentEntity === null || typeof recentEntity === 'object').toBe(true);
+      });
+
+      it('should handle performance metrics with proper typing', () => {
+        const metrics = agentService.getPerformanceMetrics();
+        
+        expect(typeof metrics.agentMetrics).toBe('object');
+        expect(typeof metrics.agentMetrics.totalRequests).toBe('number');
+        expect(typeof metrics.agentMetrics.successfulRequests).toBe('number');
+        expect(typeof metrics.agentMetrics.failedRequests).toBe('number');
+        expect(typeof metrics.agentMetrics.averageResponseTime).toBe('number');
+        expect(typeof metrics.agentMetrics.uptime).toBe('number');
+
+        if (metrics.mcpMetrics) {
+          expect(typeof metrics.mcpMetrics.connectedServers).toBe('number');
+          expect(typeof metrics.mcpMetrics.totalServers).toBe('number');
+          expect(typeof metrics.mcpMetrics.averageLatency).toBe('number');
+          expect(typeof metrics.mcpMetrics.errorRate).toBe('number');
+        }
+      });
+    });
+
+    describe('session context type safety', () => {
+      it('should handle session context operations safely', () => {
+        const mockContext = {
+          sessionId: 'test-session-123',
+          mode: 'personal' as const,
+          topicId: '0.0.789012'
+        };
+
+        expect(() => {
+          agentService.updateSessionContext(mockContext);
+        }).not.toThrow();
+        
+        const retrievedContext = agentService.getSessionContext();
+        expect(retrievedContext === null || typeof retrievedContext === 'object').toBe(true);
+
+        agentService.clearSessionContext();
+        expect(agentService.getSessionContext()).toBeNull();
+      });
     });
   });
 });

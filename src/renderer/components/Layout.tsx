@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from './navigation/Sidebar';
-import Typography from './ui/Typography';
-import { FiMoon, FiSun, FiUser } from 'react-icons/fi';
+import UserProfileImage from './ui/UserProfileImage';
+import { FiMoon, FiSun } from 'react-icons/fi';
 import { cn } from '../lib/utils';
 import { useConfigStore } from '../stores/configStore';
+import type { UserProfile } from '../types/userProfile';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -54,12 +55,6 @@ const ThemeToggle: React.FC = () => {
   );
 };
 
-interface UserProfile {
-  display_name?: string;
-  alias?: string;
-  profileImage?: string;
-}
-
 const ProfileButton: React.FC = () => {
   const navigate = useNavigate();
   const { config } = useConfigStore();
@@ -86,7 +81,13 @@ const ProfileButton: React.FC = () => {
 
           const profileResult = result.data;
           if (profileResult.success && profileResult.profile) {
-            setUserProfile(profileResult.profile);
+            const profile = profileResult.profile;
+
+            const mappedProfile: UserProfile = {
+              ...profile,
+              profileImage: profile.profileImage || profile.logo,
+            };
+            setUserProfile(mappedProfile);
           }
         } catch (error) {
         } finally {
@@ -116,50 +117,13 @@ const ProfileButton: React.FC = () => {
       aria-label='View profile'
       title='My Profile'
     >
-      {userProfile?.profileImage ? (
-        <img
-          src={
-            userProfile.profileImage.startsWith('hcs://')
-              ? `${userProfile.profileImage.replace(
-                  'hcs://1/',
-                  'https://kiloscribe.com/api/inscription-cdn/'
-                )}?network=${config?.hedera?.network || 'testnet'}`
-              : userProfile.profileImage.startsWith('ipfs://')
-              ? userProfile.profileImage.replace(
-                  'ipfs://',
-                  'https://gateway.pinata.cloud/ipfs/'
-                )
-              : userProfile.profileImage
-          }
-          alt={userProfile.display_name || userProfile.alias || 'Profile'}
-          className='w-6 h-6 rounded-full object-cover'
-          onError={(e) => {
-            const target = e.target as HTMLImageElement;
-            target.style.display = 'none';
-            const fallback = target.parentElement?.querySelector(
-              '.profile-icon-fallback'
-            ) as HTMLElement;
-            if (fallback) fallback.style.display = 'flex';
-          }}
-        />
-      ) : null}
-      <div
-        className={cn(
-          'profile-icon-fallback w-6 h-6 rounded-full flex items-center justify-center',
-          userProfile?.profileImage ? 'hidden' : 'flex'
-        )}
-        style={{ display: userProfile?.profileImage ? 'none' : 'flex' }}
-      >
-        {userProfile?.display_name || userProfile?.alias ? (
-          <span className='text-sm font-semibold'>
-            {(userProfile?.display_name || userProfile?.alias || '')
-              .charAt(0)
-              .toUpperCase()}
-          </span>
-        ) : (
-          <FiUser className='w-5 h-5' />
-        )}
-      </div>
+      <UserProfileImage
+        profileImage={userProfile?.profileImage}
+        displayName={userProfile?.display_name}
+        alias={userProfile?.alias}
+        network={config?.hedera?.network}
+        size='sm'
+      />
     </motion.button>
   );
 };

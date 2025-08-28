@@ -13,7 +13,15 @@ export default defineConfig({
       fileName: () => 'main.js',
     },
     rollupOptions: {
-      external: ['electron', 'better-sqlite3', 'tiktoken'],
+      external: [
+        'electron',
+        'better-sqlite3',
+        'tiktoken',
+        '@hashgraph/sdk',
+      ],
+      output: {
+        preserveModules: true,
+      },
     },
     outDir: '.vite/build',
   },

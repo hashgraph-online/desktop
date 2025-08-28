@@ -182,9 +182,9 @@ export const TransactionDetails: React.FC<TransactionDetailsProps> = (
   return (
     <div
       className={cn(
-        variant === 'default' &&
-          'bg-gradient-to-br from-gray-50 to-gray-100/50 dark:from-gray-800/30 dark:to-gray-900/40 rounded-lg p-4 border border-gray-200 dark:border-gray-700 backdrop-blur-sm shadow-sm',
-        variant === 'embedded' && 'p-0',
+        variant === 'default' ?
+          'bg-gradient-to-br from-gray-50 to-gray-100/50 dark:from-gray-800/30 dark:to-gray-900/40 rounded-lg p-4 border border-gray-200 dark:border-gray-700 backdrop-blur-sm shadow-sm' : '',
+        variant === 'embedded' ? 'p-0' : '',
         className
       )}
     >
@@ -196,14 +196,14 @@ export const TransactionDetails: React.FC<TransactionDetailsProps> = (
       />
 
       <div className='space-y-3'>
-        {scheduleId && (
+        {scheduleId ? (
           <div className='flex items-center justify-between gap-2 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-md border border-gray-200 dark:border-gray-700'>
             <div className='flex items-center gap-2'>
               <FiHash className='h-3.5 w-3.5 text-brand-blue' />
               <span>Schedule ID: {scheduleId}</span>
             </div>
             <a
-              href={`https://hashscan.io/${network}/schedule/${scheduleId}`}
+              href={`https://hashscan.io/${network === 'testnet' ? 'testnet/' : ''}transaction/${scheduleId}`}
               target='_blank'
               rel='noopener noreferrer'
               className='text-white hover:text-white/80'
@@ -211,23 +211,23 @@ export const TransactionDetails: React.FC<TransactionDetailsProps> = (
               <FiExternalLink className='w-3.5 h-3.5' />
             </a>
           </div>
-        )}
+        ) : null}
 
-        {formattedExpirationTime && (
+        {formattedExpirationTime ? (
           <div className='flex items-center gap-2 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-md border border-gray-200 dark:border-gray-700'>
             <FiClock className='h-3.5 w-3.5 text-brand-purple' />
             <span>Expires: {formattedExpirationTime}</span>
           </div>
-        )}
+        ) : null}
 
-        {memo && (
+        {memo ? (
           <div className='text-xs text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-md border border-gray-200 dark:border-gray-700'>
             <div className='font-medium mb-1'>Transaction Memo</div>
             <div className='leading-relaxed'>{memo}</div>
           </div>
-        )}
+        ) : null}
 
-        {hasTransfers && <HbarTransfersSection transfers={transfers} />}
+        {hasTransfers ? <HbarTransfersSection transfers={transfers} /> : null}
 
         {hasTokenTransfers && (
           <TokenTransfersSection
@@ -236,29 +236,32 @@ export const TransactionDetails: React.FC<TransactionDetailsProps> = (
           />
         )}
 
-        {hasTokenCreation &&
-          tokenCreationData &&
-          hasValidContent(tokenCreationData) && (
-            <TokenCreationSection
-              tokenCreationData={tokenCreationData}
-              executedTransactionEntityId={executedTransactionEntityId}
-              type={type}
-              executedTransactionType={executedTransactionType}
-              network={network}
-            />
-          )}
+        {(() => {
+          if (hasTokenCreation && tokenCreationData && hasValidContent(tokenCreationData)) {
+            return (
+              <TokenCreationSection
+                tokenCreationData={tokenCreationData}
+                executedTransactionEntityId={executedTransactionEntityId}
+                type={type}
+                executedTransactionType={executedTransactionType}
+                network={network}
+              />
+            );
+          }
+          return null;
+        })()}
 
-        {tokenMint && <TokenMintSection tokenMint={tokenMint} />}
-        {tokenBurn && <TokenBurnSection tokenBurn={tokenBurn} />}
-        {tokenUpdate && <TokenUpdateSection tokenUpdate={tokenUpdate} />}
-        {tokenDelete && <TokenDeleteSection tokenDelete={tokenDelete} />}
-        {tokenAssociate && (
+        {tokenMint ? <TokenMintSection tokenMint={tokenMint} /> : null}
+        {tokenBurn ? <TokenBurnSection tokenBurn={tokenBurn} /> : null}
+        {tokenUpdate ? <TokenUpdateSection tokenUpdate={tokenUpdate} /> : null}
+        {tokenDelete ? <TokenDeleteSection tokenDelete={tokenDelete} /> : null}
+        {tokenAssociate ? (
           <TokenAssociateSection tokenAssociate={tokenAssociate} />
-        )}
+        ) : null}
         {tokenDissociate && (
           <TokenDissociateSection tokenDissociate={tokenDissociate} />
         )}
-        {tokenFreeze && <TokenFreezeSection tokenFreeze={tokenFreeze} />}
+        {tokenFreeze ? <TokenFreezeSection tokenFreeze={tokenFreeze} /> : null}
         {tokenUnfreeze && (
           <TokenUnfreezeSection tokenUnfreeze={tokenUnfreeze} />
         )}
@@ -268,8 +271,8 @@ export const TransactionDetails: React.FC<TransactionDetailsProps> = (
         {tokenRevokeKyc && (
           <TokenRevokeKycSection tokenRevokeKyc={tokenRevokeKyc} />
         )}
-        {tokenPause && <TokenPauseSection tokenPause={tokenPause} />}
-        {tokenUnpause && <TokenUnpauseSection tokenUnpause={tokenUnpause} />}
+        {tokenPause ? <TokenPauseSection tokenPause={tokenPause} /> : null}
+        {tokenUnpause ? <TokenUnpauseSection tokenUnpause={tokenUnpause} /> : null}
         {tokenWipeAccount && (
           <TokenWipeSection tokenWipeAccount={tokenWipeAccount} />
         )}
@@ -279,12 +282,12 @@ export const TransactionDetails: React.FC<TransactionDetailsProps> = (
           />
         )}
 
-        {hasAirdrop && airdropData && (
+        {hasAirdrop && airdropData ? (
           <AirdropSection
             airdropData={airdropData}
             tokenInfoMap={tokenInfoMap}
           />
-        )}
+        ) : null}
 
         {cryptoCreateAccount && (
           <CryptoCreateAccountSection
@@ -296,7 +299,7 @@ export const TransactionDetails: React.FC<TransactionDetailsProps> = (
             cryptoUpdateAccount={cryptoUpdateAccount}
           />
         )}
-        {cryptoDelete && <CryptoDeleteSection cryptoDelete={cryptoDelete} />}
+        {cryptoDelete ? <CryptoDeleteSection cryptoDelete={cryptoDelete} /> : null}
         {cryptoApproveAllowance && (
           <CryptoApproveAllowanceSection
             cryptoApproveAllowance={cryptoApproveAllowance}
@@ -308,7 +311,7 @@ export const TransactionDetails: React.FC<TransactionDetailsProps> = (
           />
         )}
 
-        {contractCall && <ContractCallSection contractCall={contractCall} />}
+        {contractCall ? <ContractCallSection contractCall={contractCall} /> : null}
         {contractCreate && (
           <ContractCreateSection contractCreate={contractCreate} />
         )}
@@ -319,37 +322,37 @@ export const TransactionDetails: React.FC<TransactionDetailsProps> = (
           <ContractDeleteSection contractDelete={contractDelete} />
         )}
 
-        {hasValidContent(consensusCreateTopic) && consensusCreateTopic && (
+        {hasValidContent(consensusCreateTopic) && consensusCreateTopic ? (
           <ConsensusCreateTopicSection
             consensusCreateTopic={consensusCreateTopic}
           />
-        )}
-        {hasValidContent(consensusSubmitMessage) && consensusSubmitMessage && (
+        ) : null}
+        {hasValidContent(consensusSubmitMessage) && consensusSubmitMessage ? (
           <ConsensusSubmitMessageSection
             consensusSubmitMessage={consensusSubmitMessage}
           />
-        )}
-        {hasValidContent(consensusUpdateTopic) && consensusUpdateTopic && (
+        ) : null}
+        {hasValidContent(consensusUpdateTopic) && consensusUpdateTopic ? (
           <ConsensusUpdateTopicSection
             consensusUpdateTopic={consensusUpdateTopic}
           />
-        )}
-        {hasValidContent(consensusDeleteTopic) && consensusDeleteTopic && (
+        ) : null}
+        {hasValidContent(consensusDeleteTopic) && consensusDeleteTopic ? (
           <ConsensusDeleteTopicSection
             consensusDeleteTopic={consensusDeleteTopic}
           />
-        )}
+        ) : null}
 
         {scheduleCreate && (
           <ScheduleCreateSection scheduleCreate={scheduleCreate} />
         )}
-        {scheduleSign && <ScheduleSignSection scheduleSign={scheduleSign} />}
+        {scheduleSign ? <ScheduleSignSection scheduleSign={scheduleSign} /> : null}
         {scheduleDelete && (
           <ScheduleDeleteSection scheduleDelete={scheduleDelete} />
         )}
 
-        {utilPrng && <UtilPrngSection utilPrng={utilPrng} />}
-        {freeze && <FreezeSection freeze={freeze} />}
+        {utilPrng ? <UtilPrngSection utilPrng={utilPrng} /> : null}
+        {freeze ? <FreezeSection freeze={freeze} /> : null}
       </div>
     </div>
   );

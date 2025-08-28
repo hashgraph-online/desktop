@@ -349,7 +349,7 @@ export function HCS10ProfileRegistration() {
 
           <Typography
             variant='h1'
-            className='text-3xl font-bold bg-gradient-to-r from-[#a679f0] via-[#5599fe] to-[#48df7b] bg-clip-text text-transparent'
+            className='text-3xl font-bold bg-gradient-to-r from-hgo-purple via-hgo-blue to-hgo-green bg-clip-text text-transparent'
           >
             Profile Registration
           </Typography>

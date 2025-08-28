@@ -30,6 +30,198 @@ type ViewMode = 'installed' | 'catalog'
 
 interface PluginsPageProps {}
 
+interface PluginCardProps {
+  plugin: PluginConfig;
+  updateAvailable: boolean;
+  progress?: any;
+  isInstalling: boolean;
+  onToggle: (pluginId: string, enabled: boolean) => void;
+  onUpdate: (pluginId: string) => void;
+  onUninstall: (pluginId: string) => void;
+}
+
+const PluginCard: React.FC<PluginCardProps> = ({ 
+  plugin, 
+  updateAvailable, 
+  progress, 
+  isInstalling,
+  onToggle,
+  onUpdate,
+  onUninstall
+}) => {
+  return (
+    <Card 
+      className={cn(
+        "group hover:shadow-md transition-all duration-200 border overflow-hidden",
+        plugin.enabled && "border-hgo-blue/30 bg-gradient-to-br from-hgo-blue/5 to-transparent"
+      )}
+    >
+      <CardContent className="p-3">
+        <div className="flex items-start justify-between mb-1.5">
+          <div className="flex-1">
+            <Typography variant="h6" className="font-medium text-sm mb-1">
+              {plugin.name}
+            </Typography>
+            <div className="flex items-center gap-2">
+              <Typography variant="body2" className="text-xs text-muted-foreground">
+                v{plugin.version}
+              </Typography>
+              {updateAvailable && (
+                <span className="text-xs px-1.5 py-0.5 bg-hgo-blue text-white rounded">
+                  Update available
+                </span>
+              )}
+            </div>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onToggle(plugin.id, !plugin.enabled)}
+            className={cn(
+              "h-6 w-6 p-0 transition-colors",
+              plugin.enabled 
+                ? "text-hgo-blue hover:text-hgo-blue-darker" 
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {plugin.enabled ? (
+              <Power className="h-3.5 w-3.5" />
+            ) : (
+              <PowerOff className="h-3.5 w-3.5" />
+            )}
+          </Button>
+        </div>
+        
+        <Typography variant="body2" className="text-xs text-muted-foreground mb-2 line-clamp-2">
+          {plugin.metadata.description}
+        </Typography>
+        
+        {progress && (
+          <div className="mb-2">
+            <div className="flex items-center justify-between text-xs mb-1">
+              <span className="text-muted-foreground">{progress.phase}</span>
+              {progress.progress ? <span className="text-hgo-blue">{progress.progress}%</span> : null}
+            </div>
+            <div className="w-full bg-muted rounded-full h-1 overflow-hidden">
+              <div 
+                className="h-full bg-hgo-blue transition-all duration-300"
+                style={{ width: `${progress.progress || 0}%` }}
+              />
+            </div>
+          </div>
+        )}
+        
+        <div className="flex items-center gap-2">
+          {updateAvailable && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => onUpdate(plugin.id)}
+              disabled={isInstalling}
+              className="h-6 px-2 text-xs"
+            >
+              <RefreshCw className="h-3 w-3" />
+            </Button>
+          )}
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => onUninstall(plugin.id)}
+            disabled={isInstalling}
+            className="h-6 px-2 text-xs text-muted-foreground hover:text-destructive"
+          >
+            <Trash2 className="h-3 w-3" />
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+interface SearchResultCardProps {
+  result: PluginSearchResult;
+  installed: boolean;
+  installing: boolean;
+  isInstalling: boolean;
+  onInstall: (name: string) => void;
+}
+
+const SearchResultCard: React.FC<SearchResultCardProps> = ({ 
+  result, 
+  installed, 
+  installing, 
+  isInstalling,
+  onInstall
+}) => {
+  return (
+    <Card className="group hover:shadow-md transition-all duration-200">
+      <CardContent className="p-3">
+        <div className="flex items-start justify-between mb-1.5">
+          <div className="flex-1">
+            <Typography variant="h6" className="font-medium text-sm mb-1">
+              {result.name}
+            </Typography>
+            <Typography variant="body2" className="text-xs text-muted-foreground">
+              v{result.version}
+            </Typography>
+          </div>
+          {installed && (
+            <div className="flex items-center gap-1 text-hgo-blue">
+              <CheckCircle className="h-3.5 w-3.5" />
+              <span className="text-xs">Installed</span>
+            </div>
+          )}
+        </div>
+        
+        <Typography variant="body2" className="text-xs text-muted-foreground mb-2 line-clamp-2">
+          {result.description}
+        </Typography>
+        
+        {result.score && (
+          <div className="flex items-center gap-3 mb-2">
+            <div className="flex items-center gap-1">
+              <div className="h-1 w-16 bg-muted rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-hgo-blue"
+                  style={{ width: `${result.score.detail.quality * 100}%` }}
+                />
+              </div>
+              <span className="text-xs text-muted-foreground">Quality</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="h-1 w-16 bg-muted rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-hgo-blue/70"
+                  style={{ width: `${result.score.detail.popularity * 100}%` }}
+                />
+              </div>
+              <span className="text-xs text-muted-foreground">Popular</span>
+            </div>
+          </div>
+        )}
+        
+        {!installed && (
+          <Button
+            size="sm"
+            onClick={() => onInstall(result.name)}
+            disabled={installing || isInstalling}
+            className="h-6 px-3 text-xs bg-hgo-blue text-white hover:bg-hgo-blue-darker border-0"
+          >
+            {installing ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <>
+                <Download className="h-3 w-3 mr-1" />
+                Install
+              </>
+            )}
+          </Button>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
 /**
  * Main page for plugin management with discovery, installation, and configuration
  */
@@ -141,172 +333,7 @@ const PluginsPage: React.FC<PluginsPageProps> = () => {
     }
   }
 
-  const renderPluginCard = (plugin: PluginConfig) => {
-    const updateAvailable = updateInfo[plugin.id]
-    const progress = installProgress[plugin.id]
-    
-    return (
-      <Card 
-        key={plugin.id} 
-        className={cn(
-          "group hover:shadow-md transition-all duration-200 border overflow-hidden",
-          plugin.enabled && "border-[#5599fe]/30 bg-gradient-to-br from-[#5599fe]/5 to-transparent"
-        )}
-      >
-        <CardContent className="p-3">
-          <div className="flex items-start justify-between mb-1.5">
-            <div className="flex-1">
-              <Typography variant="h6" className="font-medium text-sm mb-1">
-                {plugin.name}
-              </Typography>
-              <div className="flex items-center gap-2">
-                <Typography variant="body2" className="text-xs text-muted-foreground">
-                  v{plugin.version}
-                </Typography>
-                {updateAvailable && (
-                  <span className="text-xs px-1.5 py-0.5 bg-[#5599fe] text-white rounded">
-                    Update available
-                  </span>
-                )}
-              </div>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleTogglePlugin(plugin.id, !plugin.enabled)}
-              className={cn(
-                "h-6 w-6 p-0 transition-colors",
-                plugin.enabled 
-                  ? "text-[#5599fe] hover:text-[#4488ed]" 
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              {plugin.enabled ? (
-                <Power className="h-3.5 w-3.5" />
-              ) : (
-                <PowerOff className="h-3.5 w-3.5" />
-              )}
-            </Button>
-          </div>
-          
-          <Typography variant="body2" className="text-xs text-muted-foreground mb-2 line-clamp-2">
-            {plugin.metadata.description}
-          </Typography>
-          
-          {progress && (
-            <div className="mb-2">
-              <div className="flex items-center justify-between text-xs mb-1">
-                <span className="text-muted-foreground">{progress.phase}</span>
-                {progress.progress && <span className="text-[#5599fe]">{progress.progress}%</span>}
-              </div>
-              <div className="w-full bg-muted rounded-full h-1 overflow-hidden">
-                <div 
-                  className="h-full bg-[#5599fe] transition-all duration-300"
-                  style={{ width: `${progress.progress || 0}%` }}
-                />
-              </div>
-            </div>
-          )}
-          
-          <div className="flex items-center gap-2">
-            {updateAvailable && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => handleUpdatePlugin(plugin.id)}
-                disabled={isInstalling}
-                className="h-6 px-2 text-xs"
-              >
-                <RefreshCw className="h-3 w-3" />
-              </Button>
-            )}
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => handleUninstallPlugin(plugin.id)}
-              disabled={isInstalling}
-              className="h-6 px-2 text-xs text-muted-foreground hover:text-destructive"
-            >
-              <Trash2 className="h-3 w-3" />
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
 
-  const renderSearchResultCard = (result: PluginSearchResult) => {
-    const installed = isPluginInstalled(result.name)
-    const installing = installingPlugins.has(result.name)
-    
-    return (
-      <Card key={result.name} className="group hover:shadow-md transition-all duration-200">
-        <CardContent className="p-3">
-          <div className="flex items-start justify-between mb-1.5">
-            <div className="flex-1">
-              <Typography variant="h6" className="font-medium text-sm mb-1">
-                {result.name}
-              </Typography>
-              <Typography variant="body2" className="text-xs text-muted-foreground">
-                v{result.version}
-              </Typography>
-            </div>
-            {installed && (
-              <div className="flex items-center gap-1 text-[#5599fe]">
-                <CheckCircle className="h-3.5 w-3.5" />
-                <span className="text-xs">Installed</span>
-              </div>
-            )}
-          </div>
-          
-          <Typography variant="body2" className="text-xs text-muted-foreground mb-2 line-clamp-2">
-            {result.description}
-          </Typography>
-          
-          {result.score && (
-            <div className="flex items-center gap-3 mb-2">
-              <div className="flex items-center gap-1">
-                <div className="h-1 w-16 bg-muted rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-[#5599fe]"
-                    style={{ width: `${result.score.detail.quality * 100}%` }}
-                  />
-                </div>
-                <span className="text-xs text-muted-foreground">Quality</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <div className="h-1 w-16 bg-muted rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-[#5599fe]/70"
-                    style={{ width: `${result.score.detail.popularity * 100}%` }}
-                  />
-                </div>
-                <span className="text-xs text-muted-foreground">Popular</span>
-              </div>
-            </div>
-          )}
-          
-          {!installed && (
-            <Button
-              size="sm"
-              onClick={() => handleInstallPlugin(result.name)}
-              disabled={installing || isInstalling}
-              className="h-6 px-3 text-xs bg-[#5599fe] text-white hover:bg-[#4488ed] border-0"
-            >
-              {installing ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
-              ) : (
-                <>
-                  <Download className="h-3 w-3 mr-1" />
-                  Install
-                </>
-              )}
-            </Button>
-          )}
-        </CardContent>
-      </Card>
-    )
-  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -315,10 +342,10 @@ const PluginsPage: React.FC<PluginsPageProps> = () => {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <Typography variant="h1" className="text-3xl font-bold bg-gradient-to-r from-[#a679f0] via-[#5599fe] to-[#48df7b] bg-clip-text text-transparent">
+              <Typography variant="h1" className="text-3xl font-bold bg-gradient-to-r from-hgo-purple via-hgo-blue to-hgo-green bg-clip-text text-transparent">
                 Plugins
               </Typography>
-              <div className="px-2 py-1 bg-[#5599fe]/20 text-[#5599fe] dark:text-[#5599fe] rounded-md text-xs font-semibold">
+              <div className="px-2 py-1 bg-hgo-blue/20 text-hgo-blue dark:text-hgo-blue rounded-md text-xs font-semibold">
                 COMING SOON
               </div>
             </div>
@@ -330,7 +357,7 @@ const PluginsPage: React.FC<PluginsPageProps> = () => {
                 disabled
                 className={cn(
                   "transition-all",
-                  viewMode === 'installed' && "bg-[#5599fe] text-white hover:bg-[#4488ed]"
+                  viewMode === 'installed' && "bg-hgo-blue text-white hover:bg-hgo-blue-dark"
                 )}
               >
                 <List className="h-4 w-4 mr-2" />
@@ -342,7 +369,7 @@ const PluginsPage: React.FC<PluginsPageProps> = () => {
                 disabled
                 className={cn(
                   "transition-all",
-                  viewMode === 'catalog' && "bg-[#5599fe] text-white hover:bg-[#4488ed]"
+                  viewMode === 'catalog' && "bg-hgo-blue text-white hover:bg-hgo-blue-dark"
                 )}
               >
                 <Grid3x3 className="h-4 w-4 mr-2" />
@@ -356,11 +383,11 @@ const PluginsPage: React.FC<PluginsPageProps> = () => {
           </Typography>
           
           {/* Coming Soon Notice - Made more prominent */}
-          <div className="p-4 bg-gradient-to-br from-[#5599fe]/20 to-[#5599fe]/10 rounded-lg border-2 border-[#5599fe]/30">
+          <div className="p-4 bg-gradient-to-br from-hgo-blue/20 to-hgo-blue/10 rounded-lg border-2 border-hgo-blue/30">
             <div className="flex items-start gap-3">
-              <Info className="h-5 w-5 text-[#5599fe] mt-0.5" />
+              <Info className="h-5 w-5 text-hgo-blue mt-0.5" />
               <div>
-                <Typography variant="body1" className="font-semibold text-[#5599fe] mb-1">
+                <Typography variant="body1" className="font-semibold text-hgo-blue mb-1">
                   Plugin System Under Development
                 </Typography>
                 <Typography variant="body2" className="text-sm text-muted-foreground">
@@ -368,15 +395,15 @@ const PluginsPage: React.FC<PluginsPageProps> = () => {
                 </Typography>
                 <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
                   <li className="flex items-center gap-2">
-                    <div className="w-1 h-1 rounded-full bg-[#5599fe]" />
+                    <div className="w-1 h-1 rounded-full bg-hgo-blue" />
                     Install plugins from the NPM registry
                   </li>
                   <li className="flex items-center gap-2">
-                    <div className="w-1 h-1 rounded-full bg-[#5599fe]" />
+                    <div className="w-1 h-1 rounded-full bg-hgo-blue" />
                     Extend your agent with custom tools and integrations
                   </li>
                   <li className="flex items-center gap-2">
-                    <div className="w-1 h-1 rounded-full bg-[#5599fe]" />
+                    <div className="w-1 h-1 rounded-full bg-hgo-blue" />
                     Manage plugin configurations and permissions
                   </li>
                 </ul>
@@ -409,10 +436,10 @@ const PluginsPage: React.FC<PluginsPageProps> = () => {
         )}
 
         {/* Coming Soon Message - Moved up */}
-        <div className="text-center py-8 mb-6 bg-gradient-to-br from-[#5599fe]/5 to-[#5599fe]/10 rounded-xl border border-[#5599fe]/20">
+        <div className="text-center py-8 mb-6 bg-gradient-to-br from-hgo-blue/5 to-hgo-blue/10 rounded-xl border border-hgo-blue/20">
           <div className="max-w-md mx-auto">
-            <div className="w-16 h-16 bg-gradient-to-br from-[#5599fe]/20 to-[#5599fe]/10 rounded-xl flex items-center justify-center mx-auto mb-4">
-              <Wrench className="w-8 h-8 text-[#5599fe]" />
+            <div className="w-16 h-16 bg-gradient-to-br from-hgo-blue/20 to-hgo-blue/10 rounded-xl flex items-center justify-center mx-auto mb-4">
+              <Wrench className="w-8 h-8 text-hgo-blue" />
             </div>
             <Typography variant="h4" className="font-bold mb-2">
               Plugin System Coming Soon
@@ -420,7 +447,7 @@ const PluginsPage: React.FC<PluginsPageProps> = () => {
             <Typography variant="body1" className="text-muted-foreground mb-4">
               We're working hard to bring you an amazing plugin ecosystem. Check back soon!
             </Typography>
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#5599fe]/10 text-[#5599fe] rounded-full text-sm">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-hgo-blue/10 text-hgo-blue rounded-full text-sm">
               <Loader2 className="w-3 h-3 animate-spin" />
               In Development
             </div>
@@ -467,8 +494,8 @@ const PluginsPage: React.FC<PluginsPageProps> = () => {
                 ) : installedPluginsList.length === 0 ? (
                   <Card className="border-dashed border-2">
                     <CardContent className="p-12 text-center">
-                      <div className="w-16 h-16 bg-gradient-to-br from-[#5599fe]/20 to-[#5599fe]/10 rounded-xl flex items-center justify-center mx-auto mb-3">
-                        <Package className="h-8 w-8 text-[#5599fe]" />
+                      <div className="w-16 h-16 bg-gradient-to-br from-hgo-blue/20 to-hgo-blue/10 rounded-xl flex items-center justify-center mx-auto mb-3">
+                        <Package className="h-8 w-8 text-hgo-blue" />
                       </div>
                       <Typography variant="h5" className="text-lg mb-2">
                         No Plugins Installed
@@ -479,7 +506,7 @@ const PluginsPage: React.FC<PluginsPageProps> = () => {
                       <Button
                         onClick={() => setViewMode('catalog')}
                         size="sm"
-                        className="bg-[#5599fe] text-white hover:bg-[#4488ed] border-0"
+                        className="bg-hgo-blue text-white hover:bg-hgo-blue-dark border-0"
                       >
                         <Grid3x3 className="h-3.5 w-3.5 mr-1.5" />
                         Browse Catalog
@@ -488,7 +515,18 @@ const PluginsPage: React.FC<PluginsPageProps> = () => {
                   </Card>
                 ) : (
                   <div className="grid gap-3">
-                    {installedPluginsList.map(plugin => renderPluginCard(plugin))}
+                    {installedPluginsList.map(plugin => (
+                      <PluginCard
+                        key={plugin.id}
+                        plugin={plugin}
+                        updateAvailable={!!updateInfo[plugin.id]}
+                        progress={installProgress[plugin.id]}
+                        isInstalling={isInstalling}
+                        onToggle={handleTogglePlugin}
+                        onUpdate={handleUpdatePlugin}
+                        onUninstall={handleUninstallPlugin}
+                      />
+                    ))}
                   </div>
                 )}
               </>
@@ -514,13 +552,22 @@ const PluginsPage: React.FC<PluginsPageProps> = () => {
                   </Card>
                 ) : searchResults.length > 0 ? (
                   <div className="grid gap-3">
-                    {searchResults.map(result => renderSearchResultCard(result))}
+                    {searchResults.map(result => (
+                      <SearchResultCard
+                        key={result.name}
+                        result={result}
+                        installed={isPluginInstalled(result.name)}
+                        installing={installingPlugins.has(result.name)}
+                        isInstalling={isInstalling}
+                        onInstall={handleInstallPlugin}
+                      />
+                    ))}
                   </div>
                 ) : (
                   <Card className="border-dashed border-2">
                     <CardContent className="p-12 text-center">
-                      <div className="w-16 h-16 bg-gradient-to-br from-[#5599fe]/20 to-[#5599fe]/10 rounded-xl flex items-center justify-center mx-auto mb-3">
-                        <Puzzle className="h-8 w-8 text-[#5599fe]" />
+                      <div className="w-16 h-16 bg-gradient-to-br from-hgo-blue/20 to-hgo-blue/10 rounded-xl flex items-center justify-center mx-auto mb-3">
+                        <Puzzle className="h-8 w-8 text-hgo-blue" />
                       </div>
                       <Typography variant="body1" className="text-sm text-muted-foreground">
                         Enter a search term to discover plugins
@@ -536,7 +583,7 @@ const PluginsPage: React.FC<PluginsPageProps> = () => {
           <div className="space-y-4">
 
             <Card className="overflow-hidden">
-              <div className="h-0.5 bg-[#5599fe]" />
+              <div className="h-0.5 bg-hgo-blue" />
               <CardContent className="p-4">
                 <Typography variant="h6" className="font-medium text-sm mb-3">
                   Statistics
@@ -554,7 +601,7 @@ const PluginsPage: React.FC<PluginsPageProps> = () => {
                     <Typography variant="body2" className="text-xs text-muted-foreground">
                       Enabled
                     </Typography>
-                    <Typography variant="body2" className="text-xs font-medium text-[#5599fe]">
+                    <Typography variant="body2" className="text-xs font-medium text-hgo-blue">
                       {getEnabledPlugins().length}
                     </Typography>
                   </div>
@@ -562,7 +609,7 @@ const PluginsPage: React.FC<PluginsPageProps> = () => {
                     <Typography variant="body2" className="text-xs text-muted-foreground">
                       Updates
                     </Typography>
-                    <Typography variant="body2" className="text-xs font-medium text-[#5599fe]">
+                    <Typography variant="body2" className="text-xs font-medium text-hgo-blue">
                       {Object.keys(updateInfo).length}
                     </Typography>
                   </div>
@@ -590,7 +637,7 @@ const PluginsPage: React.FC<PluginsPageProps> = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="w-full justify-start h-8 text-xs border-[#5599fe]/30 hover:bg-[#5599fe]/5"
+                    className="w-full justify-start h-8 text-xs border-hgo-blue/30 hover:bg-hgo-blue/5"
                     onClick={() => setViewMode('catalog')}
                   >
                     <Search className="h-3.5 w-3.5 mr-1.5" />
@@ -601,35 +648,35 @@ const PluginsPage: React.FC<PluginsPageProps> = () => {
             </Card>
 
 
-            <Card className="bg-gradient-to-br from-[#5599fe]/10 to-[#5599fe]/5 border-[#5599fe]/20">
+            <Card className="bg-gradient-to-br from-hgo-blue/10 to-hgo-blue/5 border-hgo-blue/20">
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 mb-3">
-                  <Info className="h-3.5 w-3.5 text-[#5599fe]" />
+                  <Info className="h-3.5 w-3.5 text-hgo-blue" />
                   <Typography variant="h6" className="font-medium text-sm">
                     Coming Soon
                   </Typography>
                 </div>
                 <div className="space-y-1.5">
                   <div className="flex items-center gap-2">
-                    <div className="w-1 h-1 rounded-full bg-[#5599fe]" />
+                    <div className="w-1 h-1 rounded-full bg-hgo-blue" />
                     <Typography variant="body2" className="text-xs text-muted-foreground">
                       Local development
                     </Typography>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="w-1 h-1 rounded-full bg-[#5599fe]/70" />
+                    <div className="w-1 h-1 rounded-full bg-hgo-blue/70" />
                     <Typography variant="body2" className="text-xs text-muted-foreground">
                       Custom registries
                     </Typography>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="w-1 h-1 rounded-full bg-[#5599fe]/50" />
+                    <div className="w-1 h-1 rounded-full bg-hgo-blue/50" />
                     <Typography variant="body2" className="text-xs text-muted-foreground">
                       Permissions
                     </Typography>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="w-1 h-1 rounded-full bg-[#5599fe]/30" />
+                    <div className="w-1 h-1 rounded-full bg-hgo-blue/30" />
                     <Typography variant="body2" className="text-xs text-muted-foreground">
                       Advanced config
                     </Typography>

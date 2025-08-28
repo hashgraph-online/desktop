@@ -13,6 +13,86 @@ interface MyAgentsListProps {
   className?: string;
 }
 
+interface AgentProfileCardProps {
+  profile: any;
+  onNavigate: () => void;
+}
+
+/**
+ * Component to display a single agent profile card
+ */
+const AgentProfileCard: React.FC<AgentProfileCardProps> = ({ profile, onNavigate }) => {
+  return (
+    <div
+      className='p-4 sm:p-6 rounded-2xl border border-gray-200/50 dark:border-white/[0.06] bg-white/80 dark:bg-black/40 backdrop-blur-sm hover:border-hgo-blue/50 dark:hover:border-hgo-blue/50 transition-all duration-200 cursor-pointer group hover:shadow-lg hover:shadow-hgo-blue/10 dark:hover:shadow-hgo-blue/20'
+      onClick={onNavigate}
+    >
+      <div className='flex flex-col sm:flex-row sm:items-start gap-4'>
+        {profile.profileImage ? (
+          <img
+            src={profile.profileImage}
+            alt={profile.name}
+            className='w-16 h-16 sm:w-12 sm:h-12 rounded-xl object-cover flex-shrink-0'
+          />
+        ) : (
+          <div className='w-16 h-16 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-hgo-blue/20 to-hgo-purple/20 dark:from-hgo-blue/30 dark:to-hgo-purple/30 flex items-center justify-center flex-shrink-0 backdrop-blur-sm'>
+            <User className='h-8 w-8 sm:h-6 sm:w-6 text-hgo-blue dark:text-hgo-blue' />
+          </div>
+        )}
+
+        <div className='flex-1 min-w-0 space-y-3'>
+          <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2'>
+            <div className='flex items-center gap-2 flex-wrap'>
+              <Typography
+                variant='body1'
+                className='font-semibold text-gray-900 dark:text-white truncate'
+              >
+                {profile.name}
+              </Typography>
+              <Badge
+                variant='secondary'
+                className='text-xs'
+              >
+                {profile.status}
+              </Badge>
+            </div>
+            <ExternalLink className='h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0' />
+          </div>
+
+          <Typography
+            variant='body2'
+            className='text-muted-foreground line-clamp-2'
+          >
+            {profile.description}
+          </Typography>
+
+          <div className='flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 text-sm text-muted-foreground'>
+            <span className='flex items-center gap-1.5'>
+              <Activity className='h-4 w-4' />
+              {profile.capabilities.length} capabilities
+            </span>
+            <span className='flex items-center gap-1.5'>
+              <Calendar className='h-4 w-4' />
+              {formatDistanceToNow(profile.registeredAt, {
+                addSuffix: true,
+              })}
+            </span>
+          </div>
+
+          <div className='bg-gray-100/30 dark:bg-white/5 backdrop-blur-sm rounded-lg p-2 sm:p-3 border border-gray-200/50 dark:border-white/[0.06]'>
+            <Typography
+              variant='caption'
+              className='font-mono text-gray-600 dark:text-gray-400 break-all text-[10px]'
+            >
+              {profile.accountId}
+            </Typography>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 /**
  * Component to display registered HCS-10 agents
  */
@@ -99,86 +179,10 @@ export function MyAgentsList({ className }: MyAgentsListProps) {
             </Button>
           </div>
         ) : (
-          <div>
-            {(() => {
-              const profile = profiles[0];
-              return (
-                <div
-                  className='p-4 sm:p-6 rounded-2xl border border-gray-200/50 dark:border-white/[0.06] bg-white/80 dark:bg-black/40 backdrop-blur-sm hover:border-[#5599fe]/50 dark:hover:border-[#5599fe]/50 transition-all duration-200 cursor-pointer group hover:shadow-lg hover:shadow-[#5599fe]/10 dark:hover:shadow-[#5599fe]/20'
-                  onClick={() => {
-                    navigate('/hcs10-profile');
-                  }}
-                >
-                  <div className='flex flex-col sm:flex-row sm:items-start gap-4'>
-                    {profile.profileImage ? (
-                      <img
-                        src={profile.profileImage}
-                        alt={profile.name}
-                        className='w-16 h-16 sm:w-12 sm:h-12 rounded-xl object-cover flex-shrink-0'
-                      />
-                    ) : (
-                      <div className='w-16 h-16 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-[#5599fe]/20 to-[#a679f0]/20 dark:from-[#5599fe]/30 dark:to-[#a679f0]/30 flex items-center justify-center flex-shrink-0 backdrop-blur-sm'>
-                        <User className='h-8 w-8 sm:h-6 sm:w-6 text-[#5599fe] dark:text-[#5599fe]' />
-                      </div>
-                    )}
-
-                    <div className='flex-1 min-w-0 space-y-3'>
-                      <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2'>
-                        <div className='flex items-center gap-2 flex-wrap'>
-                          <Typography
-                            variant='body1'
-                            className='font-semibold text-base sm:text-sm'
-                          >
-                            {profile.name}
-                          </Typography>
-                          <Badge
-                            variant={
-                              profile.status === 'active'
-                                ? 'default'
-                                : 'secondary'
-                            }
-                            className='text-xs'
-                          >
-                            {profile.status}
-                          </Badge>
-                        </div>
-                        <ExternalLink className='h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0' />
-                      </div>
-
-                      <Typography
-                        variant='body2'
-                        className='text-muted-foreground line-clamp-2'
-                      >
-                        {profile.description}
-                      </Typography>
-
-                      <div className='flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 text-sm text-muted-foreground'>
-                        <span className='flex items-center gap-1.5'>
-                          <Activity className='h-4 w-4' />
-                          {profile.capabilities.length} capabilities
-                        </span>
-                        <span className='flex items-center gap-1.5'>
-                          <Calendar className='h-4 w-4' />
-                          {formatDistanceToNow(profile.registeredAt, {
-                            addSuffix: true,
-                          })}
-                        </span>
-                      </div>
-
-                      <div className='bg-gray-100/30 dark:bg-white/5 backdrop-blur-sm rounded-lg p-2 sm:p-3 border border-gray-200/50 dark:border-white/[0.06]'>
-                        <Typography
-                          variant='caption'
-                          className='font-mono text-gray-600 dark:text-gray-400 break-all text-[10px]'
-                        >
-                          {profile.accountId}
-                        </Typography>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
+          <AgentProfileCard 
+            profile={profiles[0]} 
+            onNavigate={() => navigate('/hcs10-profile')} 
+          />
         )}
       </CardContent>
     </Card>

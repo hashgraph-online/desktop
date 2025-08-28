@@ -1,11 +1,13 @@
+type LogArgument = string | number | boolean | Error | Record<string, unknown> | unknown[];
+
 declare module 'electron-log' {
   export interface LogFunctions {
-    error(...args: any[]): void;
-    warn(...args: any[]): void;
-    info(...args: any[]): void;
-    verbose(...args: any[]): void;
-    debug(...args: any[]): void;
-    silly(...args: any[]): void;
+    error(...args: LogArgument[]): void;
+    warn(...args: LogArgument[]): void;
+    info(...args: LogArgument[]): void;
+    verbose(...args: LogArgument[]): void;
+    debug(...args: LogArgument[]): void;
+    silly(...args: LogArgument[]): void;
   }
 
   export interface Transport {
@@ -22,7 +24,7 @@ declare module 'electron-log' {
   }
 
   export interface Variables {
-    [key: string]: any;
+    [key: string]: unknown;
   }
 
   export interface ElectronLog extends LogFunctions {

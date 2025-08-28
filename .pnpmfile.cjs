@@ -9,15 +9,15 @@ module.exports = {
           delete pkg.dependencies[pkg.name];
         }
       }
-      
+
       // Fix for electron dependencies
       if (pkg.name === 'electron' || pkg.name.startsWith('@electron')) {
         // Ensure electron deps are hoisted properly
         pkg.publishConfig = pkg.publishConfig || {};
         pkg.publishConfig.hoist = true;
       }
-      
+
       return pkg;
-    }
-  }
+    },
+  },
 };

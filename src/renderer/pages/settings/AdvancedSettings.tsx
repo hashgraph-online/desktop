@@ -196,7 +196,7 @@ export const AdvancedSettings: React.FC<AdvancedSettingsProps> = () => {
                 ) : (
                   <div className="space-y-3 p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
                     <div className="flex items-start gap-2">
-                      <FiAlertTriangle className="w-5 h-5 text-[#a679f0] mt-0.5" />
+                      <FiAlertTriangle className="w-5 h-5 text-hgo-purple mt-0.5" />
                       <div className="space-y-2 flex-1">
                         <Typography variant="body2" className="font-medium">
                           Reset Legal Agreements?
@@ -217,7 +217,7 @@ export const AdvancedSettings: React.FC<AdvancedSettingsProps> = () => {
                       </Button>
                       <Button
                         size="sm"
-                        className="bg-gradient-to-r from-[#a679f0] to-[#5599fe] hover:from-[#9568e0] hover:to-[#4488ee] text-white"
+                        className="bg-gradient-to-r from-hgo-purple to-hgo-blue hover:from-purple-variant-400 hover:to-hgo-blue-dark text-white"
                         onClick={() => {
                           resetLegal()
                           setTimeout(() => {

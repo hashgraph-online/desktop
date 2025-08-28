@@ -8,39 +8,172 @@ import type {
   PluginInstallProgress,
 } from '../shared/types/plugin';
 
+export interface AppConfig {
+  hedera?: {
+    accountId?: string;
+    privateKey?: string;
+    network?: 'testnet' | 'mainnet';
+  };
+  openai?: {
+    apiKey?: string;
+  };
+  anthropic?: {
+    apiKey?: string;
+  };
+  theme?: 'light' | 'dark' | 'system';
+  autoStart?: boolean;
+  logLevel?: 'debug' | 'info' | 'warn' | 'error';
+  [key: string]: unknown;
+}
+
+export interface ConnectionCredentials {
+  accountId?: string;
+  privateKey?: string;
+  apiKey?: string;
+  network?: string;
+  [key: string]: unknown;
+}
+
+export interface ConnectionTestResult {
+  success: boolean;
+  error?: string;
+  data?: Record<string, unknown>;
+}
+
+export interface MessageData {
+  content: string;
+  conversationId?: string;
+  timestamp?: number;
+  [key: string]: unknown;
+}
+
+export interface AgentConfig {
+  operationalMode?: 'autonomous' | 'provideBytes';
+  openaiApiKey?: string;
+  anthropicApiKey?: string;
+  network?: string;
+  accountId?: string;
+  privateKey?: string;
+  mcpServers?: unknown[];
+  [key: string]: unknown;
+}
+
+export interface AgentResponse {
+  content?: string;
+  error?: string;
+  timestamp?: number;
+  conversationId?: string;
+  [key: string]: unknown;
+}
+
+export interface AgentStatus {
+  connected: boolean;
+  initialized: boolean;
+  error?: string;
+  [key: string]: unknown;
+}
+
+export interface MCPServerData {
+  id: string;
+  name: string;
+  description?: string;
+  enabled?: boolean;
+  [key: string]: unknown;
+}
+
+export interface MCPServerInfo {
+  servers: MCPServerData[];
+  total?: number;
+  [key: string]: unknown;
+}
+
+export interface MCPConnectionResult {
+  success: boolean;
+  data?: MCPServerData;
+  error?: string;
+}
+
+export interface MCPToolsResult {
+  success: boolean;
+  data?: Array<{
+    name: string;
+    description?: string;
+    schema?: Record<string, unknown>;
+  }>;
+  error?: string;
+}
+
+export interface SearchResult {
+  success: boolean;
+  data?: MCPServerData[];
+  error?: string;
+}
+
+export interface PluginData {
+  id: string;
+  name: string;
+  version?: string;
+  enabled?: boolean;
+  [key: string]: unknown;
+}
+
+export interface PluginSearchResult {
+  success: boolean;
+  data?: PluginData[];
+  error?: string;
+}
+
+export interface PluginValidationResult {
+  success: boolean;
+  data?: {
+    valid: boolean;
+    errors?: string[];
+  };
+  error?: string;
+}
+
+export interface PluginSecurityResult {
+  success: boolean;
+  data?: {
+    safe: boolean;
+    issues?: string[];
+  };
+  error?: string;
+}
+
 export interface ElectronAPI {
-  saveConfig: (config: any) => Promise<any>;
-  loadConfig: () => Promise<any>;
+  saveConfig: (config: AppConfig) => Promise<{ success: boolean; error?: string }>;
+  loadConfig: () => Promise<AppConfig>;
   getEnvironmentConfig: () => Promise<{ enableMainnet: boolean }>;
 
-  testHederaConnection: (credentials: any) => Promise<any>;
-  testOpenAIConnection: (credentials: any) => Promise<any>;
-  testAnthropicConnection: (credentials: any) => Promise<any>;
+  testHederaConnection: (credentials: ConnectionCredentials) => Promise<ConnectionTestResult>;
+  testOpenAIConnection: (credentials: ConnectionCredentials) => Promise<ConnectionTestResult>;
+  testAnthropicConnection: (credentials: ConnectionCredentials) => Promise<ConnectionTestResult>;
 
-  setTheme: (theme: string) => Promise<any>;
-  setAutoStart: (enabled: boolean) => Promise<any>;
-  setLogLevel: (level: string) => Promise<any>;
+  setTheme: (theme: string) => Promise<{ success: boolean; error?: string }>;
+  setAutoStart: (enabled: boolean) => Promise<{ success: boolean; error?: string }>;
+  setLogLevel: (level: string) => Promise<{ success: boolean; error?: string }>;
 
-  connectAgent: () => Promise<any>;
-  disconnectAgent: () => Promise<any>;
-  sendMessage: (data: any) => Promise<any>;
+  connectAgent: () => Promise<{ success: boolean; error?: string }>;
+  disconnectAgent: () => Promise<{ success: boolean; error?: string }>;
+  sendMessage: (data: MessageData) => Promise<AgentResponse>;
 
-  initializeAgent: (config: any) => Promise<any>;
-  sendAgentMessage: (data: any) => Promise<any>;
-  disconnectAgentNew: () => Promise<any>;
-  getAgentStatus: () => Promise<any>;
+  initializeAgent: (config: AgentConfig) => Promise<{ success: boolean; error?: string }>;
+  sendAgentMessage: (data: MessageData) => Promise<AgentResponse>;
+  disconnectAgentNew: () => Promise<{ success: boolean; error?: string }>;
+  getAgentStatus: () => Promise<AgentStatus>;
 
   loadMCPServers: () => Promise<{
     success: boolean;
-    data?: any;
+    data?: MCPServerInfo;
     error?: string;
   }>;
   saveMCPServers: (
-    servers: any
+    servers: MCPServerData[]
   ) => Promise<{ success: boolean; error?: string }>;
   testMCPConnection: (
-    server: any
-  ) => Promise<{ success: boolean; data?: any; error?: string }>;
+    server: MCPServerData
+  ) => Promise<MCPConnectionResult>;
   connectMCPServer: (
     serverId: string
   ) => Promise<{ success: boolean; error?: string }>;
@@ -49,42 +182,42 @@ export interface ElectronAPI {
   ) => Promise<{ success: boolean; error?: string }>;
   getMCPServerTools: (
     serverId: string
-  ) => Promise<{ success: boolean; data?: any; error?: string }>;
+  ) => Promise<MCPToolsResult>;
 
   searchMCPRegistry: (
-    options?: any
-  ) => Promise<{ success: boolean; data?: any; error?: string }>;
+    options?: Record<string, unknown>
+  ) => Promise<SearchResult>;
   getMCPRegistryServerDetails: (
     serverId: string,
     packageName?: string
-  ) => Promise<{ success: boolean; data?: any; error?: string }>;
+  ) => Promise<{ success: boolean; data?: MCPServerData; error?: string }>;
   installMCPFromRegistry: (
     serverId: string,
     packageName?: string
-  ) => Promise<{ success: boolean; data?: any; error?: string }>;
+  ) => Promise<{ success: boolean; data?: MCPServerData; error?: string }>;
   clearMCPRegistryCache: () => Promise<{ success: boolean; error?: string }>;
   getMCPCacheStats: () => Promise<{
     success: boolean;
-    data?: any;
+    data?: Record<string, unknown>;
     error?: string;
   }>;
   triggerMCPBackgroundSync: () => Promise<{
     success: boolean;
-    data?: any;
+    data?: Record<string, unknown>;
     error?: string;
   }>;
 
-  send: (channel: string, data?: any) => void;
-  invoke: (channel: string, data?: any) => Promise<any>;
+  send: (channel: string, data?: unknown) => void;
+  invoke: (channel: string, data?: unknown) => Promise<unknown>;
 
   searchPlugins: (
     query: string,
-    options?: any
-  ) => Promise<{ success: boolean; data?: any; error?: string }>;
+    options?: Record<string, unknown>
+  ) => Promise<PluginSearchResult>;
   installPlugin: (
     packageName: string,
     options?: PluginInstallOptions
-  ) => Promise<{ success: boolean; data?: any; error?: string }>;
+  ) => Promise<{ success: boolean; data?: PluginData; error?: string }>;
   uninstallPlugin: (
     pluginId: string
   ) => Promise<{ success: boolean; error?: string }>;
@@ -100,7 +233,7 @@ export interface ElectronAPI {
   ) => Promise<{ success: boolean; error?: string }>;
   configurePlugin: (
     pluginId: string,
-    config: Record<string, any>
+    config: Record<string, unknown>
   ) => Promise<{ success: boolean; error?: string }>;
   getPluginPermissions: (
     pluginId: string
@@ -111,29 +244,21 @@ export interface ElectronAPI {
   ) => Promise<{ success: boolean; error?: string }>;
   getInstalledPlugins: () => Promise<{
     success: boolean;
-    data?: any[];
+    data?: PluginData[];
     error?: string;
   }>;
   checkPluginUpdates: () => Promise<{
     success: boolean;
-    data?: any[];
+    data?: PluginData[];
     error?: string;
   }>;
   validatePluginConfig: (
     pluginId: string,
-    config: Record<string, any>
-  ) => Promise<{
-    success: boolean;
-    data?: { valid: boolean; errors?: string[] };
-    error?: string;
-  }>;
+    config: Record<string, unknown>
+  ) => Promise<PluginValidationResult>;
   validatePluginSecurity: (
     packageName: string
-  ) => Promise<{
-    success: boolean;
-    data?: { safe: boolean; issues?: string[] };
-    error?: string;
-  }>;
+  ) => Promise<PluginSecurityResult>;
   clearPluginCache: () => Promise<{ success: boolean; error?: string }>;
 
   onPluginInstallProgress: (
@@ -147,7 +272,7 @@ export interface ElectronAPI {
 declare global {
   interface Window {
     electron: ElectronAPI;
-    electronAPI: any;
+    electronAPI: ElectronAPI;
   }
 }
 

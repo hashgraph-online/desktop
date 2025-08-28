@@ -73,7 +73,7 @@ export const TokenTransfersSection: React.FC<TokenTransfersSectionProps> = ({
           <div className='flex items-center gap-2 text-sm'>
             <span className='font-medium text-gray-700 dark:text-gray-300'>
               {transfer.tokenId}
-              {symbol && <span className='text-gray-500 ml-1'>({symbol})</span>}
+              {symbol ? <span className='text-gray-500 ml-1'>({symbol})</span> : null}
             </span>
             <FiArrowRight className='h-3 w-3 text-gray-400' />
             <span className='text-gray-600 dark:text-gray-400'>

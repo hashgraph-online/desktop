@@ -5,16 +5,24 @@ import { configService } from '../services/configService';
  * Helper to wait for electron bridge to be available
  */
 const waitForElectronBridge = async (
-  maxRetries = 10,
-  retryDelay = 500
+  maxRetries = 20,
+  retryDelay = 100
 ): Promise<boolean> => {
-  for (let i = 0; i < maxRetries; i++) {
-    if (window.electron && typeof window.electron.saveConfig === 'function') {
-      return true;
+  const timeoutPromise = new Promise<boolean>((resolve) => {
+    setTimeout(() => resolve(false), 5000);
+  });
+
+  const checkBridgePromise = async (): Promise<boolean> => {
+    for (let i = 0; i < maxRetries; i++) {
+      if (window.electron && typeof window.electron.saveConfig === 'function') {
+        return true;
+      }
+      await new Promise((resolve) => setTimeout(resolve, retryDelay));
     }
-    await new Promise((resolve) => setTimeout(resolve, retryDelay));
-  }
-  return false;
+    return false;
+  };
+
+  return Promise.race([checkBridgePromise(), timeoutPromise]);
 };
 
 export interface HederaConfig {
@@ -131,6 +139,10 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
   isConfigured: () => {
     const state = get();
 
+    if (state.isLoading) {
+      return false;
+    }
+
     const hederaValid = state.isHederaConfigValid();
     const llmValid = state.isLLMConfigValid();
     const result = hederaValid && llmValid;
@@ -230,10 +242,11 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
 
     try {
       await configService.applyTheme(theme);
-    } catch (error) {}
+    } catch (_error) {
+    }
   },
 
-  setAutoStart: (autoStart) =>
+  setAutoStart: (autoStart) => {
     set((state) => ({
       config: state.config
         ? {
@@ -241,9 +254,10 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
             advanced: { ...state.config.advanced, autoStart },
           }
         : null,
-    })),
+    }));
+  },
 
-  setLogLevel: (logLevel) =>
+  setLogLevel: (logLevel) => {
     set((state) => ({
       config: state.config
         ? {
@@ -251,7 +265,8 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
             advanced: { ...state.config.advanced, logLevel },
           }
         : null,
-    })),
+    }));
+  },
 
   setOperationalMode: (mode) =>
     set((state) => ({
@@ -279,27 +294,34 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
       throw new Error('No configuration to save');
     }
 
-    const isAvailable = await waitForElectronBridge();
-    if (!isAvailable) {
-      set({ error: 'Unable to save settings - Electron API not available' });
-      return;
-    }
-
     set({ isLoading: true, error: null });
 
     try {
+      const isAvailable = await waitForElectronBridge();
+      if (!isAvailable) {
+        const errorMsg = 'Unable to save settings - Electron API not available';
+        set({ 
+          isLoading: false,
+          error: errorMsg 
+        });
+        throw new Error(errorMsg);
+      }
+
       await window.electron.saveConfig(
         config as unknown as Record<string, unknown>
       );
+      
       localStorage.setItem('app-config', JSON.stringify(config));
-      set({ isLoading: false });
+      
+      set({ isLoading: false, error: null });
     } catch (error) {
+      const errorMessage = error instanceof Error
+        ? error.message
+        : 'Failed to save configuration';
+      
       set({
         isLoading: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : 'Failed to save configuration',
+        error: errorMessage,
       });
       throw error;
     }
@@ -308,42 +330,82 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
   loadConfig: async () => {
     set({ isLoading: true, error: null });
 
+    const emergencyTimeout = setTimeout(() => {
+      set({ isLoading: false, error: 'Configuration loading timed out' });
+    }, 8000);
+
     try {
-      const isAvailable = await waitForElectronBridge();
-      if (!isAvailable) {
-        set({ config: defaultConfig, isLoading: false });
-        return;
-      }
+      const loadConfigWithTimeout = async (): Promise<void> => {
+        const isAvailable = await waitForElectronBridge();
+        if (!isAvailable) {
+          set({ config: defaultConfig, isLoading: false });
+          return;
+        }
 
-      const loadedConfig = await window.electron.loadConfig();
+        const [loadedConfig, envConfig] = await Promise.all([
+          window.electron.loadConfig(),
+          window.electron.getEnvironmentConfig(),
+        ]);
 
-      if (loadedConfig) {
-        const mode = (
-          loadedConfig.operationalMode ||
-          loadedConfig.advanced?.operationalMode ||
-          'provideBytes'
-        ).replace('returnBytes', 'provideBytes');
+        let finalConfig = defaultConfig;
 
-        const migratedConfig = {
-          ...loadedConfig,
-          advanced: {
-            ...loadedConfig.advanced,
-            operationalMode: mode,
-          },
-        };
-        set({ config: migratedConfig, isLoading: false });
-        localStorage.setItem('app-config', JSON.stringify(migratedConfig));
+        if (loadedConfig) {
+          const mode = (
+            loadedConfig.operationalMode ||
+            loadedConfig.advanced?.operationalMode ||
+            'provideBytes'
+          ).replace('returnBytes', 'provideBytes');
+
+          finalConfig = {
+            ...defaultConfig,
+            ...loadedConfig,
+            advanced: {
+              ...defaultConfig.advanced,
+              ...loadedConfig.advanced,
+              operationalMode: mode,
+            },
+          };
+        }
+
+        if (envConfig && typeof envConfig === 'object') {
+          if (envConfig.hedera) {
+            finalConfig.hedera = {
+              ...envConfig.hedera,
+              ...finalConfig.hedera,
+            };
+          }
+          if (envConfig.openai) {
+            finalConfig.openai = {
+              ...envConfig.openai,
+              ...finalConfig.openai,
+            };
+          }
+          if (envConfig.anthropic) {
+            finalConfig.anthropic = {
+              ...envConfig.anthropic,
+              ...finalConfig.anthropic,
+            };
+          }
+          if (envConfig.llmProvider && !finalConfig.llmProvider) {
+            finalConfig.llmProvider = envConfig.llmProvider;
+          }
+        }
+
+        set({ config: finalConfig, isLoading: false });
+        localStorage.setItem('app-config', JSON.stringify(finalConfig));
 
         try {
-          await configService.applyTheme(loadedConfig.advanced.theme);
-        } catch (error) {}
-      } else {
-        set({ config: defaultConfig, isLoading: false });
+          await configService.applyTheme(finalConfig.advanced.theme);
+        } catch {
+        }
+      };
 
-        try {
-          await configService.applyTheme(defaultConfig.advanced.theme);
-        } catch (error) {}
-      }
+      const timeoutPromise = new Promise<void>((_, reject) => {
+        setTimeout(() => reject(new Error('LoadConfig timeout')), 5000);
+      });
+
+      await Promise.race([loadConfigWithTimeout(), timeoutPromise]);
+      
     } catch (error) {
       set({
         config: defaultConfig,
@@ -353,6 +415,13 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
             ? error.message
             : 'Failed to load configuration',
       });
+    } finally {
+      clearTimeout(emergencyTimeout);
+      
+      const currentState = get();
+      if (currentState.isLoading) {
+        set({ isLoading: false });
+      }
     }
   },
 

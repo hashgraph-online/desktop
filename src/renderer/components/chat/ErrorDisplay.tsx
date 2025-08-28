@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { FiAlertTriangle, FiRefreshCw, FiX, FiInfo, FiWifi } from 'react-icons/fi';
 import Typography from '../ui/Typography';
 import { Button } from '../ui/Button';
+import { Alert, AlertTitle, AlertDescription } from '../ui/alert';
 import { cn } from '../../lib/utils';
 
 export interface ErrorInfo {
@@ -206,16 +207,15 @@ const ErrorDisplay: React.FC<ErrorDisplayProps> = ({
             </div>
             
             {onDismiss && (
-              <button
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={onDismiss}
-                className={cn(
-                  "p-1 rounded-md hover:bg-black/5 dark:hover:bg-white/5 transition-colors",
-                  styles.icon
-                )}
+                className="h-6 w-6 p-0 hover:bg-black/5 dark:hover:bg-white/5"
                 aria-label="Dismiss error"
               >
                 <FiX className="w-4 h-4" />
-              </button>
+              </Button>
             )}
           </div>
           

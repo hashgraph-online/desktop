@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AdvancedSettings } from '../../../src/renderer/pages/settings/AdvancedSettings'
 import { useConfigStore } from '../../../src/renderer/stores/configStore'
+import type { ConfigStore } from '../../../src/renderer/stores/configStore'
 
 jest.mock('../../../src/renderer/stores/configStore')
 
@@ -42,7 +43,26 @@ describe('AdvancedSettings', () => {
       setTheme: mockSetTheme,
       setAutoStart: mockSetAutoStart,
       setLogLevel: mockSetLogLevel,
-    } as any)
+      isLoading: false,
+      error: null,
+      isConfigured: () => true,
+      setHederaAccountId: jest.fn(),
+      setHederaPrivateKey: jest.fn(),
+      setHederaNetwork: jest.fn(),
+      setOpenAIApiKey: jest.fn(),
+      setOpenAIModel: jest.fn(),
+      setAnthropicApiKey: jest.fn(),
+      setAnthropicModel: jest.fn(),
+      setLLMProvider: jest.fn(),
+      setOperationalMode: jest.fn(),
+      setAutonomousMode: jest.fn(),
+      saveConfig: jest.fn().mockResolvedValue(void 0),
+      loadConfig: jest.fn().mockResolvedValue(void 0),
+      testHederaConnection: jest.fn().mockResolvedValue({ success: true }),
+      testOpenAIConnection: jest.fn().mockResolvedValue({ success: true }),
+      testAnthropicConnection: jest.fn().mockResolvedValue({ success: true }),
+      reset: jest.fn(),
+    } as ConfigStore)
   })
 
   it('should render all settings sections', () => {
@@ -169,7 +189,26 @@ describe('AdvancedSettings', () => {
       setTheme: mockSetTheme,
       setAutoStart: mockSetAutoStart,
       setLogLevel: mockSetLogLevel,
-    } as any)
+      isLoading: false,
+      error: null,
+      isConfigured: () => true,
+      setHederaAccountId: jest.fn(),
+      setHederaPrivateKey: jest.fn(),
+      setHederaNetwork: jest.fn(),
+      setOpenAIApiKey: jest.fn(),
+      setOpenAIModel: jest.fn(),
+      setAnthropicApiKey: jest.fn(),
+      setAnthropicModel: jest.fn(),
+      setLLMProvider: jest.fn(),
+      setOperationalMode: jest.fn(),
+      setAutonomousMode: jest.fn(),
+      saveConfig: jest.fn().mockResolvedValue(void 0),
+      loadConfig: jest.fn().mockResolvedValue(void 0),
+      testHederaConnection: jest.fn().mockResolvedValue({ success: true }),
+      testOpenAIConnection: jest.fn().mockResolvedValue({ success: true }),
+      testAnthropicConnection: jest.fn().mockResolvedValue({ success: true }),
+      reset: jest.fn(),
+    } as ConfigStore)
 
     render(<AdvancedSettings />)
 

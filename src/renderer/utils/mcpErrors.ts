@@ -4,10 +4,26 @@ export interface MCPError {
   type: MCPErrorType
   code: string
   message: string
-  details?: any
+  details?: MCPErrorDetails
   timestamp: Date
   serverId?: string
   recoverable: boolean
+}
+
+export interface MCPErrorDetails {
+  stack?: string
+  code?: string | number
+  context?: Record<string, unknown>
+  serverInfo?: {
+    name?: string
+    version?: string
+    type?: string
+  }
+  requestInfo?: {
+    method?: string
+    id?: string | number
+    params?: Record<string, unknown>
+  }
 }
 
 export interface MCPErrorClassification {
@@ -62,26 +78,78 @@ const ERROR_PATTERNS: Array<{
       ]
     }
   },
-  
   {
-    pattern: /unauthorized|authentication|invalid.*token|access.*denied/i,
-    type: 'authentication',
+    pattern: /network.*connection.*failed|connection.*failed/i,
+    type: 'network',
     classification: {
-      severity: 'high',
+      severity: 'medium',
+      recoverable: true,
+      autoRetry: true,
+      userAction: false,
+      description: 'Network connection failed',
+      remediationSteps: [
+        'Check network connectivity',
+        'Verify server is running',
+        'Check firewall settings',
+        'Wait for automatic retry'
+      ]
+    }
+  },
+
+  {
+    pattern: /ENOENT|file.*not.*found|path.*not.*exist/i,
+    type: 'resource',
+    classification: {
+      severity: 'medium',
       recoverable: true,
       autoRetry: false,
       userAction: true,
-      description: 'Authentication credentials are invalid or expired',
+      description: 'Required file or directory not found',
       remediationSteps: [
-        'Verify authentication credentials',
-        'Check if tokens have expired',
-        'Update server configuration with valid credentials',
-        'Contact administrator for access'
+        'Verify file/directory paths in configuration',
+        'Check file system permissions',
+        'Create missing directories if needed',
+        'Update configuration with correct paths'
       ]
     }
   },
   {
-    pattern: /forbidden|permission.*denied|not.*authorized/i,
+    pattern: /EACCES|EACCES.*permission.*denied|EACCES.*access.*denied/i,
+    type: 'resource',
+    classification: {
+      severity: 'medium',
+      recoverable: true,
+      autoRetry: false,
+      userAction: true,
+      description: 'File system permission denied',
+      remediationSteps: [
+        'Check file/directory permissions',
+        'Run with appropriate user privileges',
+        'Modify file system permissions',
+        'Contact system administrator'
+      ]
+    }
+  },
+  {
+    pattern: /EMFILE|ENFILE|too.*many.*files/i,
+    type: 'resource',
+    classification: {
+      severity: 'high',
+      recoverable: true,
+      autoRetry: true,
+      userAction: false,
+      description: 'System resource exhaustion (file handles)',
+      remediationSteps: [
+        'Wait for automatic retry',
+        'Close unused applications',
+        'Increase system file handle limits',
+        'Contact system administrator'
+      ]
+    }
+  },
+
+  {
+    pattern: /forbidden|not.*authorized/i,
     type: 'authentication',
     classification: {
       severity: 'high',
@@ -94,6 +162,23 @@ const ERROR_PATTERNS: Array<{
         'Verify role assignments',
         'Contact administrator for proper access',
         'Review server access policies'
+      ]
+    }
+  },
+  {
+    pattern: /unauthorized|authentication|invalid.*token|access.*denied.*resource|permission.*denied/i,
+    type: 'authentication',
+    classification: {
+      severity: 'high',
+      recoverable: true,
+      autoRetry: false,
+      userAction: true,
+      description: 'Authentication credentials are invalid or expired',
+      remediationSteps: [
+        'Verify authentication credentials',
+        'Check if tokens have expired',
+        'Update server configuration with valid credentials',
+        'Contact administrator for access'
       ]
     }
   },
@@ -132,59 +217,7 @@ const ERROR_PATTERNS: Array<{
       ]
     }
   },
-  
-  {
-    pattern: /ENOENT|file.*not.*found|path.*not.*exist/i,
-    type: 'resource',
-    classification: {
-      severity: 'medium',
-      recoverable: true,
-      autoRetry: false,
-      userAction: true,
-      description: 'Required file or directory not found',
-      remediationSteps: [
-        'Verify file/directory paths in configuration',
-        'Check file system permissions',
-        'Create missing directories if needed',
-        'Update configuration with correct paths'
-      ]
-    }
-  },
-  {
-    pattern: /EACCES|permission.*denied|access.*denied/i,
-    type: 'resource',
-    classification: {
-      severity: 'medium',
-      recoverable: true,
-      autoRetry: false,
-      userAction: true,
-      description: 'File system permission denied',
-      remediationSteps: [
-        'Check file/directory permissions',
-        'Run with appropriate user privileges',
-        'Modify file system permissions',
-        'Contact system administrator'
-      ]
-    }
-  },
-  {
-    pattern: /EMFILE|ENFILE|too.*many.*files/i,
-    type: 'resource',
-    classification: {
-      severity: 'high',
-      recoverable: true,
-      autoRetry: true,  
-      userAction: false,
-      description: 'System resource exhaustion (file handles)',
-      remediationSteps: [
-        'Wait for automatic retry',
-        'Close unused applications',
-        'Increase system file handle limits',
-        'Contact system administrator'
-      ]
-    }
-  },
-  
+
   {
     pattern: /configuration|config.*invalid|missing.*parameter/i,
     type: 'configuration',
@@ -224,7 +257,7 @@ const ERROR_PATTERNS: Array<{
 /**
  * Classify an error based on its message and context
  */
-export function classifyError(error: string | Error, serverId?: string): MCPErrorClassification {
+export function classifyError(error: string | Error, _serverId?: string): MCPErrorClassification {
   const errorMessage = typeof error === 'string' ? error : error.message
   
   for (const { pattern, type, classification } of ERROR_PATTERNS) {
@@ -258,7 +291,7 @@ export function classifyError(error: string | Error, serverId?: string): MCPErro
 export function createMCPError(
   error: string | Error,
   serverId?: string,
-  details?: any
+  details?: MCPErrorDetails
 ): MCPError {
   const errorMessage = typeof error === 'string' ? error : error.message
   const classification = classifyError(error, serverId)
@@ -283,9 +316,10 @@ function generateErrorCode(type: MCPErrorType, message: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]/g, '')
     .slice(0, 8)
-  const timestamp = Date.now().toString().slice(-6)
-  
-  return `MCP_${typePrefix}_${messageHash}_${timestamp}`
+  const timestamp = Date.now().toString().slice(-8) // Use more digits for better uniqueness
+  const random = Math.random().toString(36).substring(2, 5) // Add random component
+
+  return `MCP_${typePrefix}_${messageHash}_${timestamp}_${random}`
 }
 
 /**

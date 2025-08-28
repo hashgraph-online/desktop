@@ -1,6 +1,25 @@
 import { renderHook, act } from '@testing-library/react'
 import { useConfigStore } from '../../../src/renderer/stores/configStore'
 
+interface WindowWithElectron {
+  electron: {
+    testHederaConnection: jest.Mock;
+    testOpenAIConnection: jest.Mock;
+    testAnthropicConnection: jest.Mock;
+  };
+}
+
+interface HederaConnectionResult {
+  success: boolean;
+  balance?: string;
+  error?: string;
+}
+
+interface ConnectionResult {
+  success: boolean;
+  error?: string;
+}
+
 describe('configStore', () => {
   beforeEach(() => {
     jest.clearAllMocks()
@@ -86,7 +105,7 @@ describe('configStore', () => {
     it('should test hedera connection', async () => {
       const { result } = renderHook(() => useConfigStore())
       
-      const mockElectron = (window as any).electron
+      const mockElectron = (window as WindowWithElectron).electron
       mockElectron.testHederaConnection.mockResolvedValue({
         success: true,
         balance: '100 HBAR'
@@ -97,7 +116,7 @@ describe('configStore', () => {
         result.current.setHederaPrivateKey('0x' + '0'.repeat(64))
       })
 
-      let testResult: any
+      let testResult: HederaConnectionResult
       await act(async () => {
         testResult = await result.current.testHederaConnection()
       })
@@ -154,7 +173,7 @@ describe('configStore', () => {
     it('should test OpenAI connection', async () => {
       const { result } = renderHook(() => useConfigStore())
       
-      const mockElectron = (window as any).electron
+      const mockElectron = (window as WindowWithElectron).electron
       mockElectron.testOpenAIConnection.mockResolvedValue({
         success: true
       })
@@ -163,7 +182,7 @@ describe('configStore', () => {
         result.current.setOpenAIApiKey('sk-test123456789')
       })
 
-      let testResult: any
+      let testResult: ConnectionResult
       await act(async () => {
         testResult = await result.current.testOpenAIConnection()
       })
@@ -214,7 +233,7 @@ describe('configStore', () => {
     it('should save config', async () => {
       const { result } = renderHook(() => useConfigStore())
       
-      const mockElectron = (window as any).electron
+      const mockElectron = (window as WindowWithElectron).electron
       mockElectron.saveConfig.mockResolvedValue(undefined)
 
       act(() => {
@@ -254,14 +273,14 @@ describe('configStore', () => {
     it('should handle save errors', async () => {
       const { result } = renderHook(() => useConfigStore())
       
-      const mockElectron = (window as any).electron
+      const mockElectron = (window as WindowWithElectron).electron
       const error = new Error('Save failed')
       mockElectron.saveConfig.mockRejectedValue(error)
 
       await act(async () => {
         try {
           await result.current.saveConfig()
-        } catch (e) {
+        } catch (_e) {
         }
       })
 
@@ -294,7 +313,7 @@ describe('configStore', () => {
         llmProvider: 'openai' as const
       }
       
-      const mockElectron = (window as any).electron
+      const mockElectron = (window as WindowWithElectron).electron
       mockElectron.loadConfig.mockResolvedValue(savedConfig)
 
       await act(async () => {
@@ -309,14 +328,14 @@ describe('configStore', () => {
     it('should handle load errors', async () => {
       const { result } = renderHook(() => useConfigStore())
       
-      const mockElectron = (window as any).electron
+      const mockElectron = (window as WindowWithElectron).electron
       const error = new Error('Load failed')
       mockElectron.loadConfig.mockRejectedValue(error)
 
       await act(async () => {
         try {
           await result.current.loadConfig()
-        } catch (e) {
+        } catch (_e) {
         }
       })
 
@@ -337,7 +356,7 @@ describe('configStore', () => {
         autoStart: true
       }
       
-      const mockElectron = (window as any).electron
+      const mockElectron = (window as WindowWithElectron).electron
       mockElectron.loadConfig.mockResolvedValue(oldConfig)
 
       await act(async () => {

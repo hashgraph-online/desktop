@@ -1,52 +1,28 @@
-import React, { useEffect, useState } from 'react'
-import { useConfigStore } from '../stores/configStore'
-import { configService } from '../services/configService'
+import React, { useEffect, ReactNode } from 'react';
+import { useConfigStore } from '../stores/configStore';
 
 interface ConfigInitProviderProps {
-  children: React.ReactNode
+  children: ReactNode;
 }
 
 /**
- * Provider that loads configuration on app startup.
- * Ensures configuration is loaded before children render.
- * 
- * @param children - Child components to render after config initialization
- * @returns React component that manages configuration loading lifecycle
+ * Provider that initializes configuration loading on app startup.
+ * This ensures that configuration is loaded from storage before
+ * any components that depend on it are rendered.
+ *
+ * @param children - Child components to render after configuration initialization
+ * @returns React component that handles configuration initialization
  */
-export const ConfigInitProvider: React.FC<ConfigInitProviderProps> = ({ children }) => {
-  const [isInitialized, setIsInitialized] = useState(false)
-  const loadConfig = useConfigStore((state) => state.loadConfig)
-  const config = useConfigStore((state) => state.config)
+export const ConfigInitProvider: React.FC<ConfigInitProviderProps> = ({
+  children,
+}) => {
+  const { loadConfig } = useConfigStore();
 
   useEffect(() => {
-    let mounted = true
-    
-    const loadConfiguration = async () => {
-      try {
-        if (mounted) {
-          await loadConfig()
-          setIsInitialized(true)
-        }
-      } catch (error) {
-        if (mounted) {
-          setIsInitialized(true)
-        }
-      }
-    }
-    
-    loadConfiguration()
-    
-    return () => {
-      mounted = false
-    }
-  }, [loadConfig])
+    loadConfig().catch((error) => {
 
-  useEffect(() => {
-    if (config?.advanced?.theme) {
-      configService.applyTheme(config.advanced.theme).catch(error => {
-      })
-    }
-  }, [config?.advanced?.theme])
+    });
+  }, [loadConfig]);
 
-  return <>{children}</>
-}
+  return <>{children}</>;
+};

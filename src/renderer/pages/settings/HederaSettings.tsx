@@ -55,8 +55,7 @@ export const HederaSettings: React.FC<HederaSettingsProps> = () => {
         reset({ ...watch(), network: 'testnet' })
         setHederaNetwork('testnet')
       }
-    }).catch((error: any) => {
-      console.error('Failed to load environment config:', error)
+    }).catch(() => {
       setIsMainnetEnabled(false)
       if (watchNetwork === 'mainnet') {
         reset({ ...watch(), network: 'testnet' })

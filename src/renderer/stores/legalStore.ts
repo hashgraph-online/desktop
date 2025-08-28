@@ -84,8 +84,7 @@ export const useLegalStore = create<LegalStore>((set, get) => ({
           };
           await window.electron.saveConfig(updatedConfig as unknown as Record<string, unknown>);
         }
-      } catch (error) {
-        console.error('Failed to reset legal acceptance in config:', error);
+      } catch (_error) {
       }
     }
   },
@@ -106,8 +105,7 @@ export const useLegalStore = create<LegalStore>((set, get) => ({
         const parsed = JSON.parse(stored) as LegalAcceptance;
         set({ legalAcceptance: parsed });
       }
-    } catch (error) {
-      console.error('Failed to load legal acceptance:', error);
+    } catch (_error) {
     }
   },
 
@@ -126,8 +124,7 @@ export const useLegalStore = create<LegalStore>((set, get) => ({
           };
           await window.electron.saveConfig(updatedConfig as unknown as Record<string, unknown>);
         }
-      } catch (error) {
-        console.error('Failed to save legal acceptance to config:', error);
+      } catch (_error) {
       }
     }
   },

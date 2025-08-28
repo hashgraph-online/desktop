@@ -9,19 +9,19 @@
  */
 export const gradients = {
   /** Primary HGO gradient: purple → blue → green */
-  primary: 'bg-gradient-to-r from-[#a679f0] via-[#5599fe] to-[#48df7b]',
+  primary: 'bg-gradient-to-r from-hgo-purple via-hgo-blue to-hgo-green',
   
   /** Reversed HGO gradient: green → blue → purple */
-  primaryReverse: 'bg-gradient-to-r from-[#48df7b] via-[#5599fe] to-[#a679f0]',
+  primaryReverse: 'bg-gradient-to-r from-hgo-green via-hgo-blue to-hgo-purple',
   
   /** Text gradient with transparent background for gradient text effects */
-  text: 'bg-gradient-to-r from-[#a679f0] via-[#5599fe] to-[#48df7b] bg-clip-text text-transparent',
+  text: 'bg-gradient-to-r from-hgo-purple via-hgo-blue to-hgo-green bg-clip-text text-transparent',
   
   /** Blue gradient for user messages */
-  user: 'bg-gradient-to-r from-[#5599fe] to-[#a679f0]',
+  user: 'bg-gradient-to-r from-hgo-blue to-hgo-purple',
   
   /** Green gradient for assistant messages */
-  assistant: 'bg-gradient-to-r from-[#48df7b] to-[#48df7b]',
+  assistant: 'bg-gradient-to-r from-hgo-green to-hgo-green',
 } as const;
 
 /**

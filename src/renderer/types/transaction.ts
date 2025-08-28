@@ -21,8 +21,12 @@ export interface ContractCallData {
   gas?: number;
   amount?: number;
   functionName?: string;
-  parameters?: any;
+  parameters?: ContractCallParameters;
   functionParameters?: string;
+}
+
+export interface ContractCallParameters {
+  [key: string]: string | number | boolean | ContractCallParameters | ContractCallParameters[];
 }
 
 export interface TokenCreationData {
@@ -57,7 +61,7 @@ export interface TokenAirdropData {
 export interface SDKParsedTransaction {
   type: string;
   humanReadableType?: string;
-  details: Record<string, any>;
+  details: Record<string, unknown>;
   transfers?: AccountAmount[];
   tokenTransfers?: TokenAmount[];
   memo?: string;
@@ -70,7 +74,7 @@ export interface SDKParsedTransaction {
 export interface ParsedTransaction {
   type: string;
   humanReadableType?: string;
-  details: Record<string, any>;
+  details: Record<string, unknown>;
   transfers?: Array<{
     accountId: string;
     amount: string | number;
@@ -87,7 +91,7 @@ export interface ParsedTransaction {
     gas?: number;
     amount?: number;
     functionName?: string;
-    parameters?: any;
+    parameters?: ContractCallParameters;
     functionParameters?: string;
   };
   tokenCreation?: {
@@ -174,4 +178,4 @@ export interface ParsedTransaction {
   };
 }
 
-export type SDKToLocalTransaction = (sdkTransaction: any) => ParsedTransaction;
+export type SDKToLocalTransaction = (sdkTransaction: SDKParsedTransaction) => ParsedTransaction;

@@ -250,9 +250,10 @@ export const MCPServerCatalog: React.FC<MCPServerCatalogProps> = ({
           return b.popularity - a.popularity
         case 'name':
           return a.name.localeCompare(b.name)
-        case 'difficulty':
+        case 'difficulty': {
           const difficultyOrder = { easy: 0, medium: 1, hard: 2 }
           return difficultyOrder[a.difficulty] - difficultyOrder[b.difficulty]
+        }
         default:
           return 0
       }

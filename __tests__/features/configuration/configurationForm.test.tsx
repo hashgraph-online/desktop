@@ -5,6 +5,7 @@ import { HederaSettings } from '../../../src/renderer/pages/settings/HederaSetti
 import { OpenAISettings } from '../../../src/renderer/pages/settings/OpenAISettings'
 import { AdvancedSettings } from '../../../src/renderer/pages/settings/AdvancedSettings'
 import { useConfigStore } from '../../../src/renderer/stores/configStore'
+import type { ConfigStore } from '../../../src/renderer/stores/configStore'
 
 jest.mock('../../../src/renderer/stores/configStore')
 
@@ -42,8 +43,19 @@ describe('Configuration Form Validation', () => {
       testHederaConnection: jest.fn(),
       testOpenAIConnection: jest.fn(),
       isHederaConfigValid: jest.fn(),
-      isOpenAIConfigValid: jest.fn()
-    } as any)
+      isOpenAIConfigValid: jest.fn(),
+      setAnthropicApiKey: jest.fn(),
+      setAnthropicModel: jest.fn(),
+      setLLMProvider: jest.fn(),
+      setLogLevel: jest.fn(),
+      setOperationalMode: jest.fn(),
+      setAutonomousMode: jest.fn(),
+      testAnthropicConnection: jest.fn(),
+      isAnthropicConfigValid: jest.fn(),
+      isLLMConfigValid: jest.fn(),
+      clearError: jest.fn(),
+      isConfigured: jest.fn()
+    } as ConfigStore)
   })
 
   describe('Hedera Settings Validation', () => {
@@ -101,8 +113,19 @@ describe('Configuration Form Validation', () => {
           advanced: { theme: 'light', autoStart: false }
         },
         isHederaConfigValid: jest.fn().mockReturnValue(true),
-        testHederaConnection: testConnection
-      } as any)
+        testHederaConnection: testConnection,
+        setAnthropicApiKey: jest.fn(),
+        setAnthropicModel: jest.fn(),
+        setLLMProvider: jest.fn(),
+        setLogLevel: jest.fn(),
+        setOperationalMode: jest.fn(),
+        setAutonomousMode: jest.fn(),
+        testAnthropicConnection: jest.fn(),
+        isAnthropicConfigValid: jest.fn(),
+        isLLMConfigValid: jest.fn(),
+        clearError: jest.fn(),
+        isConfigured: jest.fn()
+      } as ConfigStore)
 
       render(<HederaSettings />)
 
@@ -132,8 +155,19 @@ describe('Configuration Form Validation', () => {
           advanced: { theme: 'light', autoStart: false }
         },
         isHederaConfigValid: jest.fn().mockReturnValue(true),
-        testHederaConnection: testConnection
-      } as any)
+        testHederaConnection: testConnection,
+        setAnthropicApiKey: jest.fn(),
+        setAnthropicModel: jest.fn(),
+        setLLMProvider: jest.fn(),
+        setLogLevel: jest.fn(),
+        setOperationalMode: jest.fn(),
+        setAutonomousMode: jest.fn(),
+        testAnthropicConnection: jest.fn(),
+        isAnthropicConfigValid: jest.fn(),
+        isLLMConfigValid: jest.fn(),
+        clearError: jest.fn(),
+        isConfigured: jest.fn()
+      } as ConfigStore)
 
       render(<HederaSettings />)
 
@@ -180,8 +214,19 @@ describe('Configuration Form Validation', () => {
           advanced: { theme: 'light', autoStart: false }
         },
         isOpenAIConfigValid: jest.fn().mockReturnValue(true),
-        testOpenAIConnection: testConnection
-      } as any)
+        testOpenAIConnection: testConnection,
+        setAnthropicApiKey: jest.fn(),
+        setAnthropicModel: jest.fn(),
+        setLLMProvider: jest.fn(),
+        setLogLevel: jest.fn(),
+        setOperationalMode: jest.fn(),
+        setAutonomousMode: jest.fn(),
+        testAnthropicConnection: jest.fn(),
+        isAnthropicConfigValid: jest.fn(),
+        isLLMConfigValid: jest.fn(),
+        clearError: jest.fn(),
+        isConfigured: jest.fn()
+      } as ConfigStore)
 
       render(<OpenAISettings />)
 
@@ -203,8 +248,19 @@ describe('Configuration Form Validation', () => {
       const setTheme = jest.fn()
       mockUseConfigStore.mockReturnValue({
         ...mockUseConfigStore(),
-        setTheme
-      } as any)
+        setTheme,
+        setAnthropicApiKey: jest.fn(),
+        setAnthropicModel: jest.fn(),
+        setLLMProvider: jest.fn(),
+        setLogLevel: jest.fn(),
+        setOperationalMode: jest.fn(),
+        setAutonomousMode: jest.fn(),
+        testAnthropicConnection: jest.fn(),
+        isAnthropicConfigValid: jest.fn(),
+        isLLMConfigValid: jest.fn(),
+        clearError: jest.fn(),
+        isConfigured: jest.fn()
+      } as ConfigStore)
 
       render(<AdvancedSettings />)
 
@@ -218,8 +274,19 @@ describe('Configuration Form Validation', () => {
       const setAutoStart = jest.fn()
       mockUseConfigStore.mockReturnValue({
         ...mockUseConfigStore(),
-        setAutoStart
-      } as any)
+        setAutoStart,
+        setAnthropicApiKey: jest.fn(),
+        setAnthropicModel: jest.fn(),
+        setLLMProvider: jest.fn(),
+        setLogLevel: jest.fn(),
+        setOperationalMode: jest.fn(),
+        setAutonomousMode: jest.fn(),
+        testAnthropicConnection: jest.fn(),
+        isAnthropicConfigValid: jest.fn(),
+        isLLMConfigValid: jest.fn(),
+        clearError: jest.fn(),
+        isConfigured: jest.fn()
+      } as ConfigStore)
 
       render(<AdvancedSettings />)
 

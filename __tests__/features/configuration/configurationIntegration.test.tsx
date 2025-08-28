@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import SettingsPage from '../../../src/renderer/pages/SettingsPage'
 import { useConfigStore } from '../../../src/renderer/stores/configStore'
+import type { ConfigStore } from '../../../src/renderer/stores/configStore'
 
 jest.mock('../../../src/renderer/stores/configStore')
 
@@ -41,11 +42,21 @@ describe('Configuration Save/Load Integration', () => {
     testOpenAIConnection: jest.fn(),
     isHederaConfigValid: jest.fn(),
     isOpenAIConfigValid: jest.fn(),
-    clearError: jest.fn()
+    clearError: jest.fn(),
+    setAnthropicApiKey: jest.fn(),
+    setAnthropicModel: jest.fn(),
+    setLLMProvider: jest.fn(),
+    setLogLevel: jest.fn(),
+    setOperationalMode: jest.fn(),
+    setAutonomousMode: jest.fn(),
+    testAnthropicConnection: jest.fn(),
+    isAnthropicConfigValid: jest.fn(),
+    isLLMConfigValid: jest.fn(),
+    isConfigured: jest.fn()
   }
 
   beforeEach(() => {
-    mockUseConfigStore.mockReturnValue(mockStore as any)
+    mockUseConfigStore.mockReturnValue(mockStore as ConfigStore)
     
     window.electron = {
       saveConfig: jest.fn().mockResolvedValue(undefined),

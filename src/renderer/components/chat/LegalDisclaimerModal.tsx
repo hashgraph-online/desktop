@@ -280,7 +280,7 @@ export const LegalDisclaimerModal: React.FC<LegalDisclaimerModalProps> = ({
               {new Date().toLocaleDateString()} •
               <Button variant='link' className='p-0 h-auto text-xs' asChild>
                 <a
-                  href='https://github.com/hashgraph-online'
+                  href='https://github.com/hashgraphonline/hashgraph-online'
                   target='_blank'
                   rel='noopener noreferrer'
                 >

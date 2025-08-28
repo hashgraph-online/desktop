@@ -1,7 +1,6 @@
 import { renderHook, act } from '@testing-library/react'
 import { useAgentStore, Message } from '../../../src/renderer/stores/agentStore'
 
-// Mock the configStore since it's used by agentStore
 jest.mock('../../../src/renderer/stores/configStore', () => ({
   useConfigStore: {
     getState: () => ({
@@ -14,7 +13,6 @@ jest.mock('../../../src/renderer/stores/configStore', () => ({
   }
 }))
 
-// Mock the notification store
 jest.mock('../../../src/renderer/stores/notificationStore', () => ({
   useNotificationStore: {
     getState: () => ({
@@ -23,7 +21,6 @@ jest.mock('../../../src/renderer/stores/notificationStore', () => ({
   }
 }))
 
-// Mock TransactionParser
 jest.mock('@hashgraphonline/standards-sdk', () => ({
   TransactionParser: {
     validateTransactionBytes: jest.fn(() => ({ isValid: true })),
@@ -264,7 +261,7 @@ describe('agentStore', () => {
       await act(async () => {
         try {
           await result.current.connect()
-        } catch (error) {
+        } catch (_error) {
         }
       })
 
@@ -302,7 +299,7 @@ describe('agentStore', () => {
       await act(async () => {
         try {
           await result.current.disconnect()
-        } catch (e) {
+        } catch (_e) {
         }
       })
 
@@ -357,7 +354,7 @@ describe('agentStore', () => {
       await act(async () => {
         try {
           await result.current.sendMessage('Test message')
-        } catch (error: any) {
+        } catch (error: Error) {
           expect(error.message).toBe('Not connected to agent')
         }
       })
@@ -374,7 +371,7 @@ describe('agentStore', () => {
         result.current.setSessionId('session-error')
       })
 
-      const error = new Error('Send failed')
+      const _error = new Error('Send failed')
       mockElectron.sendAgentMessage.mockResolvedValue({
         success: false,
         error: 'Send failed'
@@ -383,7 +380,7 @@ describe('agentStore', () => {
       await act(async () => {
         try {
           await result.current.sendMessage('This will fail')
-        } catch (e: any) {
+        } catch (e: Error) {
           expect(e.message).toBe('Send failed')
         }
       })
@@ -408,7 +405,7 @@ describe('agentStore', () => {
         error: 'Test error'
       })
 
-      const messages: string[] = []
+      const _messages: string[] = []
 
       act(() => {
         for (let i = 0; i < 5; i++) {

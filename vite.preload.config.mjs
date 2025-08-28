@@ -25,8 +25,8 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      pino: resolve(__dirname, './src/lib/pino-stub.ts'),
-      'thread-stream': resolve(__dirname, './src/lib/thread-stream-stub.ts'),
+      pino: resolve(currentDir, './src/lib/pino-stub.ts'),
+      'thread-stream': resolve(currentDir, './src/lib/thread-stream-stub.ts'),
     },
   },
 });

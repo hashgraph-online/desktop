@@ -3,8 +3,12 @@ import { MakerZIP } from '@electron-forge/maker-zip';
 import { MakerDeb } from '@electron-forge/maker-deb';
 import { MakerRpm } from '@electron-forge/maker-rpm';
 import { VitePlugin } from '@electron-forge/plugin-vite';
+import { config } from 'dotenv';
 
-const config = {
+// Load environment variables
+config();
+
+const forgeConfig = {
   packagerConfig: {
     name: 'HOL Desktop',
     icon: './assets/hol-dock',
@@ -19,6 +23,7 @@ const config = {
     asar: {
       unpack: '**/*.node',
     },
+    extraResource: [{ from: './src/main/db/migrations', to: 'migrations' }],
   },
   rebuildConfig: {},
   makers: [
@@ -55,7 +60,7 @@ const config = {
           icon: './assets/HOL-Icon.png',
         },
       },
-      ['linux']
+      ['linux', 'arm64']
     ),
   ],
   plugins: [
@@ -82,4 +87,4 @@ const config = {
   ],
 };
 
-export default config;
+export default forgeConfig;

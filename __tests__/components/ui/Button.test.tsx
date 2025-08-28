@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Button } from '../../../src/renderer/components/ui/Button';
 
@@ -15,7 +15,7 @@ describe('Button', () => {
     render(<Button>Default</Button>);
     const button = screen.getByRole('button');
     expect(button).toHaveClass('bg-gradient-to-r');
-    expect(button).toHaveClass('from-[#5599fe]');
+    expect(button).toHaveClass('from-hgo-blue');
   });
 
   it('applies secondary variant styles', () => {

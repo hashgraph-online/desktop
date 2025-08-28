@@ -43,82 +43,101 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({
     onChange(isAutonomousMode ? 'provideBytes' : 'autonomous');
   };
 
-  const getDisplayText = () => {
-    if (isAutonomousMode && isAutonomousModeEnabled) {
-      return 'Autonomous Mode';
-    }
-    return 'Manual Mode';
-  };
+/**
+ * Mode display text component
+ */
+const ModeDisplayText: React.FC<{ 
+  isAutonomousMode: boolean; 
+  isAutonomousModeEnabled: boolean; 
+}> = ({ isAutonomousMode, isAutonomousModeEnabled }) => {
+  if (isAutonomousMode && isAutonomousModeEnabled) {
+    return <>Autonomous Mode</>;
+  }
+  return <>Manual Mode</>;
+};
 
-  const getIcon = () => {
-    if (isAutonomousMode && isAutonomousModeEnabled) {
-      return <FiZap className='w-4 h-4 text-[#10b981]' />;
-    }
-    return <FiCode className='w-4 h-4 text-[#5599fe]' />;
-  };
+/**
+ * Mode icon component
+ */
+const ModeIcon: React.FC<{ 
+  isAutonomousMode: boolean; 
+  isAutonomousModeEnabled: boolean; 
+}> = ({ isAutonomousMode, isAutonomousModeEnabled }) => {
+  if (isAutonomousMode && isAutonomousModeEnabled) {
+    return <FiZap className='w-4 h-4 text-hgo-green' />;
+  }
+  return <FiCode className='w-4 h-4 text-hgo-blue' />;
+};
 
-  const getTooltipContent = () => {
-    if (!hasAcceptedAll()) {
-      return (
-        <div className='space-y-1'>
-          <Typography variant='caption' className='text-white font-medium'>
-            Legal Agreements Required
-          </Typography>
-          <Typography variant='caption' className='text-red-100'>
-            Please accept Terms of Service and Privacy Policy to enable
-            autonomous mode
-          </Typography>
-        </div>
-      );
-    }
-
-    if (!config?.autonomousMode) {
-      return (
-        <div className='space-y-1'>
-          <div>
-            <Typography variant='caption' className='text-blue-100'>
-              Currently in Manual Mode - AI returns transaction bytes for manual
-              signing
-            </Typography>
-          </div>
-        </div>
-      );
-    }
-
-    if (isAutonomousMode) {
-      return (
-        <div className='space-y-1'>
-          <Typography variant='caption' className='text-white font-medium'>
-            Autonomous Mode Active
-          </Typography>
-          <Typography variant='caption' className='text-green-100'>
-            AI can automatically sign and submit transactions
-          </Typography>
-          <div className='pt-1 border-t border-green-400/30'>
-            <Typography variant='caption' className='text-green-100'>
-              Click to switch to Manual Mode
-            </Typography>
-          </div>
-        </div>
-      );
-    }
-
+/**
+ * Tooltip content component
+ */
+const ModeTooltipContent: React.FC<{
+  hasAcceptedAll: boolean;
+  config: any;
+  isAutonomousMode: boolean;
+}> = ({ hasAcceptedAll, config, isAutonomousMode }) => {
+  if (!hasAcceptedAll) {
     return (
       <div className='space-y-1'>
         <Typography variant='caption' className='text-white font-medium'>
-          Manual Mode Active
+          Legal Agreements Required
         </Typography>
-        <Typography variant='caption' className='text-blue-100'>
-          AI returns transaction bytes for manual signing
+        <Typography variant='caption' className='text-red-100'>
+          Please accept Terms of Service and Privacy Policy to enable
+          autonomous mode
         </Typography>
-        <div className='pt-1 border-t border-blue-400/30'>
+      </div>
+    );
+  }
+
+  if (!config?.autonomousMode) {
+    return (
+      <div className='space-y-1'>
+        <div>
           <Typography variant='caption' className='text-blue-100'>
-            Click to switch to Autonomous Mode
+            Currently in Manual Mode - AI returns transaction bytes for manual
+            signing
           </Typography>
         </div>
       </div>
     );
-  };
+  }
+
+  if (isAutonomousMode) {
+    return (
+      <div className='space-y-1'>
+        <Typography variant='caption' className='text-white font-medium'>
+          Autonomous Mode Active
+        </Typography>
+        <Typography variant='caption' className='text-green-100'>
+          AI can automatically sign and submit transactions
+        </Typography>
+        <div className='pt-1 border-t border-green-400/30'>
+          <Typography variant='caption' className='text-green-100'>
+            Click to switch to Manual Mode
+          </Typography>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className='space-y-1'>
+      <Typography variant='caption' className='text-white font-medium'>
+        Manual Mode Active
+      </Typography>
+      <Typography variant='caption' className='text-blue-100'>
+        AI returns transaction bytes for manual signing
+      </Typography>
+      <div className='pt-1 border-t border-blue-400/30'>
+        <Typography variant='caption' className='text-blue-100'>
+          Click to switch to Autonomous Mode
+        </Typography>
+      </div>
+    </div>
+  );
+};
 
   return (
     <TooltipProvider>
@@ -137,9 +156,9 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({
                   disabled && 'opacity-50 cursor-not-allowed'
                 )}
               >
-                {getIcon()}
+                <ModeIcon isAutonomousMode={isAutonomousMode} isAutonomousModeEnabled={isAutonomousModeEnabled} />
                 <Typography variant='caption' className='font-semibold'>
-                  {getDisplayText()}
+                  <ModeDisplayText isAutonomousMode={isAutonomousMode} isAutonomousModeEnabled={isAutonomousModeEnabled} />
                 </Typography>
                 <Switch
                   checked={isAutonomousMode}
@@ -149,9 +168,9 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({
               </button>
             ) : (
               <div className='flex items-center gap-2 px-2.5 py-1.5 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md rounded-lg border border-gray-200/40 dark:border-gray-700/40 shadow-sm'>
-                {getIcon()}
+                <ModeIcon isAutonomousMode={isAutonomousMode} isAutonomousModeEnabled={isAutonomousModeEnabled} />
                 <Typography variant='caption' className='font-semibold'>
-                  {getDisplayText()}
+                  <ModeDisplayText isAutonomousMode={isAutonomousMode} isAutonomousModeEnabled={isAutonomousModeEnabled} />
                 </Typography>
                 {!hasAcceptedAll() && (
                   <FiLock className='w-3 h-3 text-gray-400' />
@@ -174,11 +193,11 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({
           className={cn(
             'text-white border-2',
             isAutonomousMode && isAutonomousModeEnabled
-              ? 'bg-[#10b981] border-[#059669]'
-              : 'bg-[#5599fe] border-[#4488ee]'
+              ? 'bg-hgo-green border-hgo-green-darker'
+              : 'bg-hgo-blue border-hgo-blue-dark'
           )}
         >
-          {getTooltipContent()}
+          <ModeTooltipContent hasAcceptedAll={hasAcceptedAll()} config={config} isAutonomousMode={isAutonomousMode} />
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>

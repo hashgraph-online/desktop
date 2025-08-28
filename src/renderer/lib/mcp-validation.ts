@@ -6,7 +6,7 @@ export interface FieldError {
 }
 
 export interface ValidationHelpers {
-  validateField: (field: string, value: any) => FieldError | null
+  validateField: (field: string, value: unknown) => FieldError | null
   getFieldRequirements: (field: string) => string
 }
 
@@ -39,13 +39,13 @@ export class MCPServerFormValidator {
    */
   private static getFilesystemValidators(): ValidationHelpers {
     return {
-      validateField: (field: string, value: any): FieldError | null => {
+      validateField: (field: string, value: unknown): FieldError | null => {
         switch (field) {
           case 'rootPath':
-            if (!value || value.trim() === '') {
+            if (!value || (value as string).trim() === '') {
               return { field, message: 'Root path is required' }
             }
-            if (!value.startsWith('/') && !value.match(/^[A-Za-z]:\\/)) {
+            if (!(value as string).startsWith('/') && !(value as string).match(/^[A-Za-z]:\\/)) {
               return { field, message: 'Please use an absolute path' }
             }
             return null
@@ -53,7 +53,7 @@ export class MCPServerFormValidator {
           case 'allowedPaths':
           case 'excludePaths':
             if (value) {
-              const paths = value.split(',').map((p: string) => p.trim()).filter(Boolean)
+              const paths = (value as string).split(',').map((p: string) => p.trim()).filter(Boolean)
               for (const path of paths) {
                 if (!path.startsWith('/') && !path.match(/^[A-Za-z]:\\/)) {
                   return { field, message: 'All paths should be absolute' }
@@ -86,31 +86,31 @@ export class MCPServerFormValidator {
    */
   private static getGitHubValidators(): ValidationHelpers {
     return {
-      validateField: (field: string, value: any): FieldError | null => {
+      validateField: (field: string, value: unknown): FieldError | null => {
         switch (field) {
           case 'token':
-            if (!value || value.trim() === '') {
+            if (!value || (value as string).trim() === '') {
               return { field, message: 'GitHub token is required' }
             }
-            if (!value.match(/^(ghp|gho|ghu|ghs)_[a-zA-Z0-9]+$/)) {
+            if (!(value as string).match(/^(ghp|gho|ghu|ghs)_[a-zA-Z0-9]+$/)) {
               return { field, message: 'Invalid GitHub token format. Should start with ghp_, gho_, ghu_, or ghs_' }
             }
             return null
           
           case 'owner':
-            if (value && !value.match(/^[\w\-\.]+$/)) {
+            if (value && !(value as string).match(/^[\w\-\.]+$/)) {
               return { field, message: 'Invalid username/organization format' }
             }
             return null
           
           case 'repo':
-            if (value && !value.match(/^[\w\-\.]+$/)) {
+            if (value && !(value as string).match(/^[\w\-\.]+$/)) {
               return { field, message: 'Invalid repository name format' }
             }
             return null
           
           case 'branch':
-            if (value && !value.match(/^[\w\-\.\/]+$/)) {
+            if (value && !(value as string).match(/^[\w\-\.\/]+$/)) {
               return { field, message: 'Invalid branch name format' }
             }
             return null
@@ -141,41 +141,42 @@ export class MCPServerFormValidator {
    */
   private static getPostgresValidators(): ValidationHelpers {
     return {
-      validateField: (field: string, value: any): FieldError | null => {
+      validateField: (field: string, value: unknown): FieldError | null => {
         switch (field) {
           case 'host':
-            if (!value || value.trim() === '') {
+            if (!value || (value as string).trim() === '') {
               return { field, message: 'Host is required' }
             }
-            if (!value.match(/^[a-zA-Z0-9\-\.]+$/) && !value.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/)) {
+            if (!(value as string).match(/^[a-zA-Z0-9\-\.]+$/) && !(value as string).match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/)) {
               return { field, message: 'Invalid hostname or IP address' }
             }
             return null
           
-          case 'port':
-            const portNum = typeof value === 'string' ? parseInt(value, 10) : value
+          case 'port': {
+            const portNum = typeof value === 'string' ? parseInt(value, 10) : (typeof value === 'number' ? value : NaN)
             if (isNaN(portNum) || portNum < 1 || portNum > 65535) {
               return { field, message: 'Port must be between 1 and 65535' }
             }
             return null
+          }
           
           case 'database':
-            if (!value || value.trim() === '') {
+            if (!value || (value as string).trim() === '') {
               return { field, message: 'Database name is required' }
             }
-            if (!value.match(/^[\w\-]+$/)) {
+            if (!(value as string).match(/^[\w\-]+$/)) {
               return { field, message: 'Invalid database name format' }
             }
             return null
           
           case 'username':
-            if (!value || value.trim() === '') {
+            if (!value || (value as string).trim() === '') {
               return { field, message: 'Username is required' }
             }
             return null
           
           case 'password':
-            if (!value || value.trim() === '') {
+            if (!value || (value as string).trim() === '') {
               return { field, message: 'Password is required' }
             }
             return null
@@ -210,16 +211,16 @@ export class MCPServerFormValidator {
    */
   private static getSQLiteValidators(): ValidationHelpers {
     return {
-      validateField: (field: string, value: any): FieldError | null => {
+      validateField: (field: string, value: unknown): FieldError | null => {
         switch (field) {
           case 'path':
-            if (!value || value.trim() === '') {
+            if (!value || (value as string).trim() === '') {
               return { field, message: 'Database path is required' }
             }
-            if (!value.startsWith('/') && !value.match(/^[A-Za-z]:\\/)) {
+            if (!(value as string).startsWith('/') && !(value as string).match(/^[A-Za-z]:\\/)) {
               return { field, message: 'Please use an absolute path' }
             }
-            if (!value.match(/\.(db|sqlite|sqlite3)$/i)) {
+            if (!(value as string).match(/\.(db|sqlite|sqlite3)$/i)) {
               return { field, message: 'File should have .db, .sqlite, or .sqlite3 extension' }
             }
             return null
@@ -246,17 +247,17 @@ export class MCPServerFormValidator {
    */
   private static getCustomValidators(): ValidationHelpers {
     return {
-      validateField: (field: string, value: any): FieldError | null => {
+      validateField: (field: string, value: unknown): FieldError | null => {
         switch (field) {
           case 'command':
-            if (!value || value.trim() === '') {
+            if (!value || (value as string).trim() === '') {
               return { field, message: 'Command is required' }
             }
             return null
           
           case 'env':
             if (value) {
-              const lines = value.split('\n').filter(Boolean)
+              const lines = (value as string).split('\n').filter(Boolean)
               for (const line of lines) {
                 if (!line.includes('=')) {
                   return { field, message: 'Each line should be in KEY=value format' }
@@ -271,7 +272,7 @@ export class MCPServerFormValidator {
           
           case 'cwd':
             if (value) {
-              if (!value.startsWith('/') && !value.match(/^[A-Za-z]:\\/)) {
+              if (!(value as string).startsWith('/') && !(value as string).match(/^[A-Za-z]:\\/)) {
                 return { field, message: 'Working directory should be an absolute path' }
               }
             }
@@ -303,16 +304,16 @@ export class MCPServerFormValidator {
    */
   private static getDefaultValidators(): ValidationHelpers {
     return {
-      validateField: (field: string, value: any): FieldError | null => {
+      validateField: (field: string, value: unknown): FieldError | null => {
         switch (field) {
           case 'name':
-            if (!value || value.trim() === '') {
+            if (!value || (value as string).trim() === '') {
               return { field, message: 'Server name is required' }
             }
-            if (value.length > 50) {
+            if ((value as string).length > 50) {
               return { field, message: 'Server name must be 50 characters or less' }
             }
-            if (!value.match(/^[\w\s\-\.]+$/)) {
+            if (!(value as string).match(/^[\w\s\-\.]+$/)) {
               return { field, message: 'Server name can only contain letters, numbers, spaces, hyphens, and dots' }
             }
             return null
