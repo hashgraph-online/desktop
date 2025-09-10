@@ -1,10 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  FiHash,
-  FiExternalLink,
-  FiFile,
-  FiLoader,
-} from 'react-icons/fi';
+import { FiHash, FiExternalLink, FiFile, FiLoader } from 'react-icons/fi';
 import { Logger } from '@hashgraphonline/standards-sdk';
 import { TransactionSection, FieldRow } from './CommonFields';
 import {
@@ -215,7 +210,9 @@ const MetadataViewer: React.FC<MetadataViewerProps> = ({
         setMetadata(data);
 
         if (data.image) {
-          logger.debug('MetadataViewer processing image', { imageUrl: data.image });
+          logger.debug('MetadataViewer processing image', {
+            imageUrl: data.image,
+          });
           if (data.image.startsWith('hcs://')) {
             const imageMatch = data.image.match(/hcs:\/\/\d+\/(0\.0\.\d+)/);
             if (imageMatch && imageMatch[1]) {
@@ -241,7 +238,7 @@ const MetadataViewer: React.FC<MetadataViewerProps> = ({
 
   if (loading) {
     return (
-      <div className='flex items-center gap-2 p-3 text-xs text-gray-500'>
+      <div className='flex items-center gap-2 p-3 text-xs text-white'>
         <FiLoader className='w-3 h-3 animate-spin' />
         Loading metadata...
       </div>
@@ -250,7 +247,7 @@ const MetadataViewer: React.FC<MetadataViewerProps> = ({
 
   if (error) {
     return (
-      <div className='text-xs text-red-500 p-2'>
+      <div className='text-xs text-red-400 p-2'>
         Failed to load metadata: {error}
       </div>
     );
@@ -261,69 +258,68 @@ const MetadataViewer: React.FC<MetadataViewerProps> = ({
   }
 
   return (
-    <div className='mt-3 p-3 bg-white/5 rounded-lg border border-white/10'>
+    <div className='mt-3 p-3 bg-white/5 rounded-lg'>
       {imageUrl && (
         <div className='mb-3'>
           <img
             src={imageUrl}
-            alt={metadata.name || 'NFT Image'}
+            alt={`${metadata.name || 'NFT'} - ${metadata.description || 'Digital collectible'}`}
             className='w-full max-w-[200px] h-auto rounded-lg'
             onError={(e) => {
               e.currentTarget.style.display = 'none';
             }}
+            loading='lazy'
           />
         </div>
       )}
 
-      <div className='space-y-2'>
+      <div className='space-y-1'>
         {metadata.name && (
-          <div>
-            <span className='text-xs text-gray-500 dark:text-gray-400'>
-              Name:
+          <div className='flex justify-between items-center'>
+            <span className='text-xs text-white'>Name:</span>
+            <span className='text-sm font-medium text-white'>
+              {metadata.name}
             </span>
-            <p className='text-sm font-medium text-white'>{metadata.name}</p>
           </div>
         )}
 
         {metadata.description && (
-          <div>
-            <span className='text-xs text-gray-500 dark:text-gray-400'>
+          <div className='flex justify-between items-start'>
+            <span className='text-xs text-white flex-shrink-0'>
               Description:
             </span>
-            <p className='text-xs text-gray-300'>{metadata.description}</p>
+            <span className='text-xs text-white ml-2 text-right'>
+              {metadata.description}
+            </span>
           </div>
         )}
 
         {metadata.creator && (
-          <div>
-            <span className='text-xs text-gray-500 dark:text-gray-400'>
-              Creator:
-            </span>
-            <p className='text-xs font-mono text-gray-300'>
+          <div className='flex justify-between items-center'>
+            <span className='text-xs text-white'>Creator:</span>
+            <span className='text-xs font-mono text-white'>
               {metadata.creator}
-            </p>
+            </span>
           </div>
         )}
 
         {metadata.type && (
-          <div>
-            <span className='text-xs text-gray-500 dark:text-gray-400'>
-              Type:
-            </span>
-            <p className='text-xs text-gray-300'>{metadata.type}</p>
+          <div className='flex justify-between items-center'>
+            <span className='text-xs text-white'>Type:</span>
+            <span className='text-xs text-white'>{metadata.type}</span>
           </div>
         )}
 
         {metadata.attributes && metadata.attributes.length > 0 && (
-          <div>
-            <span className='text-xs text-gray-500 dark:text-gray-400'>
-              Attributes:
-            </span>
-            <div className='mt-1 grid grid-cols-2 gap-2'>
+          <div className='pt-2 border-t border-white/10'>
+            <div className='text-xs text-white mb-2'>Attributes:</div>
+            <div className='grid grid-cols-2 gap-2'>
               {metadata.attributes.map((attr, idx: number) => (
-                <div key={idx} className='bg-white/5 rounded p-2'>
-                  <p className='text-xs text-gray-400'>{attr.trait_type}</p>
-                  <p className='text-xs font-medium text-white'>{attr.value}</p>
+                <div key={idx} className='bg-white/10 rounded p-2'>
+                  <div className='text-xs text-white'>{attr.trait_type}</div>
+                  <div className='text-xs font-medium text-white'>
+                    {attr.value}
+                  </div>
                 </div>
               ))}
             </div>
@@ -346,39 +342,35 @@ export const TokenMintSection: React.FC<{ tokenMint: TokenMintData }> = ({
   };
 
   return (
-    <TransactionSection title='Token Mint Details'>
-      <div className='p-4 space-y-1'>
-        <FieldRow label='Token ID' value={tokenMint.tokenId} isMono />
-        <FieldRow label='Amount' value={tokenMint.amount} />
-        {tokenMint.metadata && tokenMint.metadata.length > 0 && (
-          <div className='pt-2 border-t border-gray-200 dark:border-gray-700'>
-            <div className='text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>
-              Metadata ({tokenMint.metadata.length} items)
-            </div>
-            <div className='space-y-2'>
-              {tokenMint.metadata.map((meta, idx) => {
-                const decodedMeta = decodeMetadata(meta);
-                const isHRL = decodedMeta.startsWith('hcs://');
-
-                return (
-                  <div
-                    key={idx}
-                    className='bg-gray-50 dark:bg-gray-700 p-3 rounded'
-                  >
-                    <div className='text-sm text-gray-600 dark:text-gray-400 font-mono text-xs break-all'>
-                      {decodedMeta}
-                    </div>
-                    {isHRL && (
-                      <MetadataViewer hrl={decodedMeta} network='testnet' />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+    <div className='space-y-2'>
+      <h4 className='text-sm font-medium text-white'>Token Mint Details</h4>
+      <FieldRow label='Token ID' value={tokenMint.tokenId} isMono />
+      <FieldRow label='Amount' value={tokenMint.amount} />
+      {tokenMint.metadata && tokenMint.metadata.length > 0 && (
+        <div className='pt-2'>
+          <div className='text-sm font-medium text-white mb-2'>
+            Metadata ({tokenMint.metadata.length} items)
           </div>
-        )}
-      </div>
-    </TransactionSection>
+          <div className='space-y-2'>
+            {tokenMint.metadata.map((meta, idx) => {
+              const decodedMeta = decodeMetadata(meta);
+              const isHRL = decodedMeta.startsWith('hcs://');
+
+              return (
+                <div key={idx} className='bg-white/5 p-3 rounded-lg'>
+                  <div className='text-sm text-white font-mono text-xs break-all mb-2'>
+                    {decodedMeta}
+                  </div>
+                  {isHRL && (
+                    <MetadataViewer hrl={decodedMeta} network='testnet' />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 

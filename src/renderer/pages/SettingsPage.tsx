@@ -10,17 +10,23 @@ import {
 import { HederaSettings } from './settings/HederaSettings';
 import { LLMSettings } from './settings/LLMSettings';
 import { AdvancedSettings } from './settings/AdvancedSettings';
+import { WalletSettings } from './settings/WalletSettings';
 import { useConfigStore } from '../stores/configStore';
 import { useAgentStore } from '../stores/agentStore';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent } from '../components/ui/Card';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs';
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+} from '../components/ui/tabs';
 import Typography from '../components/ui/Typography';
 import { cn } from '../lib/utils';
 
 interface SettingsPageProps {}
 
-type TabKey = 'hedera' | 'llm' | 'advanced';
+type TabKey = 'hedera' | 'wallet' | 'llm' | 'advanced';
 
 interface Tab {
   key: TabKey;
@@ -31,6 +37,7 @@ interface Tab {
 
 const tabs: Tab[] = [
   { key: 'hedera', label: 'Hedera', icon: FiServer, component: HederaSettings },
+  { key: 'wallet', label: 'Wallet', icon: FiServer, component: WalletSettings },
   { key: 'llm', label: 'AI Models', icon: FiCpu, component: LLMSettings },
   {
     key: 'advanced',
@@ -81,7 +88,9 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
 
   useEffect(() => {
     const unsubscribe = useConfigStore.subscribe((state, prevState) => {
-      if (JSON.stringify(state.config) !== JSON.stringify(prevState.config)) {
+      const changed = JSON.stringify(state.config) !== JSON.stringify(prevState.config);
+      if (changed) {
+        try { console.debug('[SettingsPage] config changed; scheduling save debounce'); } catch {}
         setHasChanges(true);
 
         if (saveTimeout) {
@@ -91,17 +100,19 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
         const hederaValid = isHederaConfigValid();
         const llmValid = isLLMConfigValid();
 
-        const shouldAutoSave = (hederaValid && llmValid) || 
-                              (state.config?.advanced && 
-                               JSON.stringify(state.config.advanced) !== JSON.stringify(prevState.config?.advanced));
-        
+        const advancedChanged = Boolean(
+          state.config?.advanced &&
+          JSON.stringify(state.config.advanced) !== JSON.stringify(prevState.config?.advanced)
+        );
+        const shouldAutoSave = (hederaValid && llmValid) || advancedChanged;
+
         if (shouldAutoSave) {
           const timeout = setTimeout(async () => {
             try {
+              try { console.debug('[SettingsPage] auto-saving config'); } catch {}
               await saveConfig();
               setHasChanges(false);
-            } catch (error) {
-            }
+            } catch (error) {}
           }, 2000);
           setSaveTimeout(timeout);
         }
@@ -117,23 +128,23 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
   }, [saveConfig, isHederaConfigValid, isLLMConfigValid, saveTimeout]);
 
   const { isConnected, disconnect, connect } = useAgentStore();
-  
+
   const handleSaveConfiguration = async () => {
     try {
       const oldConfig = localStorage.getItem('app-config');
       await saveConfig();
       setHasChanges(false);
       setConfigNeverSaved(false);
-      
+
       const newConfig = localStorage.getItem('app-config');
       if (oldConfig && newConfig) {
         const oldParsed = JSON.parse(oldConfig);
         const newParsed = JSON.parse(newConfig);
-        const modelOrProviderChanged = 
+        const modelOrProviderChanged =
           oldParsed.openai?.model !== newParsed.openai?.model ||
           oldParsed.anthropic?.model !== newParsed.anthropic?.model ||
           oldParsed.llmProvider !== newParsed.llmProvider;
-        
+
         if (modelOrProviderChanged && isConnected) {
           await disconnect();
           setTimeout(async () => {
@@ -141,8 +152,7 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
           }, 500);
         }
       }
-    } catch (error) {
-    }
+    } catch (error) {}
   };
 
   const handleCancel = async () => {
@@ -208,9 +218,12 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
         )}
 
         <Card className='shadow-lg'>
-          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabKey)}>
+          <Tabs
+            value={activeTab}
+            onValueChange={(value) => setActiveTab(value as TabKey)}
+          >
             <div className='border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6'>
-              <TabsList className='grid grid-cols-3 h-auto bg-transparent'>
+              <TabsList className='grid grid-cols-4 h-auto bg-transparent overflow-x-auto gap-2 sm:gap-3 no-scrollbar'>
                 {tabs.map((tab) => {
                   const Icon = tab.icon;
                   return (
@@ -218,7 +231,7 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
                       key={tab.key}
                       value={tab.key}
                       className={cn(
-                        'py-3 sm:py-4 px-1 font-medium text-sm flex items-center gap-2',
+                        'py-3 sm:py-4 px-2 sm:px-3 font-medium text-sm flex items-center gap-2 shrink-0',
                         'transition-colors min-h-[44px] touch-manipulation relative',
                         'data-[state=active]:bg-transparent data-[state=active]:shadow-none',
                         'data-[state=active]:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-brand-blue',
@@ -250,7 +263,17 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
                   <HederaSettings />
                 </motion.div>
               </TabsContent>
-              
+
+              <TabsContent value='wallet' className='mt-0'>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <WalletSettings />
+                </motion.div>
+              </TabsContent>
+
               <TabsContent value='llm' className='mt-0'>
                 <motion.div
                   initial={{ opacity: 0 }}
@@ -260,7 +283,7 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
                   <LLMSettings />
                 </motion.div>
               </TabsContent>
-              
+
               <TabsContent value='advanced' className='mt-0'>
                 <motion.div
                   initial={{ opacity: 0 }}

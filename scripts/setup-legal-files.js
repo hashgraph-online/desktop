@@ -34,7 +34,6 @@ files.forEach(({ source, targets }) => {
     const targetPath = path.join(rootDir, target);
     const targetDir = path.dirname(targetPath);
     
-    // Ensure target directory exists
     if (!fs.existsSync(targetDir)) {
       fs.mkdirSync(targetDir, { recursive: true });
     }

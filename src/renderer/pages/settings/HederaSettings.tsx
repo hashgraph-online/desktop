@@ -65,16 +65,25 @@ export const HederaSettings: React.FC<HederaSettingsProps> = () => {
   }, [watchNetwork, reset, watch, setHederaNetwork])
 
   React.useEffect(() => {
-    setHederaAccountId(watchAccountId || '')
-  }, [watchAccountId, setHederaAccountId])
+    const next = watchAccountId || ''
+    if (config?.hedera?.accountId !== next) {
+      setHederaAccountId(next)
+    }
+  }, [watchAccountId, setHederaAccountId, config?.hedera?.accountId])
 
   React.useEffect(() => {
-    setHederaPrivateKey(watchPrivateKey || '')
-  }, [watchPrivateKey, setHederaPrivateKey])
+    const next = watchPrivateKey || ''
+    if (config?.hedera?.privateKey !== next) {
+      setHederaPrivateKey(next)
+    }
+  }, [watchPrivateKey, setHederaPrivateKey, config?.hedera?.privateKey])
 
   React.useEffect(() => {
-    setHederaNetwork(watchNetwork || 'testnet')
-  }, [watchNetwork, setHederaNetwork])
+    const next = watchNetwork || 'testnet'
+    if (config?.hedera?.network !== next) {
+      setHederaNetwork(next)
+    }
+  }, [watchNetwork, setHederaNetwork, config?.hedera?.network])
 
   const handleTestConnection = async () => {
     setIsTesting(true)

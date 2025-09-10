@@ -48,7 +48,7 @@ export interface MessageData {
 }
 
 export interface AgentConfig {
-  operationalMode?: 'autonomous' | 'provideBytes';
+  operationalMode?: 'autonomous' | 'provideBytes' | 'returnBytes';
   openaiApiKey?: string;
   anthropicApiKey?: string;
   network?: string;

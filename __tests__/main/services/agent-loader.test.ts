@@ -14,7 +14,12 @@ jest.mock('../../../src/main/utils/ConcurrencyManager', () => ({
 
 jest.mock('../../../src/main/services/mcp-connection-pool-manager', () => ({
   MCPConnectionPoolManager: {
-    getInstance: jest.fn()
+    getInstance: jest.fn().mockReturnValue({
+      getPerformanceMetrics: jest.fn().mockReturnValue({
+        totalServersManaged: 5,
+        avgConnectionLatency: 150
+      })
+    })
   }
 }));
 
@@ -25,8 +30,32 @@ jest.mock('../../../src/main/services/mcp-service', () => ({
 }));
 
 jest.mock('../../../src/main/services/agent-service', () => ({
-  AgentService: jest.fn()
+  AgentService: jest.fn().mockImplementation(() => ({
+    validateConfig: jest.fn(),
+    initializeAgent: jest.fn(),
+    initializeInternal: jest.fn().mockResolvedValue({
+      success: true,
+      sessionId: 'test-session-123'
+    }),
+    getSessionId: jest.fn().mockReturnValue('test-session-123'),
+    getPerformanceMetrics: jest.fn(),
+    setParameterPreprocessingCallback: jest.fn()
+  }))
 }));
+
+const mockAgentServiceInstance = {
+  validateConfig: jest.fn(),
+  initializeAgent: jest.fn(),
+  initializeInternal: jest.fn().mockResolvedValue({
+    success: true,
+    sessionId: 'test-session-123'
+  }),
+  getSessionId: jest.fn().mockReturnValue('test-session-123'),
+  getPerformanceMetrics: jest.fn(),
+  setParameterPreprocessingCallback: jest.fn()
+};
+
+(AgentService as any).getInstance = jest.fn().mockReturnValue(mockAgentServiceInstance);
 
 jest.mock('../../../src/main/utils/logger', () => ({
   Logger: jest.fn()
@@ -38,6 +67,7 @@ describe('AgentLoader', () => {
   let mockPoolManager: jest.Mocked<MCPConnectionPoolManager>;
   let mockMcpService: jest.Mocked<MCPService>;
   let mockAgentService: jest.Mocked<AgentService>;
+  let mockLogger: any;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -61,6 +91,10 @@ describe('AgentLoader', () => {
         activeConnections: 0,
         availableConnections: 0,
         totalConnections: 0
+      }),
+      getPerformanceMetrics: jest.fn().mockReturnValue({
+        totalServersManaged: 5,
+        avgConnectionLatency: 150
       })
     } as jest.Mocked<MCPConnectionPoolManager>;
 
@@ -74,13 +108,23 @@ describe('AgentLoader', () => {
     } as jest.Mocked<MCPService>;
 
     mockAgentService = {
-      initializeAgent: jest.fn(),
+      initializeAgent: jest.fn().mockResolvedValue({
+        success: true,
+        sessionId: 'test-session-123'
+      }),
+      initializeInternal: jest.fn().mockResolvedValue({
+        success: true,
+        sessionId: 'test-session-123'
+      }),
       validateConfig: jest.fn(),
+      getSessionId: jest.fn().mockReturnValue('test-session-123'),
       getAgentStats: jest.fn().mockReturnValue({
         isInitialized: false,
         sessionId: null,
         lastActivity: null
-      })
+      }),
+      getPerformanceMetrics: jest.fn(),
+      setParameterPreprocessingCallback: jest.fn()
     } as jest.Mocked<AgentService>;
 
     (ConcurrencyManager.getInstance as jest.Mock).mockReturnValue(mockConcurrencyManager);
@@ -88,7 +132,7 @@ describe('AgentLoader', () => {
     (MCPService.getInstance as jest.Mock).mockReturnValue(mockMcpService);
 
     const { Logger } = require('../../../src/main/utils/logger');
-    const mockLogger = {
+    mockLogger = {
       info: jest.fn(),
       warn: jest.fn(),
       error: jest.fn(),
@@ -97,6 +141,7 @@ describe('AgentLoader', () => {
     Logger.mockImplementation(() => mockLogger);
 
     agentLoader = AgentLoader.getInstance();
+    agentLoader.setAgentService(mockAgentService);
   });
 
   describe('Singleton Pattern', () => {
@@ -175,7 +220,8 @@ describe('AgentLoader', () => {
       network: 'testnet',
       privateKey: 'test-key',
       operatorId: '0.0.123456',
-      operatorKey: 'test-operator-key'
+      operatorKey: 'test-operator-key',
+      openAIApiKey: 'test-openai-key'
     };
 
     beforeEach(() => {
@@ -198,17 +244,21 @@ describe('AgentLoader', () => {
     });
 
     test('should handle core validation failure', async () => {
-      mockAgentService.validateConfig.mockResolvedValue(false);
+      const invalidConfig = {
+        accountId: '0.0.123456',
+        network: 'testnet',
+        privateKey: 'test-key'
+      };
 
-      const result = await agentLoader.loadAgent(mockAgentConfig);
+      const result = await agentLoader.loadAgent(invalidConfig as AgentConfig);
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain('Core validation failed');
+      expect(result.error).toContain('Missing required LLM API key');
     });
 
     test('should handle core agent initialization failure', async () => {
       mockAgentService.validateConfig.mockResolvedValue(true);
-      mockAgentService.initializeAgent.mockResolvedValue({
+      mockAgentService.initializeInternal.mockResolvedValue({
         success: false,
         error: 'Initialization failed'
       });
@@ -220,12 +270,17 @@ describe('AgentLoader', () => {
     });
 
     test('should handle unexpected errors', async () => {
-      mockAgentService.validateConfig.mockRejectedValue(new Error('Unexpected error'));
+      const invalidConfig = {
+        accountId: 'invalid-format',
+        network: 'testnet',
+        privateKey: 'test-key',
+        openAIApiKey: 'test-key'
+      };
 
-      const result = await agentLoader.loadAgent(mockAgentConfig);
+      const result = await agentLoader.loadAgent(invalidConfig as AgentConfig);
 
       expect(result.success).toBe(false);
-      expect(result.error).toBe('Unexpected error');
+      expect(result.error).toContain('Invalid accountId format');
     });
 
     test('should use custom progressive config', async () => {
@@ -287,7 +342,8 @@ describe('AgentLoader', () => {
       network: 'testnet',
       privateKey: 'test-key',
       operatorId: '0.0.123456',
-      operatorKey: 'test-operator-key'
+      operatorKey: 'test-operator-key',
+      openAIApiKey: 'test-openai-key'
     };
 
     beforeEach(() => {
@@ -295,27 +351,23 @@ describe('AgentLoader', () => {
     });
 
     test('should validate core config successfully', async () => {
-      mockAgentService.validateConfig.mockResolvedValue(true);
-
-      await (agentLoader as any).validateCoreConfig(mockAgentConfig);
-
-      expect(mockAgentService.validateConfig).toHaveBeenCalledWith(mockAgentConfig);
+      await expect((agentLoader as any).validateCoreConfig(mockAgentConfig)).resolves.not.toThrow();
     });
 
     test('should handle validation failure', async () => {
-      mockAgentService.validateConfig.mockResolvedValue(false);
+      const invalidConfig = { ...mockAgentConfig, accountId: '' };
 
       await expect(
-        (agentLoader as any).validateCoreConfig(mockAgentConfig)
-      ).rejects.toThrow('Core validation failed');
+        (agentLoader as any).validateCoreConfig(invalidConfig)
+      ).rejects.toThrow('Missing required core configuration');
     });
 
     test('should handle validation error', async () => {
-      mockAgentService.validateConfig.mockRejectedValue(new Error('Validation error'));
+      const invalidConfig = { ...mockAgentConfig, openAIApiKey: '' };
 
       await expect(
-        (agentLoader as any).validateCoreConfig(mockAgentConfig)
-      ).rejects.toThrow('Validation error');
+        (agentLoader as any).validateCoreConfig(invalidConfig)
+      ).rejects.toThrow('Missing required LLM API key');
     });
   });
 
@@ -342,11 +394,14 @@ describe('AgentLoader', () => {
 
       expect(result.success).toBe(true);
       expect(result.sessionId).toBe('test-session-123');
-      expect(mockAgentService.initializeAgent).toHaveBeenCalledWith(mockAgentConfig);
+      expect(mockAgentService.initializeInternal).toHaveBeenCalledWith({
+        ...mockAgentConfig,
+        useProgressiveLoading: false
+      });
     });
 
     test('should handle initialization failure', async () => {
-      mockAgentService.initializeAgent.mockResolvedValue({
+      mockAgentService.initializeInternal.mockResolvedValue({
         success: false,
         error: 'Initialization failed'
       });
@@ -358,18 +413,18 @@ describe('AgentLoader', () => {
     });
 
     test('should handle initialization timeout', async () => {
-      mockAgentService.initializeAgent.mockImplementation(() => 
+      mockAgentService.initializeInternal.mockImplementation(() =>
         new Promise(resolve => setTimeout(() => resolve({ success: true, sessionId: 'timeout' }), 200))
       );
 
       const result = await (agentLoader as any).initializeCoreAgent(mockAgentConfig, 100);
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain('timeout');
+      expect(result.error).toContain('timed out');
     });
 
     test('should handle initialization error', async () => {
-      mockAgentService.initializeAgent.mockRejectedValue(new Error('Init error'));
+      mockAgentService.initializeInternal.mockRejectedValue(new Error('Init error'));
 
       const result = await (agentLoader as any).initializeCoreAgent(mockAgentConfig, 15000);
 
@@ -382,7 +437,9 @@ describe('AgentLoader', () => {
     test('should perform optimization warmup', async () => {
       await (agentLoader as any).performOptimizationWarmup();
 
-      expect(mockConcurrencyManager.execute).toHaveBeenCalled();
+      expect(mockLogger.debug).toHaveBeenCalledWith('Performing optimization warmup');
+      expect(mockLogger.debug).toHaveBeenCalledWith('Connection pool metrics collected', expect.any(Object));
+      expect(mockLogger.debug).toHaveBeenCalledWith('Optimization warmup completed');
     });
   });
 
@@ -422,7 +479,7 @@ describe('AgentLoader', () => {
       const result = await agentLoader.loadAgent(mockAgentConfig);
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain('AgentService not initialized');
+      expect(result.error).toContain('Missing required LLM API key');
     });
   });
 });

@@ -21,7 +21,6 @@ const NetworkSelector: React.FC<NetworkSelectorProps> = ({ className }) => {
     }
   }, [networkType, setNetworkType]);
 
-  // Ensure we always have a valid network type
   const currentNetwork = networkType || 'testnet';
 
   return (

@@ -18,6 +18,8 @@ import {
 } from 'lucide-react';
 import type { HCS10ProfileResponse } from '../../../shared/schemas/hcs10';
 import { cn } from '../../lib/utils';
+import { useWalletStore } from '../../stores/walletStore';
+import { Progress } from '../ui/Progress';
 
 interface RegistrationStatusDialogProps {
   isOpen: boolean;
@@ -44,6 +46,20 @@ export function RegistrationStatusDialog({
   progress,
 }: RegistrationStatusDialogProps) {
   const [copied, setCopied] = React.useState(false);
+  const walletNetwork = useWalletStore((s) => s.network) as 'mainnet' | 'testnet' | null;
+  const stageKey = (progress?.stage || '').toLowerCase();
+  const stageText =
+    stageKey === 'preparing'
+      ? 'Preparing'
+      : stageKey === 'submitting'
+      ? 'Submitting'
+      : stageKey === 'confirming'
+      ? 'Confirming'
+      : stageKey === 'verifying'
+      ? 'Verifying'
+      : stageKey === 'completed'
+      ? 'Completed'
+      : undefined;
 
   React.useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -68,8 +84,8 @@ export function RegistrationStatusDialog({
 
   const handleViewOnExplorer = () => {
     if (result?.transactionId) {
-      const network = 'testnet'; // This should probably come from config or props
-      const explorerUrl = `https://hashscan.io/${network === 'testnet' ? 'testnet/' : ''}transaction/${result.transactionId}`;
+      const selectedNetwork = walletNetwork || 'testnet';
+      const explorerUrl = `https://hashscan.io/${selectedNetwork === 'testnet' ? 'testnet/' : ''}transaction/${result.transactionId}`;
       window.electron.openExternal(explorerUrl);
     }
   };
@@ -87,38 +103,35 @@ export function RegistrationStatusDialog({
 
         <div className='py-4'>
           {isRegistering && (
-            <div className='flex flex-col items-center space-y-6 py-6'>
-              <Loader2 className='h-12 w-12 animate-spin text-primary' />
-              <div className='text-center space-y-3'>
+            <div className='flex flex-col items-center gap-4 py-6'>
+              <Loader2 className='h-6 w-6 animate-spin text-primary' />
+              <div className='text-center space-y-1 px-4'>
                 <Typography variant='body1' className='font-medium text-foreground'>
-                  {progress?.message ||
-                    'Creating your agent profile on the Hedera Hashgraph...'}
+                  {progress?.message || 'Creating your agent profile on Hedera'}
                 </Typography>
-                {progress?.stage && (
-                  <Typography variant='caption' className='text-muted-foreground uppercase tracking-wider'>
-                    Stage: {progress.stage}
+                {stageText && (
+                  <Typography variant='caption' className='text-muted-foreground'>
+                    {stageText}
                   </Typography>
                 )}
-                {progress?.percent !== undefined && progress.percent > 0 && (
-                  <div className='w-full max-w-sm mx-auto'>
-                    <div className='flex justify-between text-sm mb-1'>
-                      <Typography variant='caption' className='text-muted-foreground'>Progress</Typography>
-                      <Typography variant='caption' className='text-foreground'>
-                        {progress.percent}%
-                      </Typography>
-                    </div>
-                    <div className='w-full bg-muted rounded-full h-2'>
-                      <div
-                        className='bg-primary h-2 rounded-full transition-all duration-300 ease-out'
-                        style={{ width: `${Math.min(progress.percent, 100)}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
-                <Typography variant='body2' className='text-muted-foreground'>
-                  This may take a few moments
-                </Typography>
               </div>
+              <div className='w-full max-w-sm px-4'>
+                <div className='flex justify-between mb-1'>
+                  <Typography variant='caption' className='text-muted-foreground'>Progress</Typography>
+                  <Typography variant='caption' className='text-foreground'>
+                    {Math.max(0, Math.min(progress?.percent ?? 0, 100))}%
+                  </Typography>
+                </div>
+                <Progress
+                  value={Math.max(1, Math.min(progress?.percent ?? 1, 100))}
+                  variant='hgo'
+                  size='md'
+                  animated
+                />
+              </div>
+              <Typography variant='caption' className='text-muted-foreground px-4'>
+                This may take a few moments
+              </Typography>
             </div>
           )}
 

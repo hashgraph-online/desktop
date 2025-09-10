@@ -53,10 +53,8 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             )}
             <Button
               onClick={() => {
-                // First reset the error state
                 this.setState({ hasError: false, error: undefined });
                 
-                // Then reload the app
                 setTimeout(() => {
                   if (window.electron?.reloadApp) {
                     window.electron.reloadApp();

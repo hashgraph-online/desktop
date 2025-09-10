@@ -73,6 +73,17 @@ export class MirrorNodeService {
   }
 
   /**
+   * Proxy getTransaction (by ID or hash) from HederaMirrorNode
+   */
+  async getTransaction(
+    transactionIdOrHash: string,
+    network: 'mainnet' | 'testnet' = 'testnet'
+  ): Promise<unknown> {
+    const mirrorNode = this.getMirrorNode(network);
+    return mirrorNode.getTransaction(transactionIdOrHash);
+  }
+
+  /**
    * Proxy getTokenInfo from HederaMirrorNode
    */
   async getTokenInfo(

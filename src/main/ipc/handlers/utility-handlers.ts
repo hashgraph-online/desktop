@@ -6,6 +6,7 @@ import { UpdateService } from '../../services/update-service';
 import { OpenRouterService } from '../../services/open-router-service';
 import { Logger } from '../../utils/logger';
 import { handleIPCError, createSuccessResponse } from './shared-handler-utils';
+import { setCurrentWallet, type WalletBridgeInfo } from '../../services/wallet-context';
 
 /**
  * Sets up IPC handlers for mirror node requests
@@ -13,6 +14,7 @@ import { handleIPCError, createSuccessResponse } from './shared-handler-utils';
 export function setupMirrorNodeHandlers(): void {
   const mirrorNodeService = MirrorNodeService.getInstance();
   const transactionParserService = TransactionParserService.getInstance();
+  const logger = new Logger({ module: 'MirrorNodeHandlers' });
 
   ipcMain.handle(
     'mirrorNode:getScheduleInfo',
@@ -60,13 +62,40 @@ export function setupMirrorNodeHandlers(): void {
       network?: 'mainnet' | 'testnet'
     ): Promise<IPCResponse> => {
       try {
+        logger.info(`IPC mirrorNode:getTransactionByTimestamp`, { timestamp, network });
         const transactions = await mirrorNodeService.getTransactionByTimestamp(
           timestamp,
           network
         );
+        const count = Array.isArray(transactions) ? transactions.length : 0;
+        logger.info(`Mirror timestamp query returned ${count} tx(s)`);
         return createSuccessResponse(transactions);
       } catch (error) {
+        logger.error('Mirror timestamp query failed', error);
         return handleIPCError(error, 'Failed to fetch transaction');
+      }
+    }
+  );
+
+  ipcMain.handle(
+    'mirrorNode:getTransaction',
+    async (
+      event: IpcMainInvokeEvent,
+      transactionId: string,
+      network?: 'mainnet' | 'testnet'
+    ): Promise<IPCResponse> => {
+      try {
+        logger.info(`IPC mirrorNode:getTransaction`, { transactionId, network });
+        const tx = await mirrorNodeService.getTransaction(
+          transactionId,
+          network
+        );
+        const hasTx = tx ? true : false;
+        logger.info(`Mirror getTransaction returned: ${hasTx ? 'found' : 'not found'}`);
+        return createSuccessResponse(tx);
+      } catch (error) {
+        logger.error('Mirror getTransaction failed', error);
+        return handleIPCError(error, 'Failed to fetch transaction by ID');
       }
     }
   );
@@ -186,6 +215,21 @@ export function setupThemeHandlers(): void {
       } catch (error) {
         logger.error('Open external error:', error);
         return handleIPCError(error, 'Failed to open external URL');
+      }
+    }
+  );
+
+  ipcMain.handle(
+    'wallet:set-current',
+    async (
+      event: IpcMainInvokeEvent,
+      info: WalletBridgeInfo
+    ): Promise<IPCResponse> => {
+      try {
+        setCurrentWallet(info);
+        return createSuccessResponse();
+      } catch (error) {
+        return handleIPCError(error, 'Failed to set current wallet');
       }
     }
   );

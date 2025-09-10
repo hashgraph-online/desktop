@@ -188,6 +188,15 @@ const electronBridge = {
         timestamp,
         network
       ),
+    getTransaction: (
+      transactionId: string,
+      network?: 'mainnet' | 'testnet'
+    ) =>
+      ipcRenderer.invoke(
+        'mirrorNode:getTransaction',
+        transactionId,
+        network
+      ),
     getTokenInfo: (tokenId: string, network?: 'mainnet' | 'testnet') =>
       ipcRenderer.invoke('mirrorNode:getTokenInfo', tokenId, network),
   },
@@ -198,6 +207,9 @@ const electronBridge = {
     parse: (transactionBytes: string) =>
       ipcRenderer.invoke('transactionParser:parse', transactionBytes),
   },
+
+  setCurrentWallet: (info: { accountId: string; network: 'mainnet' | 'testnet' } | null) =>
+    ipcRenderer.invoke('wallet:set-current', info),
 
   hcs10: {
     retrieveProfile: (accountId: string, network?: 'mainnet' | 'testnet') =>

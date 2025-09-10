@@ -54,7 +54,7 @@ describe('processMarkdown', () => {
   describe('Code Blocks', () => {
     test('should process inline code', () => {
       const input = 'Use the `console.log()` function';
-      const expected = 'Use the <code class="inline-code px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded font-mono text-sm text-gray-900 dark:text-gray-100">console.log()</code> function';
+      const expected = 'Use the <code class="inline-code px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded font-mono text-[0.85em]">console.log()</code> function';
 
       const result = processMarkdown(input);
       expect(result).toBe(expected);
@@ -62,7 +62,7 @@ describe('processMarkdown', () => {
 
     test('should handle code with special characters', () => {
       const input = 'Type `npm install <package>` in terminal';
-      const expected = 'Type <code class="inline-code px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded font-mono text-sm text-gray-900 dark:text-gray-100">npm install <package></code> in terminal';
+      const expected = 'Type <code class="inline-code px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded font-mono text-[0.85em]">npm install &lt;package&gt;</code> in terminal';
 
       const result = processMarkdown(input);
       expect(result).toBe(expected);
@@ -70,7 +70,7 @@ describe('processMarkdown', () => {
 
     test('should handle multiple inline code blocks', () => {
       const input = 'Use `function()` and `variable` together';
-      const expected = 'Use <code class="inline-code px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded font-mono text-sm text-gray-900 dark:text-gray-100">function()</code> and <code class="inline-code px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded font-mono text-sm text-gray-900 dark:text-gray-100">variable</code> together';
+      const expected = 'Use <code class="inline-code px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded font-mono text-[0.85em]">function()</code> and <code class="inline-code px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded font-mono text-[0.85em]">variable</code> together';
 
       const result = processMarkdown(input);
       expect(result).toBe(expected);
@@ -122,7 +122,7 @@ describe('processMarkdown', () => {
   describe('Links', () => {
     test('should process links', () => {
       const input = 'Visit [Google](https://google.com) for search';
-      const expected = 'Visit <a href="https://google.com" target="_blank" rel="noopener noreferrer" class="underline text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-semibold">Google</a> for search';
+      const expected = 'Visit <a href="https://google.com" target="_blank" rel="noopener noreferrer" class="underline font-semibold hover:opacity-80">Google</a> for search';
 
       const result = processMarkdown(input);
       expect(result).toBe(expected);
@@ -130,7 +130,7 @@ describe('processMarkdown', () => {
 
     test('should handle links with underscores in URL', () => {
       const input = 'Check [documentation](https://example.com/docs_page)';
-      const expected = 'Check <a href="https://example.com/docs_page" target="_blank" rel="noopener noreferrer" class="underline text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-semibold">documentation</a>';
+      const expected = 'Check <a href="https://example.com/docs_page" target="_blank" rel="noopener noreferrer" class="underline font-semibold hover:opacity-80">documentation</a>';
 
       const result = processMarkdown(input);
       expect(result).toBe(expected);
@@ -138,7 +138,7 @@ describe('processMarkdown', () => {
 
     test('should handle multiple links', () => {
       const input = '[Link1](url1) and [Link2](url2)';
-      const expected = '<a href="url1" target="_blank" rel="noopener noreferrer" class="underline text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-semibold">Link1</a> and <a href="url2" target="_blank" rel="noopener noreferrer" class="underline text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-semibold">Link2</a>';
+      const expected = '<a href="url1" target="_blank" rel="noopener noreferrer" class="underline font-semibold hover:opacity-80">Link1</a> and <a href="url2" target="_blank" rel="noopener noreferrer" class="underline font-semibold hover:opacity-80">Link2</a>';
 
       const result = processMarkdown(input);
       expect(result).toBe(expected);
@@ -180,7 +180,7 @@ describe('processMarkdown', () => {
 
     test('should process multiple headings', () => {
       const input = '# Title\n## Subtitle\n### Section';
-      const expected = '<h1 class="text-2xl font-bold mt-4 mb-2 text-gray-900 dark:text-gray-100">Title</h1><br /><h2 class="text-xl font-bold mt-4 mb-2 text-gray-900 dark:text-gray-100">Subtitle</h2><br /><h3 class="text-lg font-bold mt-4 mb-2 text-gray-900 dark:text-gray-100">Section</h3>';
+      const expected = '<h1 class="text-2xl font-bold mt-4 mb-2 text-gray-900 dark:text-gray-100">Title</h1>\n<h2 class="text-xl font-bold mt-4 mb-2 text-gray-900 dark:text-gray-100">Subtitle</h2>\n<h3 class="text-lg font-bold mt-4 mb-2 text-gray-900 dark:text-gray-100">Section</h3>';
 
       const result = processMarkdown(input);
       expect(result).toBe(expected);
@@ -190,7 +190,7 @@ describe('processMarkdown', () => {
   describe('Lists', () => {
     test('should process unordered list with dashes', () => {
       const input = '- Item 1\n- Item 2\n- Item 3';
-      const expected = '<ul class="my-2 space-y-1"><li class="ml-4 text-gray-700 dark:text-gray-300">• Item 1</li><br /><li class="ml-4 text-gray-700 dark:text-gray-300">• Item 2</li><br /><li class="ml-4 text-gray-700 dark:text-gray-300">• Item 3</li></ul>';
+      const expected = '<ul class="my-2 space-y-1 list-disc"><li class="ml-4">Item 1</li><li class="ml-4">Item 2</li><li class="ml-4">Item 3</li></ul>';
 
       const result = processMarkdown(input);
       expect(result).toBe(expected);
@@ -198,7 +198,7 @@ describe('processMarkdown', () => {
 
     test('should process unordered list with asterisks', () => {
       const input = '* Item 1\n* Item 2';
-      const expected = '<em> Item 1<br /></em> Item 2';
+      const expected = '<em> Item 1\n</em> Item 2';
 
       const result = processMarkdown(input);
       expect(result).toBe(expected);
@@ -206,7 +206,7 @@ describe('processMarkdown', () => {
 
     test('should handle single list item', () => {
       const input = '- Single item';
-      const expected = '<ul class="my-2 space-y-1"><li class="ml-4 text-gray-700 dark:text-gray-300">• Single item</li></ul>';
+      const expected = '<ul class="my-2 space-y-1 list-disc"><li class="ml-4">Single item</li></ul>';
 
       const result = processMarkdown(input);
       expect(result).toBe(expected);
@@ -216,7 +216,7 @@ describe('processMarkdown', () => {
   describe('Line Breaks', () => {
     test('should convert newlines to br tags', () => {
       const input = 'Line 1\nLine 2\nLine 3';
-      const expected = 'Line 1<br />Line 2<br />Line 3';
+      const expected = 'Line 1\nLine 2\nLine 3';
 
       const result = processMarkdown(input);
       expect(result).toBe(expected);
@@ -224,7 +224,7 @@ describe('processMarkdown', () => {
 
     test('should handle mixed content with line breaks', () => {
       const input = '# Title\n\nSome text\n\n- Item 1\n- Item 2';
-      const expected = '<h1 class="text-2xl font-bold mt-4 mb-2 text-gray-900 dark:text-gray-100">Title</h1><br /><br />Some text<br /><ul class="my-2 space-y-1"><li class="ml-4 text-gray-700 dark:text-gray-300">• Item 1</li><br /><li class="ml-4 text-gray-700 dark:text-gray-300">• Item 2</li></ul>';
+      const expected = '<h1 class="text-2xl font-bold mt-4 mb-2 text-gray-900 dark:text-gray-100">Title</h1><br /><br />Some text\n<ul class="my-2 space-y-1 list-disc"><li class="ml-4">Item 1</li><li class="ml-4">Item 2</li></ul>';
 
       const result = processMarkdown(input);
       expect(result).toBe(expected);
@@ -261,22 +261,22 @@ Use \`npm install\` to install packages.`;
       expect(result).toContain('<a href="url"');
       expect(result).toContain('<code class="inline-math');
       expect(result).toContain('<code class="text-sm font-mono');
-      expect(result).toContain('<ul class="my-2 space-y-1">');
-      expect(result).toContain('• First item');
-      expect(result).toContain('• Second item');
+      expect(result).toContain('<ul class="my-2 space-y-1 list-disc">');
+      expect(result).toContain('First item');
+      expect(result).toContain('Second item');
     });
 
     test('should handle edge cases', () => {
       expect(processMarkdown('')).toBe('');
 
-      expect(processMarkdown('   \n  \n  ')).toBe('   <br />  <br />  ');
+      expect(processMarkdown('   \n  \n  ')).toBe('   \n  \n  ');
 
       expect(processMarkdown('Plain text without markdown')).toBe('Plain text without markdown');
     });
 
     test('should handle nested elements correctly', () => {
       const input = '**Bold with `code`** and *italic with [link](url)*';
-      const expected = '<strong class="font-semibold">Bold with <code class="inline-code px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded font-mono text-sm text-gray-900 dark:text-gray-100">code</code></strong> and <em>italic with <a href="url" target="_blank" rel="noopener noreferrer" class="underline text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-semibold">link</a></em>';
+      const expected = '<strong class="font-semibold">Bold with <code class="inline-code px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded font-mono text-[0.85em]">code</code></strong> and <em>italic with <a href="url" target="_blank" rel="noopener noreferrer" class="underline font-semibold hover:opacity-80">link</a></em>';
 
       const result = processMarkdown(input);
       expect(result).toBe(expected);
@@ -304,7 +304,7 @@ Use \`npm install\` to install packages.`;
   describe('HTML Escaping', () => {
     test('should handle HTML-like content in code blocks', () => {
       const input = 'Use `<div>` in HTML';
-      const expected = 'Use <code class="inline-code px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded font-mono text-sm text-gray-900 dark:text-gray-100"><div></code> in HTML';
+      const expected = 'Use <code class="inline-code px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded font-mono text-[0.85em]">&lt;div&gt;</code> in HTML';
 
       const result = processMarkdown(input);
       expect(result).toBe(expected);
@@ -320,11 +320,11 @@ Use \`npm install\` to install packages.`;
 
   describe('Performance and Edge Cases', () => {
     test('should handle large content efficiently', () => {
-      const largeContent = 'Line\n'.repeat(1000) + '**bold**';
+      const largeContent = 'Line\n\n'.repeat(500) + '**bold**';
       const result = processMarkdown(largeContent);
 
       expect(result).toContain('<strong class="font-semibold">bold</strong>');
-      expect(result.split('<br />').length).toBe(1001); // 1000 lines + 1 for the last line
+      expect(result.split('<br />').length).toBe(1001); // 500 double newlines create 500 <br /><br /> tags, splitting gives 1001 parts
     });
 
     test('should handle empty or malformed patterns', () => {

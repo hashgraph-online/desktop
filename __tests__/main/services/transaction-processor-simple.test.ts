@@ -118,6 +118,8 @@ describe('TransactionProcessor - Core Functionality', () => {
         \`\`\`
       `;
 
+
+
       expect(transactionProcessor.extractTransactionBytesFromMessage(messageContent)).toBe(validBase64);
     });
 

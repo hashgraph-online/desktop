@@ -5,6 +5,8 @@ import type { MCPServerConfig } from "../../services/mcp-service";
 import { MCPRegistryService } from "../../services/mcp-registry-service";
 import type { MCPRegistrySearchOptions, MCPRegistryServer } from "../../services/mcp-registry-service";
 import { MCPMetricsEnricher } from "../../services/mcp-metrics-enricher";
+import { MCPMetricsService } from "../../services/mcp-metrics-service";
+import { BrowserWindow } from 'electron'
 import { handleIPCError, createSuccessResponse } from './shared-handler-utils';
 
 function uniqueKeyForRegistryServer(s: MCPRegistryServer): string {
@@ -40,12 +42,39 @@ function sortServersByStars(list: MCPRegistryServer[]): MCPRegistryServer[] {
   return items
 }
 
+function computeFreshness(
+  lastSuccessAt: Date | null | undefined,
+  metric: 'githubStars' | 'npmDownloads' | 'pypiDownloads'
+): 'fresh' | 'stale' | 'expired' {
+  const ttl = MCPMetricsEnricher.METRIC_TTLS_MS[metric]
+  const half = Math.floor(ttl / 2)
+  const now = Date.now()
+  const last = lastSuccessAt ? (lastSuccessAt instanceof Date ? lastSuccessAt.getTime() : new Date(String(lastSuccessAt)).getTime()) : 0
+  if (!last) return 'expired'
+  const age = now - last
+  if (age < half) return 'fresh'
+  if (age < ttl) return 'stale'
+  return 'expired'
+}
+
 /**
  * Sets up MCP-related IPC handlers
  */
 export function setupMCPHandlers(): void {
   const mcpService = MCPService.getInstance();
   const registryService = MCPRegistryService.getInstance();
+  const metricsService = MCPMetricsService.getInstance();
+  metricsService.start();
+  metricsService.on('updated', (updates: any) => {
+    try {
+      const wins = (BrowserWindow.getAllWindows && BrowserWindow.getAllWindows()) || []
+      for (const win of wins) {
+        try {
+          win.webContents.send('mcp:metrics-updated', updates)
+        } catch {}
+      }
+    } catch {}
+  })
 
   ipcMain.handle(
     'mcp:loadServers',
@@ -71,6 +100,30 @@ export function setupMCPHandlers(): void {
       }
     }
   );
+
+  ipcMain.handle(
+    'mcp:refreshMetrics',
+    async (_evt: IpcMainInvokeEvent, data: { serverId: string; metric?: 'githubStars'|'npmDownloads'|'pypiDownloads' }): Promise<IPCResponse> => {
+      try {
+        metricsService.scheduleImmediateFetch(data.serverId, data.metric)
+        return createSuccessResponse({ scheduled: true })
+      } catch (error) {
+        return handleIPCError(error, 'Failed to schedule metrics refresh');
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'mcp:set-active-servers',
+    async (_evt: IpcMainInvokeEvent, data: { serverIds: string[]; ttlMs?: number }): Promise<IPCResponse> => {
+      try {
+        metricsService.setActive(data.serverIds || [], data.ttlMs || 15000)
+        return createSuccessResponse({ ok: true })
+      } catch (error) {
+        return handleIPCError(error, 'Failed to set active servers');
+      }
+    }
+  )
 
   ipcMain.handle(
     'mcp:saveServers',
@@ -187,10 +240,54 @@ export function setupMCPHandlers(): void {
         const result = await registryService.searchServers(options);
         const deduped = dedupeRegistryServers(result.servers || [])
         const sorted = sortServersByStars(deduped)
-        return createSuccessResponse({
-          ...result,
-          servers: sorted,
-        });
+        type MetricStatusEntry = { metricType: string; status: string; value: number | null; lastSuccessAt: string | null; nextUpdateAt: string | null }
+        type MetricStatusMap = Record<string, MetricStatusEntry[]>
+        type Freshness = 'fresh'|'stale'|'expired'
+        type MetricFreshnessMap = Record<string, { githubStars?: Freshness; downloads?: Freshness }>
+        let metricStatuses: MetricStatusMap = {}
+        let metricFreshness: MetricFreshnessMap = {}
+        try {
+          const db = require('../../db/connection').getDatabase()
+          const sch = require('../../db/connection').schema
+          if (db && sorted.length) {
+            const ids = sorted.map(s => s.id)
+            const rows: Array<{ serverId: string; metricType: string; status: string; value: number | null; lastSuccessAt: Date | null; nextUpdateAt: Date | null }>
+              = await db.select().from(sch.mcpMetricStatus).where((require('drizzle-orm').inArray)(sch.mcpMetricStatus.serverId, ids)).all()
+            const map: MetricStatusMap = {}
+            const freshMap: MetricFreshnessMap = {}
+            for (const r of rows) {
+              const sid: string = r.serverId
+              if (!map[sid]) map[sid] = []
+              map[sid].push({
+                metricType: r.metricType,
+                status: r.status,
+                value: typeof r.value === 'number' ? r.value : null,
+                lastSuccessAt: r.lastSuccessAt ? new Date(r.lastSuccessAt).toISOString() : null,
+                nextUpdateAt: r.nextUpdateAt ? new Date(r.nextUpdateAt).toISOString() : null,
+              })
+              if (!freshMap[sid]) freshMap[sid] = {}
+              if (r.metricType === 'githubStars') freshMap[sid].githubStars = computeFreshness(r.lastSuccessAt, 'githubStars')
+              if (r.metricType === 'npmDownloads' || r.metricType === 'pypiDownloads') freshMap[sid].downloads = computeFreshness(r.lastSuccessAt, r.metricType)
+            }
+            metricStatuses = map
+            metricFreshness = freshMap
+          }
+        } catch {}
+        try {
+          const ids = sorted.map(s => s.id)
+          metricsService.setActive(ids, 30000)
+          const missing: string[] = []
+          for (const id of ids) {
+            const entries: MetricStatusEntry[] | undefined = metricStatuses[id]
+            const hasStars = entries?.some(e => e.metricType === 'githubStars' && typeof e.value === 'number' && e.value > 0)
+            const hasInstalls = entries?.some(e => (e.metricType === 'npmDownloads' || e.metricType === 'pypiDownloads') && typeof e.value === 'number' && e.value > 0)
+            if (!hasStars || !hasInstalls) missing.push(id)
+          }
+          const topMissing = missing.slice(0, 20)
+          for (const id of topMissing) metricsService.scheduleImmediateFetch(id)
+          metricsService.markSurfaced(ids, 60000)
+        } catch {}
+        return createSuccessResponse({ ...result, servers: sorted, metricStatuses, metricFreshness });
       } catch (error) {
         return handleIPCError(error, 'Failed to search MCP registry');
       }

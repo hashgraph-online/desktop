@@ -1,0 +1,1 @@
+ALTER TABLE `mcp_metric_status` ADD `etag` text;

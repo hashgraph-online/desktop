@@ -77,6 +77,7 @@ describe('ElectronRendererLoggerAdapter', () => {
     });
 
     test('should format multiple string arguments', () => {
+      logger.setLogLevel('debug');
       logger.debug('First message', 'Second message', 'Third message');
 
       expect(mockConsole.debug).toHaveBeenCalledWith('[renderer] First message Second message Third message');
@@ -132,6 +133,7 @@ describe('ElectronRendererLoggerAdapter', () => {
     });
 
     test('should format mixed argument types', () => {
+      logger.setLogLevel('debug');
       const obj = { type: 'test' };
       const error = new Error('Test error');
 
@@ -143,7 +145,8 @@ describe('ElectronRendererLoggerAdapter', () => {
   });
 
   describe('Logging Methods', () => {
-    test('should call console.debug for debug messages', () => {
+    test('should call console.debug for debug messages when level allows', () => {
+      logger.setLogLevel('debug');
       logger.debug('Debug message');
 
       expect(mockConsole.debug).toHaveBeenCalledWith('[renderer] Debug message');
@@ -171,7 +174,8 @@ describe('ElectronRendererLoggerAdapter', () => {
       expect(mockConsole.error).toHaveBeenCalledTimes(1);
     });
 
-    test('should call console.debug with TRACE prefix for trace messages', () => {
+    test('should call console.debug with TRACE prefix for trace messages when level allows', () => {
+      logger.setLogLevel('debug');
       logger.trace('Trace message');
 
       expect(mockConsole.debug).toHaveBeenCalledWith('[TRACE]', '[renderer] Trace message');
@@ -185,6 +189,7 @@ describe('ElectronRendererLoggerAdapter', () => {
     });
 
     test('should handle undefined and null arguments', () => {
+      logger.setLogLevel('debug');
       logger.debug('Value:', undefined, null, 'end');
 
       expect(mockConsole.debug).toHaveBeenCalledWith('[renderer] Value:  null end');
@@ -264,6 +269,7 @@ describe('ElectronRendererLoggerAdapter', () => {
 
     test('should handle special characters in module name', () => {
       logger.setModule('test-module_123');
+      logger.setLogLevel('debug');
 
       logger.debug('Debug message');
 
@@ -314,15 +320,13 @@ describe('ElectronRendererLoggerAdapter', () => {
 
   describe('Integration Scenarios', () => {
     test('should handle complete logging workflow', () => {
-      const logger = new ElectronRendererLoggerAdapter({
-        module: 'workflow-test',
-        level: 'debug'
-      });
+      const logger = new ElectronRendererLoggerAdapter({ module: 'workflow-test', level: 'debug' });
 
       logger.debug('Debug information', { key: 'value' });
       logger.info('Operation started', 123);
       logger.warn('Warning condition', true);
       logger.error('Error occurred', new Error('Test error'));
+      logger.setLogLevel('debug');
       logger.trace('Detailed trace', 'data');
 
       logger.setModule('updated-module');
@@ -355,9 +359,9 @@ describe('ElectronRendererLoggerAdapter', () => {
       const errorLogger = new ElectronRendererLoggerAdapter({ level: 'error' });
 
       debugLogger.debug('Debug message');
-      errorLogger.debug('This should still log');
+      errorLogger.debug('This should not log');
 
-      expect(mockConsole.debug).toHaveBeenCalledTimes(2);
+      expect(mockConsole.debug).toHaveBeenCalledTimes(1);
     });
 
     test('should handle complex error objects', () => {
@@ -404,6 +408,7 @@ describe('ElectronRendererLoggerAdapter', () => {
     });
 
     test('should handle empty and whitespace-only strings', () => {
+      logger.setLogLevel('debug');
       logger.debug('');
       logger.info('   ');
       logger.warn('\t\n');

@@ -5,7 +5,9 @@ import Typography from '../components/ui/Typography';
 import { Button } from '../components/ui/Button';
 import { useAgentStore } from '../stores/agentStore';
 import { useConfigStore } from '../stores/configStore';
-import { HCS10Client, Logger } from '@hashgraphonline/standards-sdk';
+import { Logger } from '@hashgraphonline/standards-sdk';
+import { fetchUserProfile as fetchProfileViaFactory } from '../services/hcs10ClientFactory';
+import { useWalletStore } from '../stores/walletStore';
 import {
   FiSettings,
   FiRefreshCw,
@@ -171,45 +173,33 @@ const ChatPage: React.FC<ChatPageProps> = () => {
     isLoadingHCS10Messages = Boolean(hcs10LoadingMessages[currentTopicId]);
   }
 
+  const wallet = useWalletStore();
   const fetchUserProfile = React.useCallback(async () => {
-    if (
-      config?.hedera?.accountId &&
-      config?.hedera?.network &&
-      !isLoadingProfile
-    ) {
+    const effectiveAccountId = wallet.isConnected ? wallet.accountId : config?.hedera?.accountId;
+    const effectiveNetwork = (wallet.isConnected ? wallet.network : config?.hedera?.network) as ('mainnet' | 'testnet' | undefined);
+    if (effectiveAccountId && effectiveNetwork && !isLoadingProfile) {
       setIsLoadingProfile(true);
       try {
-        const client = new HCS10Client({
-          network: config.hedera.network as 'mainnet' | 'testnet',
-          operatorId: config.hedera.accountId,
-          operatorPrivateKey: config.hedera.privateKey,
-          logLevel: 'info',
-        });
-
-        const profileResult = await client.retrieveProfile(
-          config.hedera.accountId,
-          true
+        const resp = await fetchProfileViaFactory(
+          effectiveAccountId,
+          effectiveNetwork,
+          {
+            walletConnected: wallet.isConnected,
+            operatorId: config?.hedera?.accountId,
+            privateKey: config?.hedera?.privateKey,
+          }
         );
-
-        if (profileResult.success && profileResult.profile) {
-          const profile = profileResult.profile;
-
-          const mappedProfile: UserProfile = {
-            ...profile,
-            profileImage: profile.profileImage || profile.logo,
-          };
-          setUserProfile(mappedProfile);
+        if (resp.success) {
+          setUserProfile(resp.profile as unknown as UserProfile);
+        } else if (wallet.isConnected) {
+          setUserProfile({ display_name: 'Wallet Account' });
         }
       } catch (error) {
       } finally {
         setIsLoadingProfile(false);
       }
     }
-  }, [
-    config?.hedera?.accountId,
-    config?.hedera?.network,
-    config?.hedera?.privateKey,
-  ]);
+  }, [wallet.isConnected, wallet.accountId, wallet.network, config?.hedera?.accountId, config?.hedera?.network, config?.hedera?.privateKey]);
 
   useEffect(() => {
     fetchUserProfile();
@@ -227,7 +217,9 @@ const ChatPage: React.FC<ChatPageProps> = () => {
     };
   }, [fetchUserProfile]);
 
-  useAgentInit({ isConfigured, config, isConnected, status, connect });
+  const walletReady = wallet.isConnected || wallet.isInitializing === false;
+  useAgentInit({ isConfigured, config, isConnected, status, connect, ready: walletReady });
+
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -711,8 +703,8 @@ const ChatPage: React.FC<ChatPageProps> = () => {
         mode={chatContext.mode}
         isConnected={isConnected}
         statusText={status === 'connected' ? 'Online' : status}
-        networkLabel={(config?.hedera?.network || 'testnet').toUpperCase()}
-        accountSuffix={config?.hedera?.accountId?.slice(-6) || 'Not configured'}
+        networkLabel={(wallet.isConnected ? wallet.network : (config?.hedera?.network || 'testnet')).toUpperCase()}
+        accountSuffix={(wallet.isConnected ? wallet.accountId : config?.hedera?.accountId)?.slice(-6) || 'Not configured'}
         sessions={sessions}
         currentSession={currentSession}
         isLoadingSessions={isLoadingSessions}
@@ -760,13 +752,10 @@ const ChatPage: React.FC<ChatPageProps> = () => {
 
       <div className='border-t border-gray-200/30 dark:border-gray-800/30 bg-white/98 dark:bg-gray-900/98 backdrop-blur-2xl flex-shrink-0 shadow-2xl shadow-gray-200/10 dark:shadow-gray-900/30'>
         <div className='px-3 sm:px-4 lg:px-6 pt-4'>
-          <div className='max-w-5xl mx-auto'>
-            <Disclaimer />
-          </div>
+          <Disclaimer />
         </div>
 
         <div className='px-3 sm:px-4 lg:px-6 pb-6 pt-3'>
-          <div className='max-w-5xl mx-auto'>
             <div className='mb-3 flex items-center justify-center'>
               <ModeBadge
                 mode={chatContext.mode}
@@ -785,7 +774,6 @@ const ChatPage: React.FC<ChatPageProps> = () => {
               onFileAdd={handleAddFiles}
               onFileRemove={handleRemoveFile}
             />
-          </div>
         </div>
       </div>
 

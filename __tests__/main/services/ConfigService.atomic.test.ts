@@ -1,11 +1,46 @@
-import { ConfigService } from '../../../src/main/services/ConfigService';
+const mockLogger = {
+  info: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn(),
+  debug: jest.fn()
+};
+
+jest.doMock('../../../src/main/utils/logger', () => ({
+  Logger: jest.fn().mockImplementation(() => mockLogger)
+}));
+
+jest.mock('fs', () => ({
+  existsSync: jest.fn(),
+  mkdirSync: jest.fn(),
+  readFileSync: jest.fn(),
+  writeFileSync: jest.fn(),
+  promises: {
+    writeFile: jest.fn(),
+    readFile: jest.fn(),
+    rename: jest.fn(),
+    unlink: jest.fn(),
+    mkdir: jest.fn(),
+    copyFile: jest.fn()
+  },
+  rmSync: jest.fn(),
+  unlinkSync: jest.fn()
+}));
+
+jest.mock('electron', () => ({
+  app: {
+    getPath: jest.fn()
+  },
+  safeStorage: {
+    isEncryptionAvailable: jest.fn()
+  }
+}));
+
+import { ConfigService } from '../../../src/main/services/config-service';
 import * as fs from 'fs';
 import * as path from 'path';
 import { app, safeStorage } from 'electron';
-import { fileURLToPath } from 'node:url';
 
-const __filename = fileURLToPath(import.meta.url);
-const currentDir = dirname(__filename);
+const currentDir = '/mock/test/dir';
 
 /**
  * Tests for atomic write operations in ConfigService
@@ -17,31 +52,56 @@ describe('ConfigService Atomic Write Operations', () => {
   let transactionLogPath: string;
 
   beforeEach(() => {
+    jest.clearAllMocks();
+
     userDataPath = path.join(currentDir, 'test-user-data');
-    jest.spyOn(app, 'getPath').mockReturnValue(userDataPath);
-    jest.spyOn(safeStorage, 'isEncryptionAvailable').mockReturnValue(false);
-    
-    if (!fs.existsSync(userDataPath)) {
-      fs.mkdirSync(userDataPath, { recursive: true });
-    }
-    
+    (app.getPath as jest.Mock).mockReturnValue(userDataPath);
+    (safeStorage.isEncryptionAvailable as jest.Mock).mockReturnValue(false);
+
+    const fileSystem = new Map<string, string>();
+
+    (fs.existsSync as jest.Mock).mockImplementation((path: string) => {
+      return fileSystem.has(path);
+    });
+    (fs.mkdirSync as jest.Mock).mockImplementation(() => {});
+    (fs.unlinkSync as jest.Mock).mockImplementation((path: string) => {
+      fileSystem.delete(path);
+    });
+    (fs.rmSync as jest.Mock).mockImplementation(() => {});
+    (fs.readFileSync as jest.Mock).mockImplementation((path: string) => fileSystem.get(path) || '{}');
+    (fs.writeFileSync as jest.Mock).mockImplementation((path: string, data: string) => {
+      fileSystem.set(path, data);
+    });
+
+    (fs.promises.writeFile as jest.Mock).mockImplementation(async (path: string, data: string) => {
+      fileSystem.set(path, data);
+    });
+    (fs.promises.readFile as jest.Mock).mockImplementation(async (path: string) => {
+      return fileSystem.get(path) || '{}';
+    });
+    (fs.promises.rename as jest.Mock).mockImplementation(async (oldPath: string, newPath: string) => {
+      const data = fileSystem.get(oldPath);
+      if (data) {
+        fileSystem.delete(oldPath);
+        fileSystem.set(newPath, data);
+      }
+    });
+    (fs.promises.unlink as jest.Mock).mockImplementation(async (path: string) => {
+      fileSystem.delete(path);
+    });
+    (fs.promises.copyFile as jest.Mock).mockImplementation(async (src: string, dest: string) => {
+      const data = fileSystem.get(src);
+      if (data) {
+        fileSystem.set(dest, data);
+      }
+    });
+
     configService = ConfigService.getInstance();
     configPath = path.join(userDataPath, 'config.json');
     transactionLogPath = path.join(userDataPath, '.config-transaction.log');
-    
-    if (fs.existsSync(configPath)) {
-      fs.unlinkSync(configPath);
-    }
-    if (fs.existsSync(transactionLogPath)) {
-      fs.unlinkSync(transactionLogPath);
-    }
   });
 
   afterEach(() => {
-    if (fs.existsSync(userDataPath)) {
-      fs.rmSync(userDataPath, { recursive: true, force: true });
-    }
-    jest.restoreAllMocks();
   });
 
   describe('Atomic Write Operations', () => {

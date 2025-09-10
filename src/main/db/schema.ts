@@ -132,6 +132,28 @@ export const performanceMetrics = sqliteTable('performance_metrics', {
 })
 
 /**
+ * Per-metric status tracking for MCP servers
+ */
+export const mcpMetricStatus = sqliteTable('mcp_metric_status', {
+  serverId: text('server_id').notNull().references(() => mcpServers.id, { onDelete: 'cascade' }),
+  metricType: text('metric_type').notNull(),
+  status: text('status').default('pending'),
+  lastSuccessAt: integer('last_success_at', { mode: 'timestamp' }),
+  lastAttemptAt: integer('last_attempt_at', { mode: 'timestamp' }),
+  nextUpdateAt: integer('next_update_at', { mode: 'timestamp' }),
+  value: integer('value'),
+  retryCount: integer('retry_count').default(0),
+  errorCode: text('error_code'),
+  errorMessage: text('error_message'),
+  etag: text('etag'),
+}, (table) => {
+  return {
+    uniqueKey: uniqueIndex('idx_mcp_metric_status_unique').on(table.serverId, table.metricType),
+    nextIdx: index('idx_mcp_metric_status_next_update').on(table.nextUpdateAt),
+  }
+})
+
+/**
  * Chat sessions for persisting conversation state
  */
 export const chatSessions = sqliteTable('chat_sessions', {

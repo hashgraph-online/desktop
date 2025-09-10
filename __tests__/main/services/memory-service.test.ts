@@ -2,6 +2,21 @@ import { MemoryService } from '../../../src/main/services/memory-service';
 import { NetworkType } from '@hashgraphonline/standards-sdk';
 import type { EntityAssociation } from '@hashgraphonline/conversational-agent';
 
+jest.mock('file-type', () => ({
+  fileTypeFromBuffer: jest.fn().mockResolvedValue({ ext: 'txt', mime: 'text/plain' }),
+  fileTypeFromFile: jest.fn().mockResolvedValue({ ext: 'txt', mime: 'text/plain' })
+}), { virtual: true });
+
+jest.mock('@hashgraphonline/standards-sdk', () => ({
+  NetworkType: {
+    TESTNET: 'testnet',
+    MAINNET: 'mainnet',
+    PREVIEWNET: 'previewnet'
+  },
+  HederaMirrorNode: jest.fn(),
+  Logger: jest.fn()
+}));
+
 jest.mock('@hashgraphonline/conversational-agent', () => ({
   EntityFormat: {
     ACCOUNT_ID: 'accountId',
@@ -9,16 +24,27 @@ jest.mock('@hashgraphonline/conversational-agent', () => ({
     TOPIC_ID: 'topicId',
     CONTRACT_ID: 'contractId',
     HRL: 'hrl'
-  }
+  },
+  EntityAssociation: jest.fn(),
+  FormatConverterRegistry: jest.fn(),
+  SafeConversationalAgent: jest.fn().mockImplementation(() => ({
+    memoryManager: {
+      getEntityAssociations: jest.fn().mockReturnValue([]),
+      storeEntityAssociation: jest.fn()
+    }
+  }))
 }));
 
+const mockLoggerInstance = {
+  info: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn(),
+  debug: jest.fn(),
+  log: jest.fn()
+};
+
 jest.mock('../../../src/main/utils/logger', () => ({
-  Logger: jest.fn().mockImplementation(() => ({
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn()
-  }))
+  Logger: jest.fn().mockImplementation(() => mockLoggerInstance)
 }));
 
 jest.mock('../../../src/main/services/entity-service', () => ({
@@ -95,6 +121,8 @@ describe('MemoryService', () => {
 
     const entityService = new EntityService();
     memoryService = new MemoryService(entityService, NetworkType.TESTNET);
+
+    (memoryService as any).logger = mockLoggerInstance;
 
     mockEntityService = entityService;
     mockAgent = new SafeConversationalAgent();
@@ -642,3 +670,5 @@ describe('MemoryService', () => {
     });
   });
 });
+
+

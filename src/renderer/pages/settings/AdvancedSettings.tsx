@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FiMoon, FiSun, FiRefreshCw, FiAlertTriangle } from 'react-icons/fi'
@@ -46,19 +46,28 @@ export const AdvancedSettings: React.FC<AdvancedSettingsProps> = () => {
   const watchLogLevel = watch('logLevel')
 
   useEffect(() => {
-    const updateTheme = async () => {
-      await setTheme(watchTheme || 'light')
+    const next = watchTheme || 'light'
+    if (config?.advanced?.theme !== next) {
+      const updateTheme = async () => {
+        await setTheme(next)
+      }
+      updateTheme()
     }
-    updateTheme()
-  }, [watchTheme, setTheme])
+  }, [watchTheme, setTheme, config?.advanced?.theme])
 
   useEffect(() => {
-    setAutoStart(watchAutoStart || false)
-  }, [watchAutoStart, setAutoStart])
+    const next = watchAutoStart || false
+    if (config?.advanced?.autoStart !== next) {
+      setAutoStart(next)
+    }
+  }, [watchAutoStart, setAutoStart, config?.advanced?.autoStart])
 
   useEffect(() => {
-    setLogLevel(watchLogLevel || 'info')
-  }, [watchLogLevel, setLogLevel])
+    const next = watchLogLevel || 'info'
+    if (config?.advanced?.logLevel !== next) {
+      setLogLevel(next)
+    }
+  }, [watchLogLevel, setLogLevel, config?.advanced?.logLevel])
 
   return (
     <div className="space-y-6">

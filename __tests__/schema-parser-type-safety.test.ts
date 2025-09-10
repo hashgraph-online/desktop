@@ -192,9 +192,9 @@ describe('SchemaParser Type Safety', () => {
 
       expect(typeof parsed).toBe('object');
       expect('fields' in parsed).toBe(true);
-      expect('groups' in parsed).toBe('object');
+      expect('groups' in parsed).toBe(true);
       expect('order' in parsed).toBe(true);
-      expect('metadata' in parsed).toBe('object');
+      expect('metadata' in parsed).toBe(true);
 
       const fields = parsed.fields;
       expect(typeof fields).toBe('object');

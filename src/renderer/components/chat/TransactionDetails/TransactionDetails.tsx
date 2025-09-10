@@ -182,8 +182,9 @@ export const TransactionDetails: React.FC<TransactionDetailsProps> = (
   return (
     <div
       className={cn(
-        variant === 'default' ?
-          'bg-gradient-to-br from-gray-50 to-gray-100/50 dark:from-gray-800/30 dark:to-gray-900/40 rounded-lg p-4 border border-gray-200 dark:border-gray-700 backdrop-blur-sm shadow-sm' : '',
+        variant === 'default'
+          ? 'bg-gradient-to-br from-gray-50 to-gray-100/50 dark:from-gray-800/30 dark:to-gray-900/40 rounded-lg p-4 border border-gray-200 dark:border-gray-700 backdrop-blur-sm shadow-sm'
+          : '',
         variant === 'embedded' ? 'p-0' : '',
         className
       )}
@@ -197,7 +198,7 @@ export const TransactionDetails: React.FC<TransactionDetailsProps> = (
 
       <div className='space-y-3'>
         {scheduleId ? (
-          <div className='flex items-center justify-between gap-2 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-md border border-gray-200 dark:border-gray-700'>
+          <div className='flex items-center justify-between gap-2 text-xs font-medium text-white bg-white/10 px-3 py-2 rounded-md border border-white/20'>
             <div className='flex items-center gap-2'>
               <FiHash className='h-3.5 w-3.5 text-brand-blue' />
               <span>Schedule ID: {scheduleId}</span>
@@ -214,14 +215,14 @@ export const TransactionDetails: React.FC<TransactionDetailsProps> = (
         ) : null}
 
         {formattedExpirationTime ? (
-          <div className='flex items-center gap-2 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-md border border-gray-200 dark:border-gray-700'>
+          <div className='flex items-center gap-2 text-xs font-medium text-white bg-white/10 px-3 py-2 rounded-md border border-white/20'>
             <FiClock className='h-3.5 w-3.5 text-brand-purple' />
             <span>Expires: {formattedExpirationTime}</span>
           </div>
         ) : null}
 
         {memo ? (
-          <div className='text-xs text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-md border border-gray-200 dark:border-gray-700'>
+          <div className='text-xs text-white bg-white/10 px-3 py-2 rounded-md border border-white/20'>
             <div className='font-medium mb-1'>Transaction Memo</div>
             <div className='leading-relaxed'>{memo}</div>
           </div>
@@ -237,7 +238,11 @@ export const TransactionDetails: React.FC<TransactionDetailsProps> = (
         )}
 
         {(() => {
-          if (hasTokenCreation && tokenCreationData && hasValidContent(tokenCreationData)) {
+          if (
+            hasTokenCreation &&
+            tokenCreationData &&
+            hasValidContent(tokenCreationData)
+          ) {
             return (
               <TokenCreationSection
                 tokenCreationData={tokenCreationData}
@@ -272,7 +277,9 @@ export const TransactionDetails: React.FC<TransactionDetailsProps> = (
           <TokenRevokeKycSection tokenRevokeKyc={tokenRevokeKyc} />
         )}
         {tokenPause ? <TokenPauseSection tokenPause={tokenPause} /> : null}
-        {tokenUnpause ? <TokenUnpauseSection tokenUnpause={tokenUnpause} /> : null}
+        {tokenUnpause ? (
+          <TokenUnpauseSection tokenUnpause={tokenUnpause} />
+        ) : null}
         {tokenWipeAccount && (
           <TokenWipeSection tokenWipeAccount={tokenWipeAccount} />
         )}
@@ -299,7 +306,9 @@ export const TransactionDetails: React.FC<TransactionDetailsProps> = (
             cryptoUpdateAccount={cryptoUpdateAccount}
           />
         )}
-        {cryptoDelete ? <CryptoDeleteSection cryptoDelete={cryptoDelete} /> : null}
+        {cryptoDelete ? (
+          <CryptoDeleteSection cryptoDelete={cryptoDelete} />
+        ) : null}
         {cryptoApproveAllowance && (
           <CryptoApproveAllowanceSection
             cryptoApproveAllowance={cryptoApproveAllowance}
@@ -311,7 +320,9 @@ export const TransactionDetails: React.FC<TransactionDetailsProps> = (
           />
         )}
 
-        {contractCall ? <ContractCallSection contractCall={contractCall} /> : null}
+        {contractCall ? (
+          <ContractCallSection contractCall={contractCall} />
+        ) : null}
         {contractCreate && (
           <ContractCreateSection contractCreate={contractCreate} />
         )}
@@ -346,7 +357,9 @@ export const TransactionDetails: React.FC<TransactionDetailsProps> = (
         {scheduleCreate && (
           <ScheduleCreateSection scheduleCreate={scheduleCreate} />
         )}
-        {scheduleSign ? <ScheduleSignSection scheduleSign={scheduleSign} /> : null}
+        {scheduleSign ? (
+          <ScheduleSignSection scheduleSign={scheduleSign} />
+        ) : null}
         {scheduleDelete && (
           <ScheduleDeleteSection scheduleDelete={scheduleDelete} />
         )}

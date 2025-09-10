@@ -42,7 +42,6 @@ describe('EntityFilters', () => {
     expect(screen.getByLabelText('Entity Type')).toBeInTheDocument();
     expect(screen.getByText('Clear Filters')).toBeInTheDocument();
     
-    // Click Advanced to show date filters
     const advancedButton = screen.getByLabelText('Advanced filters');
     await user.click(advancedButton);
     
@@ -122,7 +121,6 @@ describe('EntityFilters', () => {
     
     render(<EntityFilters {...defaultProps} onFiltersChange={onFiltersChange} />);
     
-    // Click Advanced to show date filters
     const advancedButton = screen.getByLabelText('Advanced filters');
     await user.click(advancedButton);
     

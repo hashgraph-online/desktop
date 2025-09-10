@@ -3,7 +3,7 @@
  * Avoids ThreadStream issues from pino.
  */
 
-export type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'trace';
+export type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'silent';
 
 export interface LoggerOptions {
   module?: string;
@@ -30,6 +30,9 @@ export class ElectronRendererLoggerAdapter implements ILogger {
   private logger: Console & { transports?: { console?: { level: string } } };
   private moduleContext: string;
   private level: LogLevel;
+  private silent = false;
+
+  private static QUIET_MODULES = new Set<string>(['HCS-11', 'HCS-Browser']);
 
   constructor(options: LoggerOptions = {}) {
     this.moduleContext = options.module || 'renderer';
@@ -37,9 +40,7 @@ export class ElectronRendererLoggerAdapter implements ILogger {
 
     this.logger = console;
 
-    if (process.env.NODE_ENV === 'test' || options.silent) {
-      this.setSilent(true);
-    }
+    if (process.env.NODE_ENV === 'test' || options.silent) this.setSilent(true);
   }
 
   private formatMessage(args: unknown[]): string {
@@ -69,23 +70,54 @@ export class ElectronRendererLoggerAdapter implements ILogger {
     return parts.join(' ');
   }
 
+  private shouldLog(callLevel: 'debug' | 'info' | 'warn' | 'error' | 'trace'): boolean {
+    if (this.silent || this.level === 'silent') return false;
+
+    const order: Record<LogLevel | 'trace', number> = {
+      trace: 20, // treat trace like debug since SDK LogLevel has no 'trace'
+      debug: 20,
+      info: 30,
+      warn: 40,
+      error: 50,
+      silent: 99,
+    } as const;
+    const call = order[callLevel];
+    const threshold = order[this.level];
+    if (call < threshold) return false;
+
+    if (
+      ElectronRendererLoggerAdapter.QUIET_MODULES.has(this.moduleContext) &&
+      (callLevel === 'debug' || callLevel === 'info' || callLevel === 'trace') &&
+      !(this.level === 'debug')
+    ) {
+      return false;
+    }
+
+    return true;
+  }
+
   debug(...args: unknown[]): void {
+    if (!this.shouldLog('debug')) return;
     this.logger.debug(this.formatMessage(args));
   }
 
   info(...args: unknown[]): void {
+    if (!this.shouldLog('info')) return;
     this.logger.info(this.formatMessage(args));
   }
 
   warn(...args: unknown[]): void {
+    if (!this.shouldLog('warn')) return;
     this.logger.warn(this.formatMessage(args));
   }
 
   error(...args: unknown[]): void {
+    if (!this.shouldLog('error')) return;
     this.logger.error(this.formatMessage(args));
   }
 
   trace(...args: unknown[]): void {
+    if (!this.shouldLog('trace')) return;
     this.logger.debug('[TRACE]', this.formatMessage(args));
   }
 
@@ -100,7 +132,8 @@ export class ElectronRendererLoggerAdapter implements ILogger {
     return this.level;
   }
 
-  setSilent(_silent: boolean): void {
+  setSilent(silent: boolean): void {
+    this.silent = silent;
   }
 
   setModule(module: string): void {

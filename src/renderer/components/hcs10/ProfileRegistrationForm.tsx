@@ -97,6 +97,8 @@ export function ProfileRegistrationForm({
   const description = watch('description');
   const creator = watch('creator');
   const alias = watch('alias');
+  const descriptionLength = (description?.length ?? 0);
+  const descriptionTooShort = descriptionLength > 0 && descriptionLength < 10;
 
   const { saveToStorage, clearPersistedData } = useFormPersistence(
     'hcs10_profile_form',
@@ -377,12 +379,25 @@ export function ProfileRegistrationForm({
                 {...register('description')}
                 className={cn(
                   'mt-1.5 resize-none',
-                  errors.description && 'border-destructive'
+                  (errors.description || descriptionTooShort) && 'border-destructive'
                 )}
               />
               {errors.description && (
                 <Typography variant='body1' className='text-xs text-destructive mt-1'>
                   {errors.description.message}
+                </Typography>
+              )}
+              {!errors.description && (
+                <Typography
+                  variant='body1'
+                  className={cn(
+                    'text-[10px] mt-0.5',
+                    descriptionLength < 10
+                      ? 'text-muted-foreground/70'
+                      : 'text-muted-foreground'
+                  )}
+                >
+                  {descriptionLength}/10 minimum
                 </Typography>
               )}
             </div>

@@ -284,7 +284,6 @@ export const MCPSetupWizard: React.FC<MCPSetupWizardProps> = ({
       setCurrentStep(WizardStep.SelectType);
       onClose();
     } catch (_error) {
-      // Error handled by parent component
     } finally {
       setIsSubmitting(false);
     }

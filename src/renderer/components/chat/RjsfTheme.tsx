@@ -6,11 +6,23 @@ import {
   FiChevronUp,
   FiAlertTriangle,
 } from 'react-icons/fi';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../ui/select';
 import { Checkbox } from '../ui/checkbox';
 import { Button } from '../ui/Button';
 import Typography from '../ui/Typography';
-import type { WidgetProps, TemplatesType, ArrayFieldTemplateProps, ObjectFieldTemplateProps, FieldTemplateProps } from '@rjsf/utils';
+import type {
+  WidgetProps,
+  TemplatesType,
+  ArrayFieldTemplateProps,
+  ObjectFieldTemplateProps,
+  FieldTemplateProps,
+} from '@rjsf/utils';
 
 interface FieldInteractionContextType {
   interactedFields: Set<string>;
@@ -19,14 +31,19 @@ interface FieldInteractionContextType {
   markSubmitAttempted: () => void;
 }
 
-const FieldInteractionContext = createContext<FieldInteractionContextType | null>(null);
+const FieldInteractionContext =
+  createContext<FieldInteractionContextType | null>(null);
 
-export const FieldInteractionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [interactedFields, setInteractedFields] = useState<Set<string>>(new Set());
+export const FieldInteractionProvider: React.FC<{
+  children: React.ReactNode;
+}> = ({ children }) => {
+  const [interactedFields, setInteractedFields] = useState<Set<string>>(
+    new Set()
+  );
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
 
   const markFieldInteracted = (fieldId: string) => {
-    setInteractedFields(prev => new Set(prev).add(fieldId));
+    setInteractedFields((prev) => new Set(prev).add(fieldId));
   };
 
   const markSubmitAttempted = () => {
@@ -50,7 +67,9 @@ export const FieldInteractionProvider: React.FC<{ children: React.ReactNode }> =
 const useFieldInteraction = () => {
   const context = useContext(FieldInteractionContext);
   if (!context) {
-    throw new Error('useFieldInteraction must be used within a FieldInteractionProvider');
+    throw new Error(
+      'useFieldInteraction must be used within a FieldInteractionProvider'
+    );
   }
   return context;
 };
@@ -77,24 +96,23 @@ const CollapsibleContainer: React.FC<CollapsibleContainerProps> = ({
   const [isOpen, setIsOpen] = useState(initialOpen);
 
   return (
-    <div className={`${className} ${!disableGrow ? 'flex-1' : ''} bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl overflow-hidden`}>
-      <div className="cursor-pointer bg-white/5 border-b border-white/10 px-5 py-4 hover:bg-white/10 transition-all duration-200" onClick={() => setIsOpen(!isOpen)}>
-        <div className="flex items-center justify-between">
-          <h4 className="text-lg font-semibold text-white">
-            {name}
-          </h4>
+    <div
+      className={`${className} ${!disableGrow ? 'flex-1' : ''} bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl overflow-hidden`}
+    >
+      <div
+        className='cursor-pointer bg-white/5 border-b border-white/10 px-5 py-4 hover:bg-white/10 transition-all duration-200'
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <div className='flex items-center justify-between'>
+          <h4 className='text-lg font-semibold text-white'>{name}</h4>
           {isOpen ? (
-            <FiChevronUp className="h-5 w-5 text-white/70" />
+            <FiChevronUp className='h-5 w-5 text-white/70' />
           ) : (
-            <FiChevronDown className="h-5 w-5 text-white/70" />
+            <FiChevronDown className='h-5 w-5 text-white/70' />
           )}
         </div>
       </div>
-      {isOpen && (
-        <div className="p-5">
-          {children}
-        </div>
-      )}
+      {isOpen && <div className='p-5'>{children}</div>}
     </div>
   );
 };
@@ -122,7 +140,7 @@ const CustomInputWidget = (props: WidgetProps) => {
 
   return (
     <input
-      type="text"
+      type='text'
       value={props.value || ''}
       required={props.required}
       disabled={props.disabled}
@@ -132,7 +150,7 @@ const CustomInputWidget = (props: WidgetProps) => {
       onFocus={handleFocus}
       aria-label={props.schema?.title || props.placeholder || 'Text input'}
       aria-required={props.required}
-      className="w-full px-4 py-3 bg-white/20 dark:bg-white/10 backdrop-blur-sm border border-white/30 dark:border-white/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 focus:bg-white/30 dark:focus:bg-white/20 placeholder:text-white/80 text-white transition-all duration-300 ease-out disabled:opacity-50 disabled:cursor-not-allowed"
+      className='w-full px-4 py-3 bg-white/20 dark:bg-white/10 backdrop-blur-sm border border-white/30 dark:border-white/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 focus:bg-white/30 dark:focus:bg-white/20 placeholder:text-white/80 text-white transition-all duration-300 ease-out disabled:opacity-50 disabled:cursor-not-allowed'
     />
   );
 };
@@ -170,7 +188,7 @@ const CustomTextareaWidget = (props: WidgetProps) => {
       rows={4}
       aria-label={props.schema?.title || props.placeholder || 'Text area input'}
       aria-required={props.required}
-      className="w-full px-4 py-3 bg-white/20 dark:bg-white/10 backdrop-blur-sm border border-white/30 dark:border-white/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 focus:bg-white/30 dark:focus:bg-white/20 placeholder:text-white/80 text-white transition-all duration-300 ease-out disabled:opacity-50 disabled:cursor-not-allowed resize-none"
+      className='w-full px-4 py-3 bg-white/20 dark:bg-white/10 backdrop-blur-sm border border-white/30 dark:border-white/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 focus:bg-white/30 dark:focus:bg-white/20 placeholder:text-white/80 text-white transition-all duration-300 ease-out disabled:opacity-50 disabled:cursor-not-allowed resize-none'
     />
   );
 };
@@ -194,12 +212,19 @@ const CustomSelectWidget = (props: WidgetProps) => {
       disabled={props.disabled}
       onValueChange={handleValueChange}
     >
-      <SelectTrigger className="bg-white/20 dark:bg-white/10 border-white/30 dark:border-white/20 text-white data-[placeholder]:text-white/70">
-        <SelectValue placeholder={props.placeholder || 'Select an option'} className="text-white" />
+      <SelectTrigger className='bg-white/20 dark:bg-white/10 border-white/30 dark:border-white/20 text-white data-[placeholder]:text-white/70'>
+        <SelectValue
+          placeholder={props.placeholder || 'Select an option'}
+          className='text-white'
+        />
       </SelectTrigger>
-      <SelectContent className="bg-gray-900/95 border-gray-700 text-white">
+      <SelectContent className='bg-gray-900/95 border-gray-700 text-white'>
         {props.options.enumOptions?.map(({ value, label }) => (
-          <SelectItem key={value} value={value} className="text-white hover:bg-white/10 focus:bg-white/10 focus:text-white">
+          <SelectItem
+            key={value}
+            value={value}
+            className='text-white hover:bg-white/10 focus:bg-white/10 focus:text-white'
+          >
             {label}
           </SelectItem>
         ))}
@@ -221,17 +246,17 @@ const CustomCheckboxWidget = (props: WidgetProps) => {
   };
 
   return (
-    <div className="flex items-center space-x-2">
+    <div className='flex items-center space-x-2'>
       <Checkbox
         id={props.id}
         checked={props.value}
         disabled={props.disabled}
         onCheckedChange={handleCheckedChange}
-        className="border-white/30 data-[state=checked]:bg-white data-[state=checked]:text-gray-900 data-[state=checked]:border-white"
+        className='border-white/30 data-[state=checked]:bg-white data-[state=checked]:text-gray-900 data-[state=checked]:border-white'
       />
       <label
         htmlFor={props.id}
-        className="text-sm font-medium text-white leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+        className='text-sm font-medium text-white leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70'
       >
         {props.label}
       </label>
@@ -244,7 +269,17 @@ const CustomCheckboxWidget = (props: WidgetProps) => {
  * Provides consistent styling and layout for all form fields.
  */
 const CustomFieldTemplate = (props: FieldTemplateProps) => {
-  const { id, classNames, label, help, required, description, errors, children, displayLabel } = props;
+  const {
+    id,
+    classNames,
+    label,
+    help,
+    required,
+    description,
+    errors,
+    children,
+    displayLabel,
+  } = props;
   const { interactedFields, attemptedSubmit } = useFieldInteraction();
 
   if (!displayLabel) {
@@ -257,26 +292,27 @@ const CustomFieldTemplate = (props: FieldTemplateProps) => {
    */
   const getErrorContent = (errors: any): string | null => {
     if (!errors) return null;
-    
+
     if (typeof errors === 'string') {
       return errors.trim() || null;
     }
-    
+
     if (React.isValidElement(errors)) {
       const children = (errors.props as any)?.children;
-      const hasContent = React.Children.toArray(children || [])
-        .some((child: any) => {
+      const hasContent = React.Children.toArray(children || []).some(
+        (child: any) => {
           if (typeof child === 'string') return child.trim();
           if (React.isValidElement(child)) {
             const childChildren = (child.props as any)?.children;
             return React.Children.count(childChildren) > 0;
           }
           return false;
-        });
-      
+        }
+      );
+
       if (!hasContent) return null;
-      
-      const extractText = (element: any): string => {
+
+      const extractText = (element: React.ReactNode): string => {
         if (typeof element === 'string') return element;
         if (typeof element === 'number') return String(element);
         if (React.isValidElement(element)) {
@@ -288,51 +324,50 @@ const CustomFieldTemplate = (props: FieldTemplateProps) => {
         }
         return '';
       };
-      
+
       const extractedText = extractText(errors);
       return extractedText || null;
     }
-    
+
     if (Array.isArray(errors)) {
       const validErrors = errors
-        .map(error => getErrorContent(error))
+        .map((error) => getErrorContent(error))
         .filter(Boolean);
       return validErrors.length > 0 ? validErrors.join(', ') : null;
     }
-    
+
     return null;
   };
 
   const errorContent = getErrorContent(errors);
-  const shouldShowErrors = errorContent && (interactedFields.has(id) || attemptedSubmit);
+  const shouldShowErrors =
+    errorContent && (interactedFields.has(id) || attemptedSubmit);
 
   return (
     <div className={`${classNames} mb-6 relative`}>
       {label && (
         <label
           htmlFor={id}
-          className="block text-sm font-medium text-white mb-2"
+          className='block text-sm font-medium text-white mb-2'
         >
           {label}
-          {required && (
-            <span className="text-red-100 ml-1">*</span>
-          )}
+          {required && <span className='text-red-100 ml-1'>*</span>}
         </label>
       )}
       {description && (
-        <Typography variant="body2" as="span" className="mb-2 text-white/85">
+        <Typography variant='body2' as='span' className='mb-2 text-white/85'>
           {description}
         </Typography>
       )}
       {children}
       {shouldShowErrors && (
-        <div className="mt-2 flex items-start space-x-2 text-sm text-red-100">
-          <FiAlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+        <div className='mt-2 flex items-start space-x-2 text-sm text-red-100'>
+          <FiAlertTriangle className='h-4 w-4 mt-0.5 flex-shrink-0' />
           <div>{errorContent}</div>
         </div>
       )}
       {help && (
-        <Typography variant="caption" className="mt-1 text-white/75">
+        <Typography variant='caption' className='mt-1 text-white/75'>
           {help}
         </Typography>
       )}
@@ -348,28 +383,26 @@ const CustomArrayFieldTemplate = (props: ArrayFieldTemplateProps) => {
   const { items, canAdd, onAddClick, title, schema } = props;
 
   return (
-    <div className="space-y-4">
+    <div className='space-y-4'>
       {title && (
-        <Typography variant="h4" className="mb-4 text-white">
+        <Typography variant='h4' className='mb-4 text-white'>
           {title}
         </Typography>
       )}
-      
-      <div className="space-y-4">
+
+      <div className='space-y-4'>
         {items.map((item, index) => (
-          <div key={item.key} className="relative">
-            <div className="flex items-start space-x-4">
-              <div className="flex-1">
-                {item.children}
-              </div>
+          <div key={item.key} className='relative'>
+            <div className='flex items-start space-x-4'>
+              <div className='flex-1'>{item.children}</div>
               {item.hasRemove && (
                 <Button
-                  variant="destructive"
-                  size="sm"
+                  variant='destructive'
+                  size='sm'
                   onClick={item.onDropIndexClick(index)}
-                  className="mt-8 px-3 py-2 bg-red-500/80 hover:bg-red-500 text-white border-0 rounded-xl shadow-lg transition-all duration-300 ease-out font-medium"
+                  className='mt-8 px-3 py-2 bg-red-500/80 hover:bg-red-500 text-white border-0 rounded-xl shadow-lg transition-all duration-300 ease-out font-medium'
                 >
-                  <FiTrash2 className="h-4 w-4" />
+                  <FiTrash2 className='h-4 w-4' />
                 </Button>
               )}
             </div>
@@ -379,11 +412,11 @@ const CustomArrayFieldTemplate = (props: ArrayFieldTemplateProps) => {
 
       {canAdd && (
         <Button
-          variant="outline"
+          variant='outline'
           onClick={onAddClick}
-          className="mt-4 px-4 py-2 bg-white/20 hover:bg-white/30 border border-white/30 rounded-xl transition-all duration-300 ease-out font-medium text-white"
+          className='mt-4 px-4 py-2 bg-white/20 hover:bg-white/30 border border-white/30 rounded-xl transition-all duration-300 ease-out font-medium text-white'
         >
-          <FiPlus className="mr-2 h-4 w-4" />
+          <FiPlus className='mr-2 h-4 w-4' />
           Add {title || 'Item'}
         </Button>
       )}
@@ -397,7 +430,7 @@ const CustomArrayFieldTemplate = (props: ArrayFieldTemplateProps) => {
  */
 const CustomObjectFieldTemplate = (props: ObjectFieldTemplateProps) => {
   const { properties, title, description, required } = props;
-  
+
   const isAttributes = title?.includes('Attributes');
   const isFirst = title === 'Attributes-1';
   const shouldBeCollapsible = isAttributes;
@@ -405,9 +438,7 @@ const CustomObjectFieldTemplate = (props: ObjectFieldTemplateProps) => {
 
   if (!title) {
     return (
-      <div className="space-y-4">
-        {properties.map((prop) => prop.content)}
-      </div>
+      <div className='space-y-4'>{properties.map((prop) => prop.content)}</div>
     );
   }
 
@@ -416,16 +447,20 @@ const CustomObjectFieldTemplate = (props: ObjectFieldTemplateProps) => {
       <CollapsibleContainer
         name={title}
         isOpen={defaultOpen}
-        className="mt-6 mb-6"
+        className='mt-6 mb-6'
         disableGrow
       >
         <div>
           {description && (
-            <Typography variant="body2" as="span" className="mb-4 text-white/85">
+            <Typography
+              variant='body2'
+              as='span'
+              className='mb-4 text-white/85'
+            >
               {description}
             </Typography>
           )}
-          <div className="space-y-4">
+          <div className='space-y-4'>
             {properties.map((prop) => prop.content)}
           </div>
         </div>
@@ -434,22 +469,20 @@ const CustomObjectFieldTemplate = (props: ObjectFieldTemplateProps) => {
   }
 
   return (
-    <div className="mt-6 mb-6 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl overflow-hidden">
-      <div className="bg-white/5 border-b border-white/10 px-5 py-4">
-        <h4 className="text-lg font-semibold text-white flex items-center">
+    <div className='mt-6 mb-6 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl overflow-hidden'>
+      <div className='bg-white/5 border-b border-white/10 px-5 py-4'>
+        <h4 className='text-lg font-semibold text-white flex items-center'>
           {title}
-          {required && (
-            <span className="text-red-100 ml-1">*</span>
-          )}
+          {required && <span className='text-red-100 ml-1'>*</span>}
         </h4>
         {description && (
-          <Typography variant="body2" as="span" className="text-white/85 mt-1">
+          <Typography variant='body2' as='span' className='text-white/85 mt-1'>
             {description}
           </Typography>
         )}
       </div>
-      <div className="p-5">
-        <div className="space-y-4">
+      <div className='p-5'>
+        <div className='space-y-4'>
           {properties.map((prop) => prop.content)}
         </div>
       </div>
@@ -473,9 +506,9 @@ const CustomSubmitButton = (props: any) => {
 
   return (
     <Button
-      type="submit"
-      variant="default"
-      size="default"
+      type='submit'
+      variant='default'
+      size='default'
       {...props}
       onClick={handleClick}
     >
@@ -501,25 +534,25 @@ export const rjsfTheme = {
     ObjectFieldTemplate: CustomObjectFieldTemplate,
     ButtonTemplates: {
       AddButton: ({ onClick, ...props }: any) => (
-        <Button 
-          variant="outline" 
-          onClick={onClick} 
+        <Button
+          variant='outline'
+          onClick={onClick}
           {...props}
-          className="px-4 py-2 bg-white/20 hover:bg-white/30 border border-white/30 rounded-xl transition-all duration-300 ease-out font-medium text-white"
+          className='px-4 py-2 bg-white/20 hover:bg-white/30 border border-white/30 rounded-xl transition-all duration-300 ease-out font-medium text-white'
         >
-          <FiPlus className="mr-2 h-4 w-4" />
+          <FiPlus className='mr-2 h-4 w-4' />
           Add
         </Button>
       ),
       RemoveButton: ({ onClick, ...props }: any) => (
-        <Button 
-          variant="destructive" 
-          size="sm" 
-          onClick={onClick} 
+        <Button
+          variant='destructive'
+          size='sm'
+          onClick={onClick}
           {...props}
-          className="px-3 py-2 bg-red-500/80 hover:bg-red-500 text-white border-0 rounded-xl shadow-lg transition-all duration-300 ease-out font-medium"
+          className='px-3 py-2 bg-red-500/80 hover:bg-red-500 text-white border-0 rounded-xl shadow-lg transition-all duration-300 ease-out font-medium'
         >
-          <FiTrash2 className="h-4 w-4" />
+          <FiTrash2 className='h-4 w-4' />
         </Button>
       ),
       SubmitButton: CustomSubmitButton,

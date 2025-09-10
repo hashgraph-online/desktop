@@ -3,18 +3,16 @@ import { EntityResolver } from '@hashgraphonline/conversational-agent';
 import type {
   IMessageService,
   ChatHistory,
-  AgentProcessResult,
   SessionContext,
 } from '../interfaces/services';
-import type { EntityAssociation } from '@hashgraphonline/conversational-agent';
-import { SafeConversationalAgent } from './safe-conversational-agent';
-import { ParameterService } from './parameter-service';
-import { TransactionProcessor } from './transaction-processor';
 import {
+  ParameterService,
   AttachmentProcessor,
   type AttachmentData,
   type ContentStoreManager,
-} from './attachment-processor';
+} from '@hashgraphonline/conversational-agent';
+import { SafeConversationalAgent } from './safe-conversational-agent';
+import { TransactionProcessor } from './transaction-processor';
 
 interface AgentMessage {
   id: string;
@@ -29,8 +27,6 @@ interface AgentMessage {
     [key: string]: unknown;
   };
 }
-
-
 
 /**
  * Service for processing messages and handling communication with the agent
@@ -122,13 +118,9 @@ export class MessageService implements IMessageService {
         historyLength: chatHistory.length,
       });
 
-      const baseHistory = chatHistory.map((h) => ({
-        role: h.type === 'human' ? ('user' as const) : ('assistant' as const),
-        content: h.content,
-      }));
+      const baseHistory: ChatHistory[] = [...chatHistory];
 
-      let historyWithSystems: Array<Record<string, unknown>> =
-        baseHistory as unknown as Array<Record<string, unknown>>;
+      let historyWithSystems: ChatHistory[] = baseHistory;
 
       try {
         if (this.agent?.memoryManager) {
@@ -153,7 +145,7 @@ export class MessageService implements IMessageService {
               return {
                 type: 'system',
                 content: `[entity-association] ${JSON.stringify(payload)}`,
-              } as Record<string, unknown>;
+              } as ChatHistory;
             });
             historyWithSystems = [...historyWithSystems, ...systemEntries];
           }
@@ -198,9 +190,22 @@ export class MessageService implements IMessageService {
           isError: !!response.error,
           formMessage: response.formMessage,
           hashLinkBlock:
-            response.hashLinkBlock || response.metadata?.hashLinkBlock,
+            response.hashLinkBlock
+              ? JSON.parse(JSON.stringify(response.hashLinkBlock))
+              : response.metadata?.hashLinkBlock
+              ? JSON.parse(JSON.stringify(response.metadata.hashLinkBlock))
+              : undefined,
         },
       };
+
+      try {
+        this.logger.info('HashLink propagation check (sendMessage):', {
+          hasTopLevel: !!(response as { hashLinkBlock?: unknown })?.hashLinkBlock,
+          hasMetadata: !!(response as { metadata?: { hashLinkBlock?: unknown } })?.metadata?.hashLinkBlock,
+          attached: !!agentMessage.metadata?.hashLinkBlock,
+          blockId: (agentMessage.metadata as { hashLinkBlock?: { blockId?: string } })?.hashLinkBlock?.blockId,
+        });
+      } catch {}
 
       if (this.entityResolver && !response.error) {
         try {
@@ -365,6 +370,7 @@ export class MessageService implements IMessageService {
         ...preprocessedParameters,
         withHashLinkBlocks: true,
         renderForm: false,
+        waitForConfirmation: true,
       };
 
       const toolExecutionMessage = JSON.stringify({
@@ -398,8 +404,7 @@ export class MessageService implements IMessageService {
         return this.agent.processMessage(
           toolExecutionMessage,
           chatHistory.map((h) => ({
-            role:
-              h.type === 'human' ? ('user' as const) : ('assistant' as const),
+            type: h.type,
             content: h.content,
           }))
         );
@@ -422,9 +427,24 @@ export class MessageService implements IMessageService {
           description: result.description,
           isError: !!result.error,
           formMessage: result.formMessage,
+          hashLinkBlock:
+            result.hashLinkBlock
+              ? JSON.parse(JSON.stringify(result.hashLinkBlock))
+              : result.metadata?.hashLinkBlock
+              ? JSON.parse(JSON.stringify(result.metadata.hashLinkBlock))
+              : undefined,
           ...result.metadata,
         },
       };
+
+      try {
+        this.logger.info('HashLink propagation check (processFormSubmission):', {
+          hasTopLevel: !!(result as { hashLinkBlock?: unknown })?.hashLinkBlock,
+          hasMetadata: !!(result as { metadata?: { hashLinkBlock?: unknown } })?.metadata?.hashLinkBlock,
+          attached: !!agentMessage.metadata?.hashLinkBlock,
+          blockId: (agentMessage.metadata as { hashLinkBlock?: { blockId?: string } })?.hashLinkBlock?.blockId,
+        });
+      } catch {}
 
       if (this.entityResolver && !result.error && this.onEntityStored) {
         try {

@@ -6,6 +6,9 @@ import {
   HCSMessage,
 } from '@hashgraphonline/standards-sdk';
 import { useNotificationStore } from './notificationStore';
+import { useWalletStore } from './walletStore';
+import { BrowserHCSClient } from '@hashgraphonline/standards-sdk';
+import { walletService } from '../services/walletService';
 import type { ChatSession, ChatMessage } from '../../main/db/schema';
 
 interface ParsedTransactionData {
@@ -41,7 +44,7 @@ export type AgentStatus =
   | 'connected'
   | 'disconnecting'
   | 'error';
-export type OperationalMode = 'autonomous' | 'provideBytes';
+export type OperationalMode = 'autonomous' | 'provideBytes' | 'returnBytes';
 
 export interface FormMessage {
   type: 'form';
@@ -201,6 +204,11 @@ export interface AgentStore {
 
   approveTransaction: (messageId: string) => Promise<void>;
   rejectTransaction: (messageId: string) => Promise<void>;
+  markTransactionExecuted: (
+    messageId: string,
+    transactionId?: string,
+    sessionIdOverride?: string
+  ) => Promise<void>;
   findFormMessage: (formId: string) => Promise<Message | null>;
   updateFormState: (
     formId: string,
@@ -272,13 +280,18 @@ export const useAgentStore = create<AgentStore>((set, get) => {
     _operationLocks: {},
     _isCreatingSession: false,
 
-    setStatus: (status) => set({ status }),
+    setStatus: (status) => {
+      try { console.debug('[AgentStore] setStatus ->', status, new Date().toISOString()); } catch {}
+      set({ status })
+    },
 
-    setConnected: (connected) =>
+    setConnected: (connected) => {
+      try { console.debug('[AgentStore] setConnected ->', connected, new Date().toISOString()); } catch {}
       set({
         isConnected: connected,
         status: connected ? 'connected' : 'idle',
-      }),
+      })
+    },
 
     setIsTyping: (typing, context = null) =>
       set({ isTyping: typing, processingContext: typing ? context : null }),
@@ -288,6 +301,7 @@ export const useAgentStore = create<AgentStore>((set, get) => {
      * @param mode - The operational mode to set (autonomous or provideBytes)
      */
     setOperationalMode: async (mode) => {
+      try { console.debug('[AgentStore] setOperationalMode ->', mode, new Date().toISOString()); } catch {}
       const { isConnected, status } = get();
 
       if (status === 'connecting' || status === 'disconnecting') {
@@ -310,7 +324,7 @@ export const useAgentStore = create<AgentStore>((set, get) => {
 
         await new Promise((resolve) => setTimeout(resolve, 500));
 
-        set({ status: 'idle' as AgentStatus });
+        set({ status: 'connecting' as AgentStatus });
 
         await get().connect();
       }
@@ -477,17 +491,21 @@ export const useAgentStore = create<AgentStore>((set, get) => {
 
                   if (shouldParse) {
                     const parsedData = JSON.parse(normalizedData);
-
                     if (typeof parsedData === 'object' && parsedData !== null) {
-                      if (parsedData.text) {
-                        content = parsedData.text;
-                      } else if (parsedData.content) {
-                        content = parsedData.content;
-                      } else if (parsedData.data) {
-                        content =
-                          typeof parsedData.data === 'string'
-                            ? parsedData.data
-                            : JSON.stringify(parsedData.data);
+                      const rec = parsedData as Record<string, unknown>;
+                      if (typeof rec.text === 'string' && rec.text.trim()) {
+                        content = rec.text;
+                      } else if (
+                        typeof rec.content === 'string' &&
+                        rec.content.trim()
+                      ) {
+                        content = rec.content;
+                      } else if (typeof rec.data === 'string') {
+                        content = rec.data;
+                      } else if (rec.data !== undefined) {
+                        content = JSON.stringify(rec.data);
+                      } else if (typeof rec.message === 'string' && rec.message.trim()) {
+                        content = rec.message;
                       } else {
                         content = normalizedData;
                       }
@@ -662,15 +680,20 @@ export const useAgentStore = create<AgentStore>((set, get) => {
                     const parsedData = JSON.parse(normalizedData);
 
                     if (typeof parsedData === 'object' && parsedData !== null) {
-                      if (parsedData.text) {
-                        content = parsedData.text;
-                      } else if (parsedData.content) {
-                        content = parsedData.content;
-                      } else if (parsedData.data) {
-                        content =
-                          typeof parsedData.data === 'string'
-                            ? parsedData.data
-                            : JSON.stringify(parsedData.data);
+                      const rec = parsedData as Record<string, unknown>;
+                      if (typeof rec.text === 'string' && rec.text.trim()) {
+                        content = rec.text;
+                      } else if (
+                        typeof rec.content === 'string' &&
+                        rec.content.trim()
+                      ) {
+                        content = rec.content;
+                      } else if (typeof rec.data === 'string') {
+                        content = rec.data;
+                      } else if (rec.data !== undefined) {
+                        content = JSON.stringify(rec.data);
+                      } else if (typeof rec.message === 'string' && rec.message.trim()) {
+                        content = rec.message;
                       } else {
                         content = normalizedData;
                       }
@@ -902,6 +925,7 @@ export const useAgentStore = create<AgentStore>((set, get) => {
      * Initializes sessions and restores last active session if applicable
      */
     connect: async () => {
+      try { console.debug('[AgentStore] connect() called', new Date().toISOString()); } catch {}
       set({ status: 'connecting' as AgentStatus, connectionError: null });
 
       try {
@@ -913,13 +937,13 @@ export const useAgentStore = create<AgentStore>((set, get) => {
           );
         }
 
-        const accountId =
-          rawConfig.hedera?.accountId || (rawConfig as any).accountId || '';
-        const privateKey =
-          rawConfig.hedera?.privateKey || (rawConfig as any).privateKey || '';
-        const network =
-          rawConfig.hedera?.network || (rawConfig as any).network || 'testnet';
-        const llmProvider = rawConfig.llmProvider || 'openai';
+        const accountId = rawConfig.hedera?.accountId ?? '';
+        const privateKey = rawConfig.hedera?.privateKey ?? '';
+        const network = rawConfig.hedera?.network ?? 'testnet';
+        const llmProvider = (() => {
+          const v = (rawConfig as Record<string, unknown>)['llmProvider'];
+          return v === 'anthropic' ? 'anthropic' : 'openai';
+        })();
 
         let apiKey = '';
         let modelName = '';
@@ -927,31 +951,33 @@ export const useAgentStore = create<AgentStore>((set, get) => {
         if (llmProvider === 'anthropic') {
           apiKey = rawConfig.anthropic?.apiKey || '';
           modelName =
-            rawConfig.anthropic?.model || 'claude-3-5-sonnet-20241022';
+            rawConfig.anthropic?.model || 'claude-3-7-sonnet-latest';
         } else {
-          apiKey =
-            rawConfig.openai?.apiKey || (rawConfig as any).openAIApiKey || '';
-          modelName =
-            rawConfig.openai?.model ||
-            (rawConfig as any).modelName ||
-            'gpt-4o-mini';
+          apiKey = rawConfig.openai?.apiKey || '';
+          const openaiModel = (rawConfig.openai as Record<string, unknown> | undefined)?.['model'];
+          modelName = typeof openaiModel === 'string' && openaiModel.trim() ? openaiModel : 'gpt-4o-mini';
         }
 
-        if (!accountId || !privateKey || !apiKey) {
+        const walletConnected = useWalletStore.getState().isConnected;
+        if (!accountId || (!privateKey && !walletConnected) || !apiKey) {
           throw new Error('Invalid configuration. Please check your settings.');
         }
 
-        const { operationalMode } = get();
+        let { operationalMode } = get();
+        if (walletConnected) {
+          operationalMode = 'provideBytes';
+        }
 
         const initTimeout = 90000;
         const initPromise = window.electron.initializeAgent({
           accountId,
-          privateKey,
+          privateKey: walletConnected ? '' : privateKey,
           network,
           openAIApiKey: apiKey,
           modelName,
           operationalMode,
           llmProvider,
+          userAccountId: walletConnected ? useWalletStore.getState().accountId : accountId,
         });
 
         const timeoutPromise = new Promise<never>((_, reject) => {
@@ -1001,6 +1027,7 @@ export const useAgentStore = create<AgentStore>((set, get) => {
     },
 
     disconnect: async () => {
+      try { console.debug('[AgentStore] disconnect() called', new Date().toISOString()); } catch {}
       set({ status: 'disconnecting' as AgentStatus });
 
       try {
@@ -1060,12 +1087,31 @@ export const useAgentStore = create<AgentStore>((set, get) => {
         get().setIsTyping(true, 'message');
 
         if (chatContext.mode === 'hcs10' && topicId) {
-          const result = await window.electron.invoke('hcs10:send-message', {
-            topicId,
-            message: content,
-            attachments,
-            network: 'testnet',
-          });
+          const wallet = useWalletStore.getState();
+          const cfg = useConfigStore.getState().config;
+          let result: any = { success: false };
+          if (wallet.isConnected) {
+            try {
+              const hwc = walletService.getSDK();
+              const client = new BrowserHCSClient({ network: (wallet.network as 'mainnet'|'testnet'), hwc });
+              let messageContent = content;
+              if (attachments && attachments.length > 0) {
+                const fileNames = attachments.map((f) => f.name).join(', ');
+                messageContent += `\n\nAttachments: ${fileNames}`;
+              }
+              const receipt = await client.sendMessage(topicId, messageContent);
+              result = { success: !!receipt };
+            } catch (e) {
+              result = { success: false, error: e instanceof Error ? e.message : String(e) };
+            }
+          } else {
+            result = await window.electron.invoke('hcs10:send-message', {
+              topicId,
+              message: content,
+              attachments,
+              network: cfg?.hedera?.network || 'testnet',
+            });
+          }
 
           if (result.success) {
             setTimeout(() => {
@@ -1117,7 +1163,7 @@ export const useAgentStore = create<AgentStore>((set, get) => {
 
           const { operationalMode } = get();
           const txBytes = result.response.metadata?.transactionBytes;
-          if (operationalMode === 'autonomous' && txBytes) {
+          if (txBytes) {
             try {
               const validation = TransactionParser.validateTransactionBytes(txBytes);
               if (validation.isValid) {
@@ -1185,11 +1231,18 @@ export const useAgentStore = create<AgentStore>((set, get) => {
       }
 
       try {
-        const result = await window.electron.sendAgentMessage({
-          content: `Execute this transaction: ${message.metadata.transactionBytes}`,
-          transactionBytes: message.metadata.transactionBytes,
-          executeTransaction: true,
-        });
+        const wallet = useWalletStore.getState();
+        let result: { success: boolean; response?: any; error?: string; transactionId?: string };
+        if (wallet.isConnected) {
+          const exec = await wallet.executeFromBytes(message.metadata.transactionBytes);
+          result = { success: !exec.error, error: exec.error, transactionId: exec.transactionId };
+        } else {
+          result = await window.electron.sendAgentMessage({
+            content: `Execute this transaction: ${message.metadata.transactionBytes}`,
+            transactionBytes: message.metadata.transactionBytes,
+            executeTransaction: true,
+          }) as any;
+        }
 
         if (result.success) {
           const { chatContext: currentChatContext } = get();
@@ -1242,14 +1295,33 @@ export const useAgentStore = create<AgentStore>((set, get) => {
             }));
           }
 
+          try {
+            const updated = (
+              currentChatContext.mode === 'hcs10' && currentChatContext.topicId
+                ? (get().hcs10Messages[currentChatContext.topicId!] || []).find((m) => m.id === messageId)
+                : get().messages.find((m) => m.id === messageId)
+            );
+            if (updated) {
+              await window.electron.invoke('chat:update-message-metadata', {
+                messageId: updated.id,
+                sessionId: get().currentSession?.id,
+                metadata: updated.metadata || {},
+              });
+            }
+          } catch (persistErr) {
+            logger.warn('Failed to persist updated message metadata', {
+              error: persistErr?.message || String(persistErr),
+            });
+          }
+
           const addNotification =
             useNotificationStore.getState().addNotification;
-          addNotification({
-            type: 'success',
-            title: 'Transaction Approved',
-            message: result.transactionId
-              ? `Transaction executed successfully. ID: ${result.transactionId}`
-              : 'Transaction approved and executed successfully',
+            addNotification({
+              type: 'success',
+              title: 'Transaction Approved',
+              message: result.transactionId
+                ? `Transaction executed successfully. ID: ${result.transactionId}`
+                : 'Transaction approved and executed successfully',
             duration: 7000,
           });
         } else {
@@ -1382,6 +1454,79 @@ export const useAgentStore = create<AgentStore>((set, get) => {
         message: 'Transaction was cancelled by user',
         duration: 5000,
       });
+    },
+
+    markTransactionExecuted: async (messageId: string, transactionId?: string, sessionIdOverride?: string) => {
+      const { chatContext: currentChatContext } = get();
+
+      if (currentChatContext.mode === 'hcs10' && currentChatContext.topicId) {
+        set((state) => ({
+          hcs10Messages: {
+            ...state.hcs10Messages,
+            [currentChatContext.topicId!]: (
+              state.hcs10Messages[currentChatContext.topicId!] || []
+            ).map((m) =>
+              m.id === messageId
+                ? {
+                    ...m,
+                    metadata: {
+                      ...m.metadata,
+                      pendingApproval: false,
+                      approved: true,
+                      transactionId: transactionId || m.metadata?.transactionId,
+                      executedAt: new Date().toISOString(),
+                    },
+                  }
+                : m
+            ),
+          },
+        }));
+      } else {
+        set((state) => ({
+          messages: state.messages.map((m) =>
+            m.id === messageId
+              ? {
+                  ...m,
+                  metadata: {
+                    ...m.metadata,
+                    pendingApproval: false,
+                    approved: true,
+                    transactionId: transactionId || m.metadata?.transactionId,
+                    executedAt: new Date().toISOString(),
+                  },
+                }
+              : m
+          ),
+        }));
+      }
+
+      try {
+        const updated = (
+          currentChatContext.mode === 'hcs10' && currentChatContext.topicId
+            ? (get().hcs10Messages[currentChatContext.topicId!] || []).find((m) => m.id === messageId)
+            : get().messages.find((m) => m.id === messageId)
+        );
+
+        const sessionId =
+          sessionIdOverride ||
+          get().currentSession?.id ||
+          get().currentSessionId ||
+          get().lastActiveSessionId ||
+          (get().sessions && get().sessions[0]?.id) ||
+          '';
+
+        if (updated && sessionId) {
+          await window.electron.invoke('chat:update-message-metadata', {
+            messageId: updated.id,
+            sessionId,
+            metadata: updated.metadata || {},
+          });
+        }
+      } catch (persistErr) {
+        logger.warn('Failed to persist executed transaction metadata', {
+          error: (persistErr as Error)?.message || String(persistErr),
+        });
+      }
     },
 
     findFormMessage: async (formId: string) => {
@@ -1557,19 +1702,19 @@ export const useAgentStore = create<AgentStore>((set, get) => {
           chatContext.mode === 'hcs10' ? chatContext.topicId : undefined
         );
         const result = await window.electron.sendAgentMessage({
-          content: `Form submission for ${formMessage.metadata.formMessage.toolName}`,
-          formSubmission: {
-            formId,
-            data: safeFormData,
-            timestamp: Date.now(),
-            toolName: formMessage.metadata.formMessage.toolName,
-            originalPrompt: formMessage.metadata.formMessage.originalPrompt,
-            partialInput: formMessage.metadata.formMessage.partialInput || {},
-          },
-          chatHistory: currentMessages.map((msg) => ({
-            type: msg.role === 'user' ? ('human' as const) : ('ai' as const),
-            content: msg.content,
-          })),
+            content: `Form submission for ${formMessage.metadata.formMessage.toolName}`,
+            formSubmission: {
+              formId,
+              data: safeFormData,
+              timestamp: Date.now(),
+              toolName: formMessage.metadata.formMessage.toolName,
+              originalPrompt: formMessage.metadata.formMessage.originalPrompt,
+              partialInput: formMessage.metadata.formMessage.partialInput || {},
+            },
+            chatHistory: currentMessages.map((msg) => ({
+              type: msg.role === 'user' ? ('human' as const) : ('ai' as const),
+              content: msg.content,
+            })),
         });
 
         if (result.success && result.response) {

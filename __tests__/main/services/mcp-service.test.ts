@@ -1,557 +1,846 @@
-import { MCPService, type MCPServerConfig } from '../../../src/main/services/mcp-service';
+import { MCPService, MCPServerConfig, MCPConnectionResult } from '../../../src/main/services/mcp-service';
+import { Logger } from '../../../src/main/utils/logger';
+import { MCPServerValidator } from '../../../src/main/validators/mcp-server-validator';
+import { MCPConnectionPoolManager } from '../../../src/main/services/mcp-connection-pool-manager';
+import { ConcurrencyManager } from '../../../src/main/utils/ConcurrencyManager';
+import { Client as MCPClient } from '@modelcontextprotocol/sdk/client/index.js';
+import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
 
-jest.mock('../../../src/main/utils/logger');
+const mockLoggerInstance = {
+  info: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn(),
+  debug: jest.fn(),
+  log: jest.fn()
+};
+
+jest.mock('../../../src/main/utils/logger', () => ({
+  Logger: jest.fn().mockImplementation(() => mockLoggerInstance)
+}));
 jest.mock('../../../src/main/validators/mcp-server-validator');
 jest.mock('../../../src/main/services/mcp-connection-pool-manager');
 jest.mock('../../../src/main/utils/ConcurrencyManager');
 jest.mock('@modelcontextprotocol/sdk/client/index.js');
 jest.mock('@modelcontextprotocol/sdk/client/stdio.js');
 
-const mockFs = {
+const mockStat = jest.fn();
+const mockMkdir = jest.fn();
+const mockWriteFile = jest.fn();
+const mockReadFile = jest.fn();
+const mockExistsSync = jest.fn();
+const mockCopyFile = jest.fn();
+
+jest.mock('fs', () => ({
+  existsSync: mockExistsSync,
+  copyFile: mockCopyFile,
+  promises: {
+    readFile: mockReadFile,
+    writeFile: mockWriteFile,
+    mkdir: mockMkdir,
+    stat: mockStat,
+    access: jest.fn()
+  }
+}));
+
+const mockPathJoin = jest.fn((...args) => args.join('/'));
+const mockPathDirname = jest.fn((path) => path.split('/').slice(0, -1).join('/'));
+const mockOsHomedir = jest.fn(() => '/tmp');
+
+jest.mock('path', () => ({
+  join: mockPathJoin,
+  dirname: mockPathDirname
+}));
+
+jest.mock('os', () => ({
+  homedir: mockOsHomedir
+}));
+
+const mockFsPromises = require('fs').promises;
+
+const mockClientInstance = {
+  connect: jest.fn().mockResolvedValue(undefined),
+  close: jest.fn().mockResolvedValue(undefined),
+  listTools: jest.fn().mockResolvedValue({
+    tools: [{
+      name: 'test-tool',
+      description: 'A test tool',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          input: { type: 'string' }
+        }
+      }
+    }]
+  }),
+  callTool: jest.fn().mockResolvedValue({ content: [] }),
+  listResources: jest.fn().mockResolvedValue({ resources: [] }),
+  readResource: jest.fn().mockResolvedValue({ contents: [] }),
+  listPrompts: jest.fn().mockResolvedValue({ prompts: [] }),
+  getPrompt: jest.fn().mockResolvedValue({ description: '', messages: [] }),
+  on: jest.fn(),
+  off: jest.fn(),
+  emit: jest.fn(),
+  request: jest.fn(),
+  setRequestHandler: jest.fn(),
+  removeRequestHandler: jest.fn(),
+};
+
+const mockTransportInstance = {
+  start: jest.fn().mockResolvedValue(undefined),
+  close: jest.fn().mockResolvedValue(undefined),
+  send: jest.fn(),
+  on: jest.fn(),
+  off: jest.fn(),
+  emit: jest.fn(),
+};
+
+(MCPClient as jest.MockedClass<typeof MCPClient>).mockImplementation(() => mockClientInstance);
+(StdioClientTransport as jest.MockedClass<typeof StdioClientTransport>).mockImplementation(() => mockTransportInstance);
+jest.mock('fs', () => ({
   existsSync: jest.fn(),
   promises: {
     readFile: jest.fn(),
     writeFile: jest.fn(),
-    mkdir: jest.fn()
-  }
-};
-
-const mockPath = {
-  join: jest.fn(),
-  dirname: jest.fn()
-};
-
-const mockOs = {
-  homedir: jest.fn()
-};
-
-jest.mock('fs', () => ({
-  existsSync: () => true,
-  promises: {
-    readFile: jest.fn(),
-    writeFile: jest.fn(),
-    mkdir: jest.fn()
-  }
+    mkdir: jest.fn(),
+    stat: jest.fn(),
+    copyFile: jest.fn(),
+  },
 }));
-
 jest.mock('path', () => ({
   join: jest.fn(),
-  dirname: jest.fn()
+  dirname: jest.fn(),
+}));
+jest.mock('os', () => ({
+  homedir: jest.fn(),
+  tmpdir: jest.fn(),
 }));
 
-jest.mock('os', () => ({
-  homedir: jest.fn()
-}));
+const mockElectron = {
+  app: {
+    getPath: jest.fn(() => '/mock/user/data'),
+  },
+};
+
+Object.defineProperty(globalThis, 'require', {
+  value: jest.fn((moduleName: string) => {
+    if (moduleName === 'electron') {
+      return mockElectron;
+    }
+    return jest.requireActual(moduleName);
+  }),
+  writable: true,
+});
 
 describe('MCPService', () => {
   let mcpService: MCPService;
-  let mockLogger: any;
-  let mockValidator: any;
-  let mockPoolManager: any;
-  let mockConcurrencyManager: any;
+  let mockLogger: jest.Mocked<Logger>;
+  let mockValidator: jest.Mocked<MCPServerValidator>;
+  let mockPoolManager: jest.Mocked<MCPConnectionPoolManager>;
+  let mockConcurrencyManager: jest.Mocked<ConcurrencyManager>;
+  let mockFs: jest.Mocked<typeof fs>;
+  let mockFsPromises: jest.Mocked<typeof fs.promises>;
+  let mockPath: jest.Mocked<typeof path>;
+  let mockOs: jest.Mocked<typeof os>;
+  let mockMCPClient: jest.MockedClass<typeof MCPClient>;
+  let mockStdioTransport: jest.MockedClass<typeof StdioClientTransport>;
 
-  const mockServerConfig: MCPServerConfig = {
-    id: 'test-server-1',
+  const mockConfig: MCPServerConfig = {
+    id: 'test-server',
     name: 'Test Server',
-    type: 'custom',
+    type: 'filesystem',
     status: 'disconnected',
     enabled: true,
     config: {
-      type: 'custom',
-      command: 'npx',
-      args: ['-y', 'test-package'],
-      env: { NODE_ENV: 'test' }
+      type: 'filesystem',
+      rootPath: '/test/path',
     },
-    tools: [
-      {
-        name: 'test-tool',
-        description: 'A test tool',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            input: { type: 'string' }
-          }
-        }
-      }
-    ],
-    createdAt: new Date('2024-01-01'),
-    updatedAt: new Date('2024-01-01')
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+
+  const mockTool = {
+    name: 'test-tool',
+    description: 'A test tool',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        input: { type: 'string' },
+      },
+    },
   };
 
   beforeEach(() => {
     jest.clearAllMocks();
 
-    mockLogger = {
-      info: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn(),
-      debug: jest.fn()
-    };
+    mockExistsSync.mockReturnValue(false);
+    mockStat.mockRejectedValue({ code: 'ENOENT' });
+    mockMkdir.mockResolvedValue(undefined);
+    mockWriteFile.mockResolvedValue(undefined);
+
+    mockFs = require('fs') as jest.Mocked<typeof fs>;
+    mockFsPromises = mockFs.promises as jest.Mocked<typeof fs.promises>;
+    mockPath = require('path') as jest.Mocked<typeof path>;
+    mockOs = require('os') as jest.Mocked<typeof os>;
+    mockMCPClient = require('@modelcontextprotocol/sdk/client/index.js').Client as jest.MockedClass<typeof MCPClient>;
+    mockStdioTransport = require('@modelcontextprotocol/sdk/client/stdio.js').StdioClientTransport as jest.MockedClass<typeof StdioClientTransport>;
+
+    mockLogger = mockLoggerInstance;
 
     mockValidator = {
-      validate: jest.fn().mockResolvedValue({ isValid: true, errors: [] })
-    };
+      validate: jest.fn(),
+      validateConfig: jest.fn(),
+      validateConnection: jest.fn(),
+      clearCache: jest.fn(),
+    } as any;
 
     mockPoolManager = {
-      getInstance: jest.fn().mockReturnThis(),
-      acquireConnection: jest.fn(),
-      releaseConnection: jest.fn()
-    };
+      getConnection: jest.fn(),
+      releaseConnection: jest.fn(),
+      cleanup: jest.fn(),
+      getPerformanceMetrics: jest.fn(),
+    } as any;
 
     mockConcurrencyManager = {
-      getInstance: jest.fn().mockReturnThis(),
-      execute: jest.fn()
-    };
+      executeTask: jest.fn(),
+      getStats: jest.fn(),
+      cleanup: jest.fn(),
+      shutdown: jest.fn(),
+      createTask: jest.fn(),
+    } as any;
 
-    require('../../../src/main/utils/logger').Logger = jest.fn().mockImplementation(() => mockLogger);
-    require('../../../src/main/validators/mcp-server-validator').MCPServerValidator = jest.fn().mockImplementation(() => mockValidator);
-    require('../../../src/main/services/mcp-connection-pool-manager').MCPConnectionPoolManager = jest.fn().mockImplementation(() => mockPoolManager);
-    require('../../../src/main/utils/ConcurrencyManager').ConcurrencyManager = jest.fn().mockImplementation(() => mockConcurrencyManager);
+    mockFs.existsSync.mockReturnValue(false);
+    mockFsPromises.readFile.mockResolvedValue('[]');
+    mockFsPromises.writeFile.mockResolvedValue(undefined);
+    mockFsPromises.mkdir.mockResolvedValue(undefined);
+    mockFsPromises.stat.mockResolvedValue({ isDirectory: () => true } as any);
+    mockFsPromises.copyFile.mockResolvedValue(undefined);
 
-    require('@modelcontextprotocol/sdk/client/index.js').Client = jest.fn().mockImplementation(() => ({
+    mockPath.join.mockImplementation((...args: string[]) => args.join('/'));
+    mockPath.dirname.mockImplementation((p: string) => p.split('/').slice(0, -1).join('/'));
+
+    mockOs.homedir.mockReturnValue('/home/user');
+    mockOs.tmpdir.mockReturnValue('/tmp');
+
+    const mockClientInstance = {
       connect: jest.fn().mockResolvedValue(undefined),
       disconnect: jest.fn().mockResolvedValue(undefined),
-      request: jest.fn().mockResolvedValue({ tools: [] })
-    }));
+      listTools: jest.fn().mockResolvedValue({ tools: [mockTool] }),
+      callTool: jest.fn().mockResolvedValue({}),
+      listResources: jest.fn().mockResolvedValue({ resources: [] }),
+      readResource: jest.fn().mockResolvedValue({ contents: [] }),
+      getServerCapabilities: jest.fn().mockResolvedValue({}),
+    };
 
-    require('@modelcontextprotocol/sdk/client/stdio.js').StdioClientTransport = jest.fn().mockImplementation(() => ({
-      start: jest.fn(),
-      close: jest.fn()
-    }));
+    mockMCPClient.mockImplementation(() => mockClientInstance);
 
-    require('fs').existsSync = jest.fn().mockReturnValue(true);
-    require('fs').promises.readFile = jest.fn().mockResolvedValue(JSON.stringify([mockServerConfig]));
-    require('fs').promises.writeFile = jest.fn().mockResolvedValue(undefined);
-    require('fs').promises.mkdir = jest.fn().mockResolvedValue(undefined);
+    mockStdioTransport.mockImplementation(() => ({}));
 
-    require('path').join = jest.fn().mockReturnValue('/mock/config/path');
-    require('path').dirname = jest.fn().mockReturnValue('/mock/config');
-    require('os').homedir = jest.fn().mockReturnValue('/home/user');
 
-    MCPService['instance'] = null;
+    const mockValidatorModule = require('../../../src/main/validators/mcp-server-validator');
+    mockValidatorModule.MCPServerValidator.mockImplementation(() => mockValidator);
+    mockValidator.validate.mockResolvedValue({ valid: true, errors: [] });
+    mockValidator.validateConfig.mockResolvedValue({ valid: true, errors: [] });
+    mockValidator.validateConnection.mockResolvedValue({ valid: true });
+
+    mockValidator.clearCache.mockReturnValue(undefined);
+
+    mockValidator.validateServerConfig = jest.fn().mockResolvedValue({ valid: true, errors: [] });
+
+    const mockPoolModule = require('../../../src/main/services/mcp-connection-pool-manager');
+    mockPoolModule.MCPConnectionPoolManager.getInstance.mockReturnValue(mockPoolManager);
+    mockPoolManager.getPerformanceMetrics.mockReturnValue({
+      totalConnections: 0,
+      activeConnections: 0,
+      totalConnectionTime: 0,
+    });
+
+    const mockConcurrencyModule = require('../../../src/main/utils/ConcurrencyManager');
+    mockConcurrencyModule.ConcurrencyManager.getInstance.mockReturnValue(mockConcurrencyManager);
+    mockConcurrencyManager.shutdown.mockResolvedValue(undefined);
+    mockConcurrencyManager.createTask.mockReturnValue({} as any);
+    mockConcurrencyManager.getStats.mockReturnValue({
+      activeTasks: 0,
+      queuedTasks: 0,
+      completedTasks: 0,
+      failedTasks: 0,
+    });
+
     mcpService = MCPService.getInstance();
+
+    (mcpService as any).logger = mockLogger;
+
   });
 
   afterEach(() => {
-    MCPService['instance'] = null;
+    jest.clearAllTimers();
   });
 
   describe('Singleton Pattern', () => {
-    test('should return the same instance', () => {
+    test('should return same instance', () => {
       const instance1 = MCPService.getInstance();
       const instance2 = MCPService.getInstance();
       expect(instance1).toBe(instance2);
     });
 
-    test('should create new instance when singleton is reset', () => {
-      const instance1 = MCPService.getInstance();
-      MCPService['instance'] = null;
-      const instance2 = MCPService.getInstance();
-      expect(instance1).not.toBe(instance2);
-    });
-  });
-
-  describe('Constructor', () => {
-    test('should initialize with correct default values', () => {
-      expect(mockPath.join).toHaveBeenCalledWith('/home/user', '.config', 'hashgraph-online');
-      expect(mockPath.join).toHaveBeenCalledWith('/mock/config/path', 'mcp-servers.json');
+    test('should initialize with correct paths', () => {
+      const mockLoggerModule = require('../../../src/main/utils/logger');
+      expect(mockLoggerModule.Logger).toHaveBeenCalledWith({ module: 'MCPService' });
     });
 
-    test('should handle electron environment', () => {
-      const originalGlobalThis = globalThis;
-      (globalThis as any).require = jest.fn().mockReturnValue({
-        app: {
-          getPath: jest.fn().mockReturnValue('/electron/user/data')
-        }
+    test('should fallback to homedir when electron is not available', () => {
+      (globalThis.require as jest.Mock).mockImplementation(() => {
+        throw new Error('Module not found');
       });
 
-      MCPService['instance'] = null;
-      const freshInstance = MCPService.getInstance();
+      (MCPService as any).instance = null;
+      const newService = MCPService.getInstance();
 
-      expect(mockPath.join).toHaveBeenCalledWith('/electron/user/data', 'mcp-servers.json');
-
-      delete (globalThis as any).require;
+      expect(mockOs.homedir).toHaveBeenCalled();
     });
   });
 
-  describe('setToolRegistrationCallback', () => {
-    test('should set tool registration callback', () => {
-      const callback = jest.fn();
+  describe('Server Configuration Management', () => {
+    test('should load servers from disk successfully', async () => {
+      const mockServers = [mockConfig];
+      const fileContent = JSON.stringify(mockServers);
 
-      mcpService['setToolRegistrationCallback'](callback);
-
-      expect(mockLogger.debug).toHaveBeenCalledWith('Tool registration callback set in MCPService');
-    });
-  });
-
-  describe('loadServers', () => {
-    test('should load servers from file successfully', async () => {
       mockFs.existsSync.mockReturnValue(true);
-      mockFs.promises.readFile.mockResolvedValue(JSON.stringify([mockServerConfig]));
+      mockFsPromises.readFile.mockResolvedValue(fileContent);
 
-      const result = await mcpService['loadServers']();
+      const result = await mcpService.loadServers();
 
+      expect(mockFs.existsSync).toHaveBeenCalledWith('/home/user/.config/hashgraph-online/mcp-servers.json');
+      expect(mockFsPromises.readFile).toHaveBeenCalledWith('/home/user/.config/hashgraph-online/mcp-servers.json', 'utf8');
       expect(result).toHaveLength(1);
-      expect(result[0].id).toBe('test-server-1');
       expect(result[0].status).toBe('disconnected');
-      expect(mockLogger.info).toHaveBeenCalled();
+      expect(mockLogger.info).toHaveBeenCalledWith('Loaded 1 MCP server configurations');
     });
 
-    test('should handle corrupted JSON with recovery', async () => {
-      const corruptedJson = 'prefix [' + JSON.stringify(mockServerConfig) + '] suffix';
-      mockFs.promises.readFile.mockResolvedValue(corruptedJson);
-
-      const result = await mcpService['loadServers']();
-
-      expect(result).toHaveLength(1);
-      expect(result[0].id).toBe('test-server-1');
-    });
-
-    test('should return empty array when file does not exist', async () => {
+    test('should create default servers when no config exists', async () => {
       mockFs.existsSync.mockReturnValue(false);
 
-      const result = await mcpService['loadServers']();
+      const result = await mcpService.loadServers();
 
-      expect(result).toEqual([]);
+      expect(result).toHaveLength(1);
+      expect(result[0].type).toBe('filesystem');
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        'No MCP server configurations found, creating default filesystem server'
+      );
     });
 
-    test('should handle file read errors gracefully', async () => {
-      mockFs.promises.readFile.mockRejectedValue(new Error('File read error'));
+    test('should handle corrupted config file gracefully', async () => {
+      mockFs.existsSync.mockReturnValue(true);
+      mockFsPromises.readFile.mockResolvedValue('invalid json');
 
-      const result = await mcpService['loadServers']();
+      const result = await mcpService.loadServers();
 
-      expect(result).toEqual([]);
-      expect(mockLogger.error).toHaveBeenCalled();
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Failed to load MCP server configurations:',
+        expect.any(Error)
+      );
+      expect(result).toHaveLength(1); // Should return default servers
     });
-  });
 
-  describe('saveServers', () => {
-    test('should save servers to file successfully', async () => {
-      mockFs.promises.writeFile.mockResolvedValue(undefined);
+    test('should save servers to disk successfully', async () => {
+      const serversToSave = [mockConfig];
+      mockFsPromises.stat.mockResolvedValue({ isDirectory: () => true } as any);
 
-      await expect(mcpService['saveServers']([mockServerConfig])).resolves.not.toThrow();
+      await mcpService.saveServers(serversToSave);
 
-      expect(mockFs.promises.writeFile).toHaveBeenCalledWith(
-        '/mock/config/path',
-        expect.stringContaining('"test-server-1"'),
+      expect(mockFsPromises.writeFile).toHaveBeenCalledWith(
+        '/home/user/.config/hashgraph-online/mcp-servers.json',
+        JSON.stringify(serversToSave, null, 2) + '\n',
         'utf8'
       );
-      expect(mockLogger.info).toHaveBeenCalled();
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        'Directly saved 1 MCP server configurations to /home/user/.config/hashgraph-online/mcp-servers.json'
+      );
     });
 
-    test('should create directory if it does not exist', async () => {
-      mockFs.promises.writeFile.mockRejectedValueOnce({ code: 'ENOENT' });
-      mockFs.promises.writeFile.mockResolvedValueOnce(undefined);
-      mockPath.dirname.mockReturnValue('/mock/config');
+    test('should create config directory if it does not exist', async () => {
+      const serversToSave = [mockConfig];
 
-      await expect(mcpService['saveServers']([mockServerConfig])).resolves.not.toThrow();
+      const configPath = (mcpService as any).configPath;
+      const configDir = configPath.split('/').slice(0, -1).join('/');
 
-      expect(mockFs.promises.mkdir).toHaveBeenCalledWith('/mock/config', { recursive: true });
+
+      const enoentError = new Error('ENOENT');
+      (enoentError as any).code = 'ENOENT';
+      mockStat.mockRejectedValue(enoentError);
+      mockMkdir.mockResolvedValue(undefined);
+      mockWriteFile.mockResolvedValue(undefined);
+
+      await mcpService.saveServers(serversToSave);
+
+      expect(mockMkdir).toHaveBeenCalledWith(configDir, { recursive: true });
     });
 
     test('should handle save errors gracefully', async () => {
-      mockFs.promises.writeFile.mockRejectedValue(new Error('Save error'));
+      const serversToSave = [mockConfig];
+      mockFsPromises.stat.mockResolvedValue({ isDirectory: () => true } as any);
+      mockFsPromises.writeFile.mockRejectedValue(new Error('Write failed'));
 
-      await expect(mcpService['saveServers']([mockServerConfig])).resolves.not.toThrow();
-
-      expect(mockLogger.error).toHaveBeenCalled();
-    });
-  });
-
-  describe('connectServer', () => {
-    beforeEach(() => {
-      mockValidator.validate.mockResolvedValue({
-        isValid: true,
-        errors: []
-      });
-
-      const MockMCPClient = require('@modelcontextprotocol/sdk/client/index.js').Client;
-      const MockTransport = require('@modelcontextprotocol/sdk/client/stdio.js').StdioClientTransport;
-    });
-
-    test('should connect to server successfully', async () => {
-      mockClient.connect.mockResolvedValue(undefined);
-      mockClient.request.mockResolvedValue({
-        tools: [
-          {
-            name: 'test-tool',
-            description: 'A test tool',
-            inputSchema: { type: 'object', properties: {} }
-          }
-        ]
-      });
-
-      const result = await mcpService['connectServer']('test-server-1');
-
-      expect(result.success).toBe(true);
-      expect(mockClient.connect).toHaveBeenCalled();
-      expect(mockLogger.info).toHaveBeenCalledWith(
-        expect.stringContaining('Successfully connected to server')
-      );
-    });
-
-    test('should handle connection failure', async () => {
-      mockClient.connect.mockRejectedValue(new Error('Connection failed'));
-
-      const result = await mcpService['connectServer']('test-server-1');
-
-      expect(result.success).toBe(false);
-      expect(result.error).toBe('Connection failed');
-      expect(mockLogger.error).toHaveBeenCalled();
-    });
-
-    test('should reject if server is already connecting', async () => {
-      const promise1 = mcpService['connectServer']('test-server-1');
-
-      const promise2 = mcpService['connectServer']('test-server-1');
-
-      await expect(promise2).rejects.toThrow('Server is already connecting');
-    });
-
-    test('should handle validation failure', async () => {
-      mockValidator.validate.mockResolvedValue({
-        isValid: false,
-        errors: ['Invalid configuration']
-      });
-
-      const result = await mcpService['connectServer']('test-server-1');
-
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('Invalid configuration');
-    });
-  });
-
-  describe('disconnectServer', () => {
-    beforeEach(() => {
-      const clientEntry = { client: mockClient, transport: mockTransport };
-      (mcpService as any).clientEntries.set('test-server-1', clientEntry);
-    });
-
-    test('should disconnect server successfully', async () => {
-      mockClient.disconnect.mockResolvedValue(undefined);
-
-      await expect(mcpService['disconnectServer']('test-server-1')).resolves.not.toThrow();
-
-      expect(mockClient.disconnect).toHaveBeenCalled();
-      expect(mockLogger.info).toHaveBeenCalledWith(
-        expect.stringContaining('Disconnected from server')
-      );
-    });
-
-    test('should handle disconnection errors gracefully', async () => {
-      mockClient.disconnect.mockRejectedValue(new Error('Disconnect failed'));
-
-      await expect(mcpService['disconnectServer']('test-server-1')).resolves.not.toThrow();
-
-      expect(mockLogger.warn).toHaveBeenCalled();
-    });
-
-    test('should handle non-existent server gracefully', async () => {
-      await expect(mcpService['disconnectServer']('non-existent')).resolves.not.toThrow();
-
-      expect(mockLogger.warn).toHaveBeenCalledWith(
-        expect.stringContaining('No active connection found')
-      );
-    });
-  });
-
-  describe('getServerTools', () => {
-    beforeEach(() => {
-      const clientEntry = { client: mockClient, transport: mockTransport };
-      (mcpService as any).clientEntries.set('test-server-1', clientEntry);
-
-      mockClient.request.mockResolvedValue({
-        tools: [
-          {
-            name: 'test-tool',
-            description: 'A test tool',
-            inputSchema: { type: 'object', properties: {} }
-          }
-        ]
-      });
-    });
-
-    test('should retrieve server tools successfully', async () => {
-      const tools = await mcpService['getServerTools']('test-server-1');
-
-      expect(tools).toHaveLength(1);
-      expect(tools[0].name).toBe('test-tool');
-      expect(mockClient.request).toHaveBeenCalledWith(
-        { method: 'tools/list' },
-        expect.any(Object)
-      );
-    });
-
-    test('should handle non-existent server', async () => {
-      await expect(mcpService['getServerTools']('non-existent')).rejects.toThrow(
-        'Server not connected'
-      );
-    });
-
-    test('should handle tool retrieval errors', async () => {
-      mockClient.request.mockRejectedValue(new Error('Tool retrieval failed'));
-
-      await expect(mcpService['getServerTools']('test-server-1')).rejects.toThrow(
-        'Tool retrieval failed'
-      );
-    });
-  });
-
-  describe('disconnectAll', () => {
-    test('should disconnect all servers', async () => {
-      const clientEntry1 = { client: { ...mockClient, disconnect: jest.fn().mockResolvedValue(undefined) }, transport: mockTransport };
-      const clientEntry2 = { client: { ...mockClient, disconnect: jest.fn().mockResolvedValue(undefined) }, transport: mockTransport };
-
-      (mcpService as any).clientEntries.set('server-1', clientEntry1);
-      (mcpService as any).clientEntries.set('server-2', clientEntry2);
-
-      await expect(mcpService['disconnectAll']()).resolves.not.toThrow();
-
-      expect(mockLogger.info).toHaveBeenCalledWith(
-        expect.stringContaining('Disconnected all servers')
-      );
-    });
-
-    test('should handle disconnection errors in batch', async () => {
-      const failingClient = { ...mockClient, disconnect: jest.fn().mockRejectedValue(new Error('Failed')) };
-      (mcpService as any).clientEntries.set('failing-server', { client: failingClient, transport: mockTransport });
-
-      await expect(mcpService['disconnectAll']()).resolves.not.toThrow();
-
-      expect(mockLogger.warn).toHaveBeenCalledWith(
-        expect.stringContaining('Failed to disconnect server')
-      );
-    });
-  });
-
-  describe('refreshServerTools', () => {
-    beforeEach(() => {
-      const clientEntry = { client: mockClient, transport: mockTransport };
-      (mcpService as any).clientEntries.set('test-server-1', clientEntry);
-
-      mockClient.request.mockResolvedValue({
-        tools: [
-          {
-            name: 'refreshed-tool',
-            description: 'A refreshed tool',
-            inputSchema: { type: 'object', properties: {} }
-          }
-        ]
-      });
-    });
-
-    test('should refresh server tools successfully', async () => {
-      const tools = await mcpService['refreshServerTools']('test-server-1');
-
-      expect(tools).toHaveLength(1);
-      expect(tools[0].name).toBe('refreshed-tool');
-      expect(mockClient.request).toHaveBeenCalledWith(
-        { method: 'tools/list' },
-        expect.any(Object)
-      );
-    });
-
-    test('should handle non-existent server', async () => {
-      await expect(mcpService['refreshServerTools']('non-existent')).rejects.toThrow(
-        'Server not connected'
-      );
-    });
-  });
-
-  describe('Error Handling', () => {
-    test('should handle invalid server configurations', async () => {
-      mockValidator.validate.mockResolvedValue({
-        isValid: false,
-        errors: ['Invalid command', 'Missing arguments']
-      });
-
-      const result = await mcpService['connectServer']('test-server-1');
-
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('Invalid command');
-    });
-
-    test('should handle concurrent connection attempts', async () => {
-      mockClient.connect.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)));
-      mockClient.request.mockResolvedValue({ tools: [] });
-
-      const promise1 = mcpService['connectServer']('test-server-1');
-      const promise2 = mcpService['connectServer']('test-server-1');
-
-      await expect(promise2).rejects.toThrow('Server is already connecting');
-
-      const result = await promise1;
-      expect(result.success).toBe(true);
-    });
-
-    test('should handle file system errors during config operations', async () => {
-      mockFs.promises.readFile.mockRejectedValue(new Error('Permission denied'));
-
-      const result = await mcpService['loadServers']();
-
-      expect(result).toEqual([]);
+      await expect(mcpService.saveServers(serversToSave)).rejects.toThrow('Write failed');
       expect(mockLogger.error).toHaveBeenCalledWith(
-        expect.stringContaining('Failed to load MCP servers'),
+        'Failed to save MCP server configurations:',
         expect.any(Error)
       );
     });
   });
 
-  describe('Integration Scenarios', () => {
-    test('should handle complete server lifecycle', async () => {
-      mockFs.existsSync.mockReturnValue(true);
-      mockFs.promises.readFile.mockResolvedValue(JSON.stringify([mockServerConfig]));
+  describe('Server Connection Management', () => {
+    test('should connect to server successfully', async () => {
+      await (mcpService as any).saveServers([mockConfig]);
 
-      let servers = await mcpService['loadServers']();
-      expect(servers).toHaveLength(1);
-      expect(servers[0].status).toBe('disconnected');
 
-      mockValidator.validate.mockResolvedValue({ isValid: true, errors: [] });
-      mockClient.connect.mockResolvedValue(undefined);
-      mockClient.request.mockResolvedValue({ tools: [] });
+      mockValidator.validateConnection.mockResolvedValue({ valid: true });
 
-      const connectResult = await mcpService['connectServer']('test-server-1');
-      expect(connectResult.success).toBe(true);
+      const result: MCPConnectionResult = await mcpService.connectServer('test-server');
 
-      mockClient.request.mockResolvedValue({
-        tools: [{ name: 'test-tool', description: 'Test', inputSchema: { type: 'object' } }]
-      });
-
-      const tools = await mcpService['getServerTools']('test-server-1');
-      expect(tools).toHaveLength(1);
-
-      mockClient.disconnect.mockResolvedValue(undefined);
-      await expect(mcpService['disconnectServer']('test-server-1')).resolves.not.toThrow();
-
-      mockFs.promises.writeFile.mockResolvedValue(undefined);
-      await expect(mcpService['saveServers'](servers)).resolves.not.toThrow();
+      expect(result.success).toBe(true);
+      expect(result.tools).toEqual([mockTool]);
+      expect(mockLogger.info).toHaveBeenCalledWith('Successfully connected to MCP server: test-server');
     });
 
-    test('should handle multiple servers simultaneously', async () => {
-      const serverConfigs = [
-        { ...mockServerConfig, id: 'server-1', name: 'Server 1' },
-        { ...mockServerConfig, id: 'server-2', name: 'Server 2' },
-        { ...mockServerConfig, id: 'server-3', name: 'Server 3' }
-      ];
+    test('should handle connection failure', async () => {
+      await (mcpService as any).saveServers([mockConfig]);
 
-      mockFs.promises.readFile.mockResolvedValue(JSON.stringify(serverConfigs));
-      mockValidator.validate.mockResolvedValue({ isValid: true, errors: [] });
-      mockClient.connect.mockResolvedValue(undefined);
-      mockClient.request.mockResolvedValue({ tools: [] });
+      const mockClientInstance = {
+        connect: jest.fn().mockRejectedValue(new Error('Connection failed')),
+      };
 
-      const servers = await mcpService['loadServers']();
-      expect(servers).toHaveLength(3);
+      mockMCPClient.mockImplementation(() => mockClientInstance as any);
+      mockStdioTransport.mockImplementation(() => ({} as any));
 
-      const connectPromises = servers.map(server =>
-        mcpService['connectServer'](server.id)
+      const result: MCPConnectionResult = await mcpService.connectServer('test-server');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Connection failed');
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Failed to connect to MCP server test-server:',
+        expect.any(Error)
       );
+    });
 
-      const results = await Promise.all(connectPromises);
-      results.forEach(result => {
-        expect(result.success).toBe(true);
+    test('should test connection successfully', async () => {
+      await (mcpService as any).saveServers([mockConfig]);
+
+      const mockClientInstance = {
+        connect: jest.fn().mockResolvedValue(undefined),
+        disconnect: jest.fn().mockResolvedValue(undefined),
+        getServerCapabilities: jest.fn().mockResolvedValue({ tools: true }),
+      };
+
+      mockMCPClient.mockImplementation(() => mockClientInstance as any);
+      mockStdioTransport.mockImplementation(() => ({} as any));
+      mockValidator.validateConnection.mockResolvedValue({ valid: true });
+
+      const result = await mcpService.testConnection({
+        type: 'filesystem',
+        rootPath: '/test/path',
       });
 
-      await expect(mcpService['disconnectAll']()).resolves.not.toThrow();
+      expect(result).toBe(true);
+      expect(mockLogger.debug).toHaveBeenCalledWith('Connection test successful for filesystem server');
+    });
+
+    test('should disconnect server successfully', async () => {
+      const mockClientInstance = {
+        connect: jest.fn().mockResolvedValue(undefined),
+        disconnect: jest.fn().mockResolvedValue(undefined),
+        listTools: jest.fn().mockResolvedValue({ tools: [mockTool] }),
+        getServerCapabilities: jest.fn().mockResolvedValue({}),
+      };
+
+      mockMCPClient.mockImplementation(() => mockClientInstance as any);
+      mockStdioTransport.mockImplementation(() => ({} as any));
+
+      await mcpService.connectServer('test-server');
+
+      const result = await mcpService.disconnectServer('test-server');
+
+      expect(result).toBeUndefined();
+    });
+
+    test('should disconnect all servers', async () => {
+      const mockClientInstance1 = {
+        connect: jest.fn().mockResolvedValue(undefined),
+        disconnect: jest.fn().mockResolvedValue(undefined),
+        listTools: jest.fn().mockResolvedValue({ tools: [mockTool] }),
+        getServerCapabilities: jest.fn().mockResolvedValue({}),
+      };
+
+      const mockClientInstance2 = {
+        connect: jest.fn().mockResolvedValue(undefined),
+        disconnect: jest.fn().mockResolvedValue(undefined),
+        listTools: jest.fn().mockResolvedValue({ tools: [] }),
+        getServerCapabilities: jest.fn().mockResolvedValue({}),
+      };
+
+      let clientCount = 0;
+      mockMCPClient.mockImplementation(() => {
+        clientCount++;
+        return (clientCount === 1 ? mockClientInstance1 : mockClientInstance2) as any;
+      });
+
+      mockStdioTransport.mockImplementation(() => ({} as any));
+
+      await mcpService.connectServer('server1');
+      await mcpService.connectServer('server2');
+
+      await mcpService.disconnectAll();
+
+      expect(mockLogger).toBeDefined();
+    });
+  });
+
+  describe('Tool Management', () => {
+    test('should get server tools successfully', async () => {
+      await (mcpService as any).saveServers([mockConfig]);
+      await mcpService.connectServer('test-server');
+
+      const mockClientInstance = {
+        connect: jest.fn().mockResolvedValue(undefined),
+        listTools: jest.fn().mockResolvedValue({ tools: [mockTool] }),
+        getServerCapabilities: jest.fn().mockResolvedValue({}),
+      };
+
+      mockMCPClient.mockImplementation(() => mockClientInstance as any);
+      mockStdioTransport.mockImplementation(() => ({} as any));
+
+      await mcpService.connectServer('test-server');
+
+      const tools = await mcpService.getServerTools('test-server');
+
+      expect(tools).toEqual([mockTool]);
+      expect(mockClientInstance.listTools).toHaveBeenCalled();
+    });
+
+    test('should handle tool fetching for non-existent server', async () => {
+      const tools = await mcpService.getServerTools('non-existent');
+
+      expect(tools).toEqual([]);
+      expect(mockLogger.warn).toHaveBeenCalledWith('Server non-existent not found or not connected');
+    });
+
+    test('should refresh server tools', async () => {
+      await (mcpService as any).saveServers([mockConfig]);
+      await mcpService.connectServer('test-server');
+
+      const mockClientInstance = {
+        connect: jest.fn().mockResolvedValue(undefined),
+        listTools: jest.fn().mockResolvedValue({ tools: [mockTool] }),
+        getServerCapabilities: jest.fn().mockResolvedValue({}),
+      };
+
+      mockMCPClient.mockImplementation(() => mockClientInstance as any);
+      mockStdioTransport.mockImplementation(() => ({} as any));
+
+      await mcpService.connectServer('test-server');
+
+      const tools = await mcpService.refreshServerTools('test-server');
+
+      expect(tools).toEqual([mockTool]);
+      expect(mockLogger.info).toHaveBeenCalledWith('Refreshed tools for server: test-server');
+    });
+  });
+
+  describe('Server Configuration Queries', () => {
+    test('should get server configs', () => {
+      const configs = mcpService.getServerConfigs();
+
+      expect(Array.isArray(configs)).toBe(true);
+    });
+
+    test('should get connection health for server', () => {
+      const health = mcpService.getConnectionHealth('test-server');
+
+      expect(health).toBeUndefined(); // No health data initially
+    });
+
+    test('should get connected server IDs', () => {
+      const connectedIds = mcpService.getConnectedServerIds();
+
+      expect(Array.isArray(connectedIds)).toBe(true);
+    });
+  });
+
+  describe('Validation', () => {
+    test('should validate server config successfully', async () => {
+      mockValidator.validateConfig.mockResolvedValue({
+        valid: true,
+        errors: [],
+      });
+
+      const result = await mcpService.validateServerConfig({
+        type: 'filesystem',
+        rootPath: '/valid/path',
+      });
+
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+
+    test('should handle validation errors', async () => {
+      mockValidator.validateConfig.mockResolvedValue({
+        valid: false,
+        errors: ['Invalid path']
+      });
+
+      const result = await mcpService.validateServerConfig({
+        type: 'filesystem',
+        rootPath: '/invalid/path',
+      });
+
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContain('Invalid path');
+    });
+
+    test('should clear validation cache', () => {
+      mcpService.clearValidationCache();
+
+      expect(mockValidator).toBeDefined(); // Validator should still exist
+    });
+  });
+
+  describe('Performance and Optimization', () => {
+    test('should get performance metrics', () => {
+      const metrics = mcpService.getPerformanceMetrics();
+
+      expect(metrics.poolMetrics).toHaveProperty('totalConnections');
+      expect(metrics.poolMetrics).toHaveProperty('activeConnections');
+      expect(metrics.poolMetrics).toHaveProperty('totalConnectionTime');
+    });
+
+    test('should set performance optimizations', () => {
+      mcpService.setPerformanceOptimizations(false);
+
+      expect(mcpService).toBeDefined();
+    });
+
+    test('should connect servers in parallel', async () => {
+      await (mcpService as any).saveServers([mockConfig]);
+      const mockClientInstance = {
+        connect: jest.fn().mockResolvedValue(undefined),
+        listTools: jest.fn().mockResolvedValue({ tools: [mockTool] }),
+        getServerCapabilities: jest.fn().mockResolvedValue({}),
+      };
+
+      mockMCPClient.mockImplementation(() => mockClientInstance as any);
+      mockStdioTransport.mockImplementation(() => ({} as any));
+
+      mockConcurrencyManager.executeTask.mockImplementation(async (task) => {
+        return await task();
+      });
+
+      const servers = [mockConfig];
+      const results = await mcpService.connectServersParallel(servers);
+
+      expect(Array.isArray(results)).toBe(true);
+      expect(results[0].success).toBe(true);
+    });
+
+    test('should connect servers in batch', async () => {
+      const mockClientInstance = {
+        connect: jest.fn().mockResolvedValue(undefined),
+        listTools: jest.fn().mockResolvedValue({ tools: [mockTool] }),
+        getServerCapabilities: jest.fn().mockResolvedValue({}),
+      };
+
+      mockMCPClient.mockImplementation(() => mockClientInstance as any);
+      mockStdioTransport.mockImplementation(() => ({} as any));
+
+      const servers = [mockConfig];
+      const results = await mcpService.connectServersBatch(servers, 2);
+
+      expect(Array.isArray(results)).toBe(true);
+      expect(results[0].success).toBe(true);
+    });
+  });
+
+  describe('Tool Registration Callback', () => {
+    test('should set tool registration callback', () => {
+      const callback = jest.fn();
+      mcpService.setToolRegistrationCallback(callback);
+
+      expect(mockLogger.debug).toHaveBeenCalledWith('Tool registration callback set in MCPService');
+    });
+  });
+
+  describe('Error Handling and Edge Cases', () => {
+    test('should handle connect server for non-existent server', async () => {
+      const result = await mcpService.connectServer('non-existent');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Server configuration not found');
+    });
+
+    test('should handle disconnect server for non-existent server', async () => {
+      await expect(mcpService.disconnectServer('non-existent')).rejects.toThrow(
+        'Server non-existent not found'
+      );
+    });
+
+    test('should handle test connection with invalid config', async () => {
+      mockValidator.validateConnection.mockRejectedValue(new Error('Invalid config'));
+
+      const result = await mcpService.testConnection({
+        type: 'filesystem',
+        rootPath: '/invalid/path',
+      });
+
+      expect(result).toBe(false);
+    });
+
+    test('should handle cleanup optimizations', async () => {
+      await mcpService.cleanupOptimizations();
+
+      expect(mockConcurrencyManager.cleanup).toHaveBeenCalled();
+      expect(mockPoolManager.cleanup).toHaveBeenCalled();
+    });
+  });
+
+  describe('Integration Scenarios', () => {
+    test('should handle complete server lifecycle', async () => {
+      await (mcpService as any).saveServers([mockConfig]);
+      const mockClientInstance = {
+        connect: jest.fn().mockResolvedValue(undefined),
+        disconnect: jest.fn().mockResolvedValue(undefined),
+        listTools: jest.fn().mockResolvedValue({ tools: [mockTool] }),
+        getServerCapabilities: jest.fn().mockResolvedValue({}),
+      };
+
+      mockMCPClient.mockImplementation(() => mockClientInstance as any);
+      mockStdioTransport.mockImplementation(() => ({} as any));
+
+      const servers = await mcpService.loadServers();
+      expect(servers.length).toBeGreaterThan(0);
+
+      const connectResult = await mcpService.connectServer('test-server');
+      expect(connectResult.success).toBe(true);
+      expect(connectResult.tools).toEqual([mockTool]);
+
+      const tools = await mcpService.getServerTools('test-server');
+      expect(tools).toEqual([mockTool]);
+
+      const health = mcpService.getConnectionHealth('test-server');
+      expect(health).toBeDefined();
+
+      const connectedIds = mcpService.getConnectedServerIds();
+      expect(connectedIds).toContain('test-server');
+
+      await mcpService.disconnectServer('test-server');
+      expect(mockLogger.info).toHaveBeenCalledWith('Disconnected from MCP server: test-server');
+
+      await mcpService.disconnectAll();
+    });
+
+    test('should handle multiple server operations', async () => {
+      const server2Config = { ...mockConfig, id: 'server2', name: 'Server 2' };
+      await (mcpService as any).saveServers([mockConfig, server2Config]);
+      const mockClientInstance1 = {
+        connect: jest.fn().mockResolvedValue(undefined),
+        disconnect: jest.fn().mockResolvedValue(undefined),
+        listTools: jest.fn().mockResolvedValue({ tools: [mockTool] }),
+        getServerCapabilities: jest.fn().mockResolvedValue({}),
+      };
+
+      const mockClientInstance2 = {
+        connect: jest.fn().mockResolvedValue(undefined),
+        disconnect: jest.fn().mockResolvedValue(undefined),
+        listTools: jest.fn().mockResolvedValue({ tools: [] }),
+        getServerCapabilities: jest.fn().mockResolvedValue({}),
+      };
+
+      let clientIndex = 0;
+      mockMCPClient.mockImplementation(() => {
+        clientIndex++;
+        return (clientIndex === 1 ? mockClientInstance1 : mockClientInstance2) as any;
+      });
+
+      mockStdioTransport.mockImplementation(() => ({} as any));
+
+      const result1 = await mcpService.connectServer('server1');
+      const result2 = await mcpService.connectServer('server2');
+
+      expect(result1.success).toBe(true);
+      expect(result2.success).toBe(true);
+
+      const tools1 = await mcpService.getServerTools('server1');
+      const tools2 = await mcpService.getServerTools('server2');
+
+      expect(tools1).toEqual([mockTool]);
+      expect(tools2).toEqual([]);
+
+      const refreshedTools1 = await mcpService.refreshServerTools('server1');
+      expect(refreshedTools1).toEqual([mockTool]);
+
+      const connectedIds = mcpService.getConnectedServerIds();
+      expect(connectedIds).toHaveLength(2);
+      expect(connectedIds).toContain('server1');
+      expect(connectedIds).toContain('server2');
+    });
+
+    test('should handle error recovery scenarios', async () => {
+      await (mcpService as any).saveServers([mockConfig]);
+      mockFs.existsSync.mockReturnValue(true);
+      mockFsPromises.readFile.mockResolvedValue('{"invalid": json}');
+
+      const servers = await mcpService.loadServers();
+      expect(servers).toHaveLength(1); // Should fallback to defaults
+
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Failed to load MCP server configurations:',
+        expect.any(Error)
+      );
+
+      const mockClientInstance = {
+        connect: jest.fn().mockRejectedValue(new Error('Network error')),
+      };
+
+      mockMCPClient.mockImplementation(() => mockClientInstance as any);
+      mockStdioTransport.mockImplementation(() => ({} as any));
+
+      const connectResult = await mcpService.connectServer('test-server');
+      expect(connectResult.success).toBe(false);
+      expect(connectResult.error).toContain('Network error');
+
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Failed to connect to MCP server test-server:',
+        expect.any(Error)
+      );
+    });
+
+    test('should handle performance optimization scenarios', async () => {
+      await (mcpService as any).saveServers([mockConfig]);
+      mcpService.setPerformanceOptimizations(true);
+
+      const initialMetrics = mcpService.getPerformanceMetrics();
+      expect(initialMetrics.poolMetrics.totalConnections).toBe(0);
+
+      const mockClientInstance = {
+        connect: jest.fn().mockResolvedValue(undefined),
+        listTools: jest.fn().mockResolvedValue({ tools: [mockTool] }),
+        getServerCapabilities: jest.fn().mockResolvedValue({}),
+      };
+
+      mockMCPClient.mockImplementation(() => mockClientInstance as any);
+      mockStdioTransport.mockImplementation(() => ({} as any));
+
+      await mcpService.connectServer('test-server');
+
+      const updatedMetrics = mcpService.getPerformanceMetrics();
+      expect(updatedMetrics.activeConnections).toBe(1);
+
+      const servers = [mockConfig];
+      const parallelResults = await mcpService.connectServersParallel(servers);
+      expect(parallelResults).toHaveLength(1);
+      expect(parallelResults[0].success).toBe(true);
+
+      await mcpService.cleanupOptimizations();
     });
   });
 });

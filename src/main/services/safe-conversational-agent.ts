@@ -34,6 +34,7 @@ export type AgentConfig = {
   mcpServers?: LibMCPServerConfig[];
   verbose?: boolean;
   disableLogging?: boolean;
+  walletExecutor?: (base64: string, network: 'mainnet' | 'testnet') => Promise<{ transactionId: string }>;
 
   /** Enable entity memory functionality */
   entityMemoryEnabled?: boolean;
@@ -50,13 +51,19 @@ export class SafeConversationalAgent extends ConversationalAgent {
 
   constructor(config: AgentConfig) {
     const userAccountId = config.userAccountId || config.accountId;
+    const normalizedMode =
+      (config.operationalMode as string) === 'provideBytes'
+        ? ('returnBytes' as AgentOperationalMode)
+        : (config.operationalMode as AgentOperationalMode);
 
     super({
       ...config,
+      operationalMode: normalizedMode,
       entityMemoryEnabled: config.entityMemoryEnabled ?? true,
       entityMemoryConfig: config.entityMemoryConfig,
       userAccountId: userAccountId,
       verbose: true,
+      walletExecutor: config.walletExecutor,
     });
 
     this.config = config;
@@ -165,19 +172,28 @@ export class SafeConversationalAgent extends ConversationalAgent {
         }
         if (
           transactionBytes &&
-          (!resultObj.metadata || !resultObj.metadata.transactionBytes)
+          (!resultObj.metadata ||
+            (typeof resultObj.metadata === 'object' &&
+              !(resultObj as { metadata: Record<string, unknown> }).metadata
+                .transactionBytes))
         ) {
+          const existingMeta =
+            (resultObj.metadata && typeof resultObj.metadata === 'object'
+              ? (resultObj.metadata as Record<string, unknown>)
+              : {}) || {};
           resultObj.metadata = {
-            ...resultObj.metadata,
+            ...existingMeta,
             transactionBytes,
-          };
+          } as Record<string, unknown>;
         }
 
-        if (resultObj.formMessage && resultObj.requiresForm) {
+        const formMsg = (resultObj as { formMessage?: { id?: unknown } })
+          .formMessage;
+        if (formMsg && resultObj.requiresForm) {
           this.logger?.info(
             'Form generation detected in SafeConversationalAgent:',
             {
-              formId: resultObj.formMessage.id,
+              formId: (formMsg as { id?: unknown }).id,
               requiresForm: resultObj.requiresForm,
             }
           );
@@ -294,20 +310,29 @@ export class SafeConversationalAgent extends ConversationalAgent {
       return;
     }
 
-    const enabledServers = this.config.mcpServers.filter(
-      (server: MCPServerConfiguration) => server.enabled || server.autoConnect
+    const serversForLog = this.config.mcpServers.map((s: unknown) => {
+      const obj = (s || {}) as Record<string, unknown>;
+      return {
+        name: (obj.name as string) || 'MCP Server',
+        enabled: Boolean(obj.enabled ?? true),
+        autoConnect: Boolean(obj.autoConnect ?? true),
+      };
+    });
+
+    const enabledServers = serversForLog.filter(
+      (server) => server.enabled || server.autoConnect
     );
 
     if (enabledServers.length > 0) {
       this.logger?.info(
         `MCP connections will be established asynchronously for ${enabledServers.length} servers`,
         {
-          servers: enabledServers.map((s: MCPServerConfiguration) => s.name),
+          servers: enabledServers.map((s) => s.name),
         }
       );
 
       setTimeout(() => {
-        enabledServers.forEach((server: MCPServerConfiguration) => {
+        enabledServers.forEach((server) => {
           this.logger?.info(
             `MCP server ${server.name} connection initiated asynchronously`
           );

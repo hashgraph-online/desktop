@@ -12,9 +12,14 @@ export function getPublicAssetPath(path: string): string {
     path = path.slice(1);
   }
   
-  if (import.meta.env.DEV) {
+  const isDev = typeof process !== 'undefined' && process.env && process.env.NODE_ENV !== 'production';
+  if (isDev) {
     return `/${path}`;
   }
   
-  return new URL(`/${path}`, import.meta.url).href;
+  try {
+    return new URL(`/${path}`, import.meta.url).href;
+  } catch {
+    return `/${path}`;
+  }
 }

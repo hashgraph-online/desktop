@@ -1,7 +1,7 @@
 import { getDatabase } from '../db/connection';
 import * as schema from '../db/schema';
 import type { EntityAssociation, NewEntityAssociation } from '../db/schema';
-import { eq, desc, and, or, like } from 'drizzle-orm';
+import { eq, desc, and, or, like, lt } from 'drizzle-orm';
 import { Logger } from '../utils/logger';
 
 /**
@@ -433,7 +433,7 @@ export class EntityService {
         .where(
           and(
             eq(schema.entityAssociations.isActive, false),
-            schema.entityAssociations.updatedAt < cutoffDate
+            lt(schema.entityAssociations.updatedAt, cutoffDate)
           )
         )
         .run();

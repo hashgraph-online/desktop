@@ -49,14 +49,12 @@ const BlockEditor: React.FC<BlockEditorProps> = ({ className }) => {
     updateAttributes(convertedAttributes);
   };
 
-  // Convert store attributes to AttributeData format for the editor
   const convertToAttributeData = (attrs: Record<string, unknown>): Record<string, any> => {
     return Object.fromEntries(
       Object.entries(attrs).map(([key, value]) => {
         if (value && typeof value === 'object' && 'schema' in value) {
           return [key, value];
         }
-        // If it's a plain AttributeSchema, wrap it in AttributeData format
         return [key, {
           schema: value || {
             type: 'string' as const,

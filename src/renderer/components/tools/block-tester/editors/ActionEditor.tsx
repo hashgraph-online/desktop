@@ -189,7 +189,6 @@ const ActionEditor: React.FC<ActionEditorProps> = ({
   const [selectedActionType, setSelectedActionType] = useState<string>('');
   const [editingAction, setEditingAction] = useState<string | null>(null);
 
-  // Load available actions (mock data for now - would come from standards-sdk)
   useEffect(() => {
     const mockActions: ActionDefinition[] = [
       {
@@ -319,7 +318,6 @@ const ActionEditor: React.FC<ActionEditorProps> = ({
       enabled: true
     };
 
-    // Set default parameter values
     actionDef.parameters.forEach(param => {
       if (param.defaultValue !== undefined) {
         newAction.parameters[param.name] = param.defaultValue;

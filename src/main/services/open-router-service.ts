@@ -54,6 +54,7 @@ export class OpenRouterService {
   private modelsCache: OpenRouterModel[] | null = null;
   private cacheTimestamp: number = 0;
   private readonly CACHE_DURATION = 60 * 60 * 1000;
+  private pendingRequest: Promise<OpenRouterModel[]> | null = null;
 
   private constructor() {
     this.logger = new Logger({ module: 'OpenRouterService' });
@@ -73,6 +74,11 @@ export class OpenRouterService {
     try {
       const now = Date.now();
 
+      if (this.pendingRequest && !forceRefresh) {
+        this.logger.debug('Returning pending request');
+        return this.pendingRequest;
+      }
+
       if (
         !forceRefresh &&
         this.modelsCache &&
@@ -84,29 +90,44 @@ export class OpenRouterService {
 
       this.logger.info('Fetching models from OpenRouter API');
 
-      const response = await fetch('https://openrouter.ai/api/v1/models', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      this.pendingRequest = (async () => {
+        const response = await fetch('https://openrouter.ai/api/v1/models', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
 
-      if (!response.ok) {
-        throw new Error(
-          `OpenRouter API error: ${response.status} ${response.statusText}`
-        );
-      }
+        if (!response.ok) {
+          throw new Error(
+            `OpenRouter API error: ${response.status} ${response.statusText}`
+          );
+        }
 
-      const data: OpenRouterModelsResponse = await response.json();
+        const data: OpenRouterModelsResponse = await response.json();
 
-      this.modelsCache = data.data;
-      this.cacheTimestamp = now;
+        if (!data || !data.data || !Array.isArray(data.data)) {
+          this.logger.error('Invalid response format from OpenRouter API');
+          throw new Error('Invalid response format from OpenRouter API');
+        }
 
-      this.logger.info(`Fetched ${data.data.length} models from OpenRouter`);
+        this.modelsCache = data.data;
+        this.cacheTimestamp = now;
 
-      return data.data;
+        this.logger.info(`Fetched ${data.data.length} models from OpenRouter`);
+
+        return data.data;
+      })();
+
+      const result = await this.pendingRequest;
+
+      this.pendingRequest = null;
+
+      return result;
     } catch (error) {
       this.logger.error('Failed to fetch models from OpenRouter:', error);
+
+      this.pendingRequest = null;
 
       if (this.modelsCache) {
         this.logger.warn('Returning stale cache due to error');
@@ -145,7 +166,7 @@ export class OpenRouterService {
     provider: 'openai' | 'anthropic'
   ): ProviderModel {
     const name = this.extractModelName(model.id);
-    const category = this.determineCategory(model.id, model.pricing);
+    const category = model.pricing ? this.determineCategory(model.id, model.pricing) : 'efficient';
 
     return {
       id: model.id,
@@ -154,8 +175,8 @@ export class OpenRouterService {
       provider: provider,
       category: category,
       contextWindow: this.formatContextWindow(model.context_length),
-      inputCost: this.formatCost(model.pricing.prompt),
-      outputCost: this.formatCost(model.pricing.completion),
+      inputCost: model.pricing ? this.formatCost(model.pricing.prompt) : '$0.00/1M tokens',
+      outputCost: model.pricing ? this.formatCost(model.pricing.completion) : '$0.00/1M tokens',
       strengths: this.determineStrengths(model),
       bestFor: this.determineBestFor(model, category),
       supportsVision: model.architecture?.modality === 'multimodal',
@@ -320,7 +341,7 @@ export class OpenRouterService {
   private isNew(modelId: string): boolean {
     const newModels = [
       'gpt-4o-2024-11-20',
-      'claude-3-5-sonnet-20241022',
+      'claude-3-7-sonnet-latest',
       'claude-3-5-haiku-20241022',
     ];
     return newModels.some((model) => modelId.includes(model));

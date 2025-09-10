@@ -6,6 +6,8 @@ import UserProfileImage from './ui/UserProfileImage';
 import { FiMoon, FiSun } from 'react-icons/fi';
 import { cn } from '../lib/utils';
 import { useConfigStore } from '../stores/configStore';
+import { fetchUserProfile as fetchProfileViaFactory } from '../services/hcs10ClientFactory';
+import { useWalletStore } from '../stores/walletStore';
 import type { UserProfile } from '../types/userProfile';
 
 interface LayoutProps {
@@ -58,36 +60,30 @@ const ThemeToggle: React.FC = () => {
 const ProfileButton: React.FC = () => {
   const navigate = useNavigate();
   const { config } = useConfigStore();
+  const wallet = useWalletStore();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
 
   useEffect(() => {
     const fetchUserProfile = async () => {
-      if (
-        config?.hedera?.accountId &&
-        config?.hedera?.network &&
-        !isLoadingProfile
-      ) {
+      const effectiveAccountId = wallet.isConnected ? wallet.accountId : config?.hedera?.accountId;
+      const effectiveNetwork = wallet.isConnected ? wallet.network : (config?.hedera?.network as ('mainnet'|'testnet'|undefined));
+      if (effectiveAccountId && effectiveNetwork && !isLoadingProfile) {
         setIsLoadingProfile(true);
         try {
-          const result = await window.electron.hcs10.retrieveProfile(
-            config.hedera.accountId,
-            config.hedera.network as 'mainnet' | 'testnet'
+          const resp = await fetchProfileViaFactory(
+            effectiveAccountId as string,
+            effectiveNetwork as any,
+            {
+              walletConnected: wallet.isConnected,
+              operatorId: config?.hedera?.accountId,
+              privateKey: config?.hedera?.privateKey,
+            }
           );
-
-          if (!result.success) {
-            throw new Error(result.error);
-          }
-
-          const profileResult = result.data;
-          if (profileResult.success && profileResult.profile) {
-            const profile = profileResult.profile;
-
-            const mappedProfile: UserProfile = {
-              ...profile,
-              profileImage: profile.profileImage || profile.logo,
-            };
-            setUserProfile(mappedProfile);
+          if (resp.success) {
+            setUserProfile(resp.profile as unknown as UserProfile);
+          } else if (wallet.isConnected) {
+            setUserProfile({ display_name: 'Wallet Account' } as UserProfile);
           }
         } catch (error) {
         } finally {
@@ -97,11 +93,7 @@ const ProfileButton: React.FC = () => {
     };
 
     fetchUserProfile();
-  }, [
-    config?.hedera?.accountId,
-    config?.hedera?.network,
-    config?.hedera?.privateKey,
-  ]);
+  }, [wallet.isConnected, wallet.accountId, wallet.network, config?.hedera?.accountId, config?.hedera?.network]);
 
   return (
     <motion.button
@@ -121,7 +113,7 @@ const ProfileButton: React.FC = () => {
         profileImage={userProfile?.profileImage}
         displayName={userProfile?.display_name}
         alias={userProfile?.alias}
-        network={config?.hedera?.network}
+        network={wallet.isConnected ? wallet.network : config?.hedera?.network}
         size='sm'
       />
     </motion.button>

@@ -1,35 +1,18 @@
 import { ipcMain } from 'electron';
 import { Logger } from '../utils/logger';
-import { ConfigService } from '../services/config-service';
-import { HCS10ConnectionService } from "../services/hcs10-connection-service";
-import { 
-  HCS10Client
-} from '@hashgraphonline/standards-sdk';
+import { HCS10ConnectionService } from '../services/hcs10-connection-service';
+import { getHCS10Client } from '../services/hcs10-client-factory';
 
 const logger = new Logger({ module: 'HCS10ChatHandlers' });
-const configService = ConfigService.getInstance();
 const connectionService = HCS10ConnectionService.getInstance();
 
-let hcs10Client: HCS10Client | null = null;
+let hcs10Client: any | null = null;
 
 /**
  * Gets or creates HCS10Client instance
  */
-async function getHCS10Client(): Promise<HCS10Client> {
-  if (!hcs10Client) {
-    const config = await configService.load();
-    if (!config.hedera?.accountId || !config.hedera?.privateKey) {
-      throw new Error('Hedera credentials not configured');
-    }
-    
-    hcs10Client = new HCS10Client({
-      network: config.hedera.network || 'testnet',
-      operatorId: config.hedera.accountId,
-      operatorPrivateKey: config.hedera.privateKey,
-      logLevel: 'info',
-      prettyPrint: false,
-    });
-  }
+async function getClient(): Promise<any> {
+  if (!hcs10Client) hcs10Client = await getHCS10Client();
   return hcs10Client;
 }
 
@@ -43,14 +26,15 @@ export function registerHCS10ChatHandlers(): void {
   ipcMain.handle('hcs10:get-conversations', async (event, args) => {
     try {
       logger.info('Getting conversations', args);
-      
-      const { accountId, network } = args;
-      
+
+      const { network } = args;
+
       await connectionService.refreshConnections();
-      
-      const activeConnections = await connectionService.getConnections('accepted');
-      
-      const agents = activeConnections.map(conn => ({
+
+      const activeConnections =
+        await connectionService.getConnections('accepted');
+
+      const agents = activeConnections.map((conn) => ({
         id: conn.topicId || conn.id,
         accountId: conn.accountId,
         name: conn.profile?.displayName || conn.accountId || 'Unknown Agent',
@@ -66,10 +50,11 @@ export function registerHCS10ChatHandlers(): void {
         connectionTopicId: conn.topicId,
       }));
 
-      const pendingConnections = await connectionService.getConnections('pending');
+      const pendingConnections =
+        await connectionService.getConnections('pending');
       const connectionRequests = pendingConnections
-        .filter(conn => conn.direction === 'incoming')
-        .map(conn => ({
+        .filter((conn) => conn.direction === 'incoming')
+        .map((conn) => ({
           id: conn.id,
           requesting_account_id: conn.accountId,
           sequence_number: Date.now(),
@@ -79,7 +64,9 @@ export function registerHCS10ChatHandlers(): void {
 
       const pendingRequestCount = connectionRequests.length;
 
-      logger.info(`Returning ${agents.length} agents and ${connectionRequests.length} requests`);
+      logger.info(
+        `Returning ${agents.length} agents and ${connectionRequests.length} requests`
+      );
       return {
         success: true,
         agents,
@@ -90,7 +77,10 @@ export function registerHCS10ChatHandlers(): void {
       logger.error('Failed to get conversations:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to get conversations',
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to get conversations',
       };
     }
   });
@@ -101,9 +91,9 @@ export function registerHCS10ChatHandlers(): void {
   ipcMain.handle('hcs10:get-messages', async (event, args) => {
     try {
       logger.info('Getting messages', args);
-      
-      const { topicId, network } = args;
-      
+
+      const { topicId } = args;
+
       if (!topicId) {
         return {
           success: false,
@@ -111,26 +101,32 @@ export function registerHCS10ChatHandlers(): void {
         };
       }
 
-      const client = await getHCS10Client();
+      const client = await getClient();
       const result = await client.getMessageStream(topicId);
-      
-      const messages = (result.messages || []).map((msg: any, index: number) => ({
-        data: msg.data || msg.contents || msg.message || '',
-        contents: msg.contents || msg.message || '',
-        message: msg.contents || msg.message || '',
-        op: msg.op,
-        schedule_id: msg.schedule_id || msg.scheduleId,
-        operator_id: msg.operator_id || msg.operatorId || msg.sender,
-        sequence_number: msg.sequence_number || msg.sequenceNumber || index,
-        topic_id: msg.topic_id || msg.topicId || topicId,
-        created: msg.created || msg.timestamp,
-        consensus_timestamp: msg.consensus_timestamp || msg.consensusTimestamp || msg.created || msg.timestamp,
-        transactionId: msg.transaction_id || msg.transactionId,
-        runningHash: msg.running_hash || msg.runningHash,
-        p: msg.p,
-        m: msg.m,
-        _originalMessage: msg
-      }));
+
+      const messages = (result.messages || []).map(
+        (msg: any, index: number) => ({
+          data: msg.data || msg.contents || msg.message || '',
+          contents: msg.contents || msg.message || '',
+          message: msg.contents || msg.message || '',
+          op: msg.op,
+          schedule_id: msg.schedule_id || msg.scheduleId,
+          operator_id: msg.operator_id || msg.operatorId || msg.sender,
+          sequence_number: msg.sequence_number || msg.sequenceNumber || index,
+          topic_id: msg.topic_id || msg.topicId || topicId,
+          created: msg.created || msg.timestamp,
+          consensus_timestamp:
+            msg.consensus_timestamp ||
+            msg.consensusTimestamp ||
+            msg.created ||
+            msg.timestamp,
+          transactionId: msg.transaction_id || msg.transactionId,
+          runningHash: msg.running_hash || msg.runningHash,
+          p: msg.p,
+          m: msg.m,
+          _originalMessage: msg,
+        })
+      );
 
       return {
         success: true,
@@ -140,7 +136,8 @@ export function registerHCS10ChatHandlers(): void {
       logger.error('Failed to get messages:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to get messages',
+        error:
+          error instanceof Error ? error.message : 'Failed to get messages',
       };
     }
   });
@@ -150,14 +147,14 @@ export function registerHCS10ChatHandlers(): void {
    */
   ipcMain.handle('hcs10:send-message', async (event, args) => {
     try {
-      logger.info('Sending message', { 
-        topicId: args.topicId, 
+      logger.info('Sending message', {
+        topicId: args.topicId,
         messageLength: args.message?.length,
-        hasAttachments: args.attachments?.length > 0 
+        hasAttachments: args.attachments?.length > 0,
       });
-      
-      const { topicId, message, attachments, network } = args;
-      
+
+      const { topicId, message, attachments } = args;
+
       if (!topicId || !message) {
         return {
           success: false,
@@ -165,17 +162,17 @@ export function registerHCS10ChatHandlers(): void {
         };
       }
 
-      const client = await getHCS10Client();
-      
+      const client = await getClient();
+
       let messageContent = message;
-      
+
       if (attachments && attachments.length > 0) {
         const fileNames = attachments.map((file: any) => file.name).join(', ');
         messageContent += `\n\nAttachments: ${fileNames}`;
       }
 
       const result = await client.sendMessage(topicId, messageContent);
-      
+
       if (result) {
         return {
           success: true,
@@ -191,7 +188,8 @@ export function registerHCS10ChatHandlers(): void {
       logger.error('Failed to send message:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to send message',
+        error:
+          error instanceof Error ? error.message : 'Failed to send message',
       };
     }
   });
@@ -202,20 +200,21 @@ export function registerHCS10ChatHandlers(): void {
   ipcMain.handle('hcs10:connect-to-agent', async (event, args) => {
     try {
       logger.info('Connecting to agent', args);
-      
-      const { targetAccountId, network } = args;
-      
+
+      const { targetAccountId } = args;
+
       const result = await connectionService.sendConnectionRequest(
         targetAccountId,
         'Connection request from HCS-10 Chat'
       );
-      
+
       return result;
     } catch (error) {
       logger.error('Failed to connect to agent:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to connect to agent',
+        error:
+          error instanceof Error ? error.message : 'Failed to connect to agent',
       };
     }
   });
@@ -226,17 +225,20 @@ export function registerHCS10ChatHandlers(): void {
   ipcMain.handle('hcs10:accept-request', async (event, args) => {
     try {
       logger.info('Accepting connection request', args);
-      
-      const { requestId, sequenceNumber } = args;
-      
+
+      const { requestId } = args;
+
       const result = await connectionService.acceptConnection(requestId);
-      
+
       return result;
     } catch (error) {
       logger.error('Failed to accept connection request:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to accept connection request',
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to accept connection request',
       };
     }
   });
@@ -247,17 +249,20 @@ export function registerHCS10ChatHandlers(): void {
   ipcMain.handle('hcs10:reject-request', async (event, args) => {
     try {
       logger.info('Rejecting connection request', args);
-      
-      const { requestId, sequenceNumber } = args;
-      
+
+      const { requestId } = args;
+
       const result = await connectionService.rejectConnection(requestId);
-      
+
       return result;
     } catch (error) {
       logger.error('Failed to reject connection request:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to reject connection request',
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to reject connection request',
       };
     }
   });
@@ -268,12 +273,13 @@ export function registerHCS10ChatHandlers(): void {
   ipcMain.handle('hcs10:get-active-agents', async (event, args) => {
     try {
       logger.info('Getting active agents');
-      
+
       await connectionService.refreshConnections();
-      
-      const activeConnections = await connectionService.getConnections('accepted');
-      
-      const agents = activeConnections.map(conn => ({
+
+      const activeConnections =
+        await connectionService.getConnections('accepted');
+
+      const agents = activeConnections.map((conn) => ({
         id: conn.topicId || conn.id,
         accountId: conn.accountId,
         name: conn.profile?.displayName || conn.accountId || 'Unknown Agent',
@@ -298,7 +304,10 @@ export function registerHCS10ChatHandlers(): void {
       logger.error('Failed to get active agents:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to get active agents',
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to get active agents',
       };
     }
   });
@@ -309,14 +318,15 @@ export function registerHCS10ChatHandlers(): void {
   ipcMain.handle('hcs10:get-connection-requests', async (event, args) => {
     try {
       logger.info('Getting connection requests');
-      
+
       await connectionService.refreshConnections();
-      
-      const pendingConnections = await connectionService.getConnections('pending');
-      
+
+      const pendingConnections =
+        await connectionService.getConnections('pending');
+
       const connectionRequests = pendingConnections
-        .filter(conn => conn.direction === 'incoming')
-        .map(conn => ({
+        .filter((conn) => conn.direction === 'incoming')
+        .map((conn) => ({
           id: conn.id,
           requesting_account_id: conn.accountId,
           sequence_number: Date.now(),
@@ -333,7 +343,10 @@ export function registerHCS10ChatHandlers(): void {
       logger.error('Failed to get connection requests:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to get connection requests',
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to get connection requests',
       };
     }
   });
@@ -344,9 +357,9 @@ export function registerHCS10ChatHandlers(): void {
   ipcMain.handle('hcs10:refresh-agents', async (event, args) => {
     try {
       logger.info('Refreshing agents list');
-      
+
       await connectionService.refreshConnections();
-      
+
       return {
         success: true,
         message: 'Agents refreshed successfully',
@@ -355,7 +368,8 @@ export function registerHCS10ChatHandlers(): void {
       logger.error('Failed to refresh agents:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to refresh agents',
+        error:
+          error instanceof Error ? error.message : 'Failed to refresh agents',
       };
     }
   });

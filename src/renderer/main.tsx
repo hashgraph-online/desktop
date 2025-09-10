@@ -3,6 +3,8 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import './styles/index.css';
 import { initializeRendererLogger } from './utils/logger-init';
+import './services/wallet-executor-bridge';
+import './services/wallet-bridge-renderer';
 
 initializeRendererLogger();
 
@@ -20,5 +22,4 @@ try {
       <App />
     </React.StrictMode>
   );
-} catch (error) {
-}
+} catch (error) {}

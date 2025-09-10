@@ -2,13 +2,8 @@ import { ipcMain } from 'electron';
 import { Logger } from '../utils/logger';
 import { ConfigService } from '../services/config-service';
 import { HCS10ConnectionService } from '../services/hcs10-connection-service';
-import {
-  Registration,
-  RegistrationSearchOptions,
-  HCS10Client,
-  ProfileType,
-  AIAgentProfile,
-} from '@hashgraphonline/standards-sdk';
+import { Registration, RegistrationSearchOptions, ProfileType, AIAgentProfile } from '@hashgraphonline/standards-sdk';
+import { getHCS10Client } from '../services/hcs10-client-factory';
 
 interface AgentRegistration {
   accountId: string;
@@ -22,28 +17,12 @@ const configService = ConfigService.getInstance();
 const connectionService = HCS10ConnectionService.getInstance();
 
 const registration = new (class extends Registration {})();
-let hcs10Client: HCS10Client | null = null;
+let hcs10Client: any | null = null;
 
 /**
  * Gets or creates HCS10Client instance
  */
-async function getHCS10Client(): Promise<HCS10Client> {
-  if (!hcs10Client) {
-    const config = await configService.load();
-    if (!config.hedera?.accountId || !config.hedera?.privateKey) {
-      throw new Error('Hedera credentials not configured');
-    }
-
-    hcs10Client = new HCS10Client({
-      network: config.hedera.network || 'testnet',
-      operatorId: config.hedera.accountId,
-      operatorPrivateKey: config.hedera.privateKey,
-      logLevel: 'info',
-      prettyPrint: false,
-    });
-  }
-  return hcs10Client;
-}
+async function getClient(): Promise<any> { if (!hcs10Client) hcs10Client = await getHCS10Client(); return hcs10Client; }
 
 /**
  * Registers IPC handlers for HCS-10 agent discovery functionality

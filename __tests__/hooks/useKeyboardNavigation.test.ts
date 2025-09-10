@@ -6,7 +6,7 @@ import { useKeyboardNavigation } from '../../src/renderer/hooks/useKeyboardNavig
  */
 function createMockContainer() {
   const container = document.createElement('div')
-  
+
   const elements = [
     { tag: 'button', content: 'Button 1' },
     { tag: 'button', content: 'Button 2' },
@@ -18,16 +18,24 @@ function createMockContainer() {
   elements.forEach((el, index) => {
     const element = document.createElement(el.tag)
     element.textContent = el.content
-    
+
     if (el.href) element.setAttribute('href', el.href)
     if (el.role) element.setAttribute('role', el.role)
     if (el.tabindex) element.setAttribute('tabindex', el.tabindex)
-    
+
     element.setAttribute('data-testid', `nav-element-${index}`)
-    
-    Object.defineProperty(element, 'offsetWidth', { value: 100 })
-    Object.defineProperty(element, 'offsetHeight', { value: 30 })
-    
+
+    jest.spyOn(element, 'focus').mockImplementation(() => {
+      Object.defineProperty(document, 'activeElement', {
+        value: element,
+        writable: true,
+        configurable: true
+      })
+    })
+
+    Object.defineProperty(element, 'offsetWidth', { value: 100, configurable: true })
+    Object.defineProperty(element, 'offsetHeight', { value: 30, configurable: true })
+
     container.appendChild(element)
   })
 
@@ -158,31 +166,31 @@ describe('useKeyboardNavigation', () => {
     it('should navigate right with ArrowRight', () => {
       const { result } = renderHook(() => useKeyboardNavigation({ orientation: 'horizontal' }))
       result.current.current = mockContainer
-      
+
       const firstElement = mockElements[0] as HTMLElement
       const secondElement = mockElements[1] as HTMLElement
-      
+
       firstElement.focus()
-      
+
       const event = createKeyboardEvent('ArrowRight', firstElement)
       mockContainer.dispatchEvent(event)
-      
-      expect(document.activeElement).toBe(secondElement)
+
+      expect(secondElement.focus).toHaveBeenCalled()
     })
 
     it('should navigate left with ArrowLeft', () => {
       const { result } = renderHook(() => useKeyboardNavigation({ orientation: 'horizontal' }))
       result.current.current = mockContainer
-      
+
       const firstElement = mockElements[0] as HTMLElement
       const secondElement = mockElements[1] as HTMLElement
-      
+
       secondElement.focus()
-      
+
       const event = createKeyboardEvent('ArrowLeft', secondElement)
       mockContainer.dispatchEvent(event)
-      
-      expect(document.activeElement).toBe(firstElement)
+
+      expect(firstElement.focus).toHaveBeenCalled()
     })
 
     it('should ignore vertical arrow keys in horizontal mode', () => {
@@ -204,19 +212,19 @@ describe('useKeyboardNavigation', () => {
     it('should handle both vertical and horizontal navigation', () => {
       const { result } = renderHook(() => useKeyboardNavigation({ orientation: 'both' }))
       result.current.current = mockContainer
-      
+
       const firstElement = mockElements[0] as HTMLElement
       const secondElement = mockElements[1] as HTMLElement
-      
+
       firstElement.focus()
-      
+
       const downEvent = createKeyboardEvent('ArrowDown', firstElement)
       mockContainer.dispatchEvent(downEvent)
-      expect(document.activeElement).toBe(secondElement)
-      
+      expect(secondElement.focus).toHaveBeenCalled()
+
       const rightEvent = createKeyboardEvent('ArrowRight', secondElement)
       mockContainer.dispatchEvent(rightEvent)
-      expect(document.activeElement).toBe(mockElements[2])
+      expect(mockElements[2].focus).toHaveBeenCalled()
     })
   })
 
@@ -224,31 +232,31 @@ describe('useKeyboardNavigation', () => {
     it('should navigate to first element with Home key', () => {
       const { result } = renderHook(() => useKeyboardNavigation())
       result.current.current = mockContainer
-      
+
       const lastElement = mockElements[mockElements.length - 1] as HTMLElement
       const firstElement = mockElements[0] as HTMLElement
-      
+
       lastElement.focus()
-      
+
       const event = createKeyboardEvent('Home', lastElement)
       mockContainer.dispatchEvent(event)
-      
-      expect(document.activeElement).toBe(firstElement)
+
+      expect(firstElement.focus).toHaveBeenCalled()
     })
 
     it('should navigate to last element with End key', () => {
       const { result } = renderHook(() => useKeyboardNavigation())
       result.current.current = mockContainer
-      
+
       const firstElement = mockElements[0] as HTMLElement
       const lastElement = mockElements[mockElements.length - 1] as HTMLElement
-      
+
       firstElement.focus()
-      
+
       const event = createKeyboardEvent('End', firstElement)
       mockContainer.dispatchEvent(event)
-      
-      expect(document.activeElement).toBe(lastElement)
+
+      expect(lastElement.focus).toHaveBeenCalled()
     })
   })
 
@@ -336,8 +344,8 @@ describe('useKeyboardNavigation', () => {
       const firstElement = mockElements[0] as HTMLElement
       const secondElement = mockElements[1] as HTMLElement
       
-      Object.defineProperty(secondElement, 'offsetWidth', { value: 0 })
-      Object.defineProperty(secondElement, 'offsetHeight', { value: 0 })
+      Object.defineProperty(secondElement, 'offsetWidth', { value: 0, configurable: true })
+      Object.defineProperty(secondElement, 'offsetHeight', { value: 0, configurable: true })
       
       firstElement.focus()
       
@@ -354,8 +362,11 @@ describe('useKeyboardNavigation', () => {
       const disabledButton = document.createElement('button')
       disabledButton.disabled = true
       disabledButton.textContent = 'Disabled Button'
-      Object.defineProperty(disabledButton, 'offsetWidth', { value: 100 })
-      Object.defineProperty(disabledButton, 'offsetHeight', { value: 30 })
+
+      jest.spyOn(disabledButton, 'focus')
+
+      Object.defineProperty(disabledButton, 'offsetWidth', { value: 100, configurable: true })
+      Object.defineProperty(disabledButton, 'offsetHeight', { value: 30, configurable: true })
       
       mockContainer.insertBefore(disabledButton, mockElements[1])
       
@@ -365,8 +376,8 @@ describe('useKeyboardNavigation', () => {
       const event = createKeyboardEvent('ArrowDown', firstElement)
       mockContainer.dispatchEvent(event)
       
-      expect(document.activeElement).not.toBe(disabledButton)
-      expect(document.activeElement).toBe(mockElements[1])
+      expect(mockElements[1].focus).toHaveBeenCalled()
+      expect(disabledButton.focus).not.toHaveBeenCalled()
     })
   })
 

@@ -39,7 +39,6 @@ const BlockPreview: React.FC<BlockPreviewProps> = ({ className }) => {
   const [_lastRefresh, setLastRefresh] = useState(Date.now());
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  // Handle log messages from iframe preview
   useEffect(() => {
     const handlePreviewMessage = (event: MessageEvent) => {
       if (event.data?.type === 'preview-log') {
@@ -314,7 +313,6 @@ const BlockPreview: React.FC<BlockPreviewProps> = ({ className }) => {
             (function() {
               'use strict';
               
-              // Post log messages back to parent instead of console.log
               function postLog(level, message, data) {
                 try {
                   window.parent.postMessage({
@@ -325,7 +323,6 @@ const BlockPreview: React.FC<BlockPreviewProps> = ({ className }) => {
                     timestamp: Date.now()
                   }, '*');
                 } catch (err) {
-                  // Fallback to console if postMessage fails
                   console[level](message, data);
                 }
               }

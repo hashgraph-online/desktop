@@ -81,6 +81,14 @@ declare global {
     electron: {
       saveConfig: (config: AppConfig) => Promise<void>
       loadConfig: () => Promise<AppConfig | null>
+      getEnvironmentConfig: () => Promise<{
+        enableMainnet: boolean
+        hedera?: { accountId?: string; privateKey?: string; network?: 'mainnet' | 'testnet' }
+        openai?: { apiKey?: string; model?: string }
+        anthropic?: { apiKey?: string; model?: string }
+        llmProvider?: 'openai' | 'anthropic'
+        walletConnect?: { projectId?: string; appName?: string; appUrl?: string; appIcon?: string }
+      }>
       
       testHederaConnection: (credentials: {
         accountId: string
@@ -158,6 +166,7 @@ declare global {
         info?: ScheduleInfo
         error?: string
       }>
+      setCurrentWallet: (info: { accountId: string; network: 'mainnet' | 'testnet' } | null) => Promise<{ success: boolean; error?: string }>
       executeTransactionBytes: (transactionBytes: string, entityContext?: { name?: string, description?: string }) => Promise<{
         success: boolean
         transactionId?: string

@@ -44,42 +44,42 @@ export const useUpdater = (): UpdaterHookReturn => {
   const [currentVersion, setCurrentVersion] = useState('1.0.0');
 
   useEffect(() => {
-    if (!window.electron) {
+    if (!(window as any).electron) {
       return;
     }
 
-    (window.electron as any).ipcRenderer.invoke('get-app-version').then((version: string) => {
+    (window as any).electron.ipcRenderer.invoke('get-app-version').then((version: string) => {
       setCurrentVersion(version);
     }).catch((err: unknown) => {
     });
 
-    const removeCheckingListener = (window.electron as any).ipcRenderer.on('update:checking', () => {
+    const removeCheckingListener = (window as any).electron.ipcRenderer.on('update:checking', () => {
       setUpdateState('checking');
       setError(null);
     });
 
-    const removeAvailableListener = (window.electron as any).ipcRenderer.on('update:available', (info: UpdateInfo) => {
+    const removeAvailableListener = (window as any).electron.ipcRenderer.on('update:available', (info: UpdateInfo) => {
       setUpdateState('available');
       setUpdateInfo(info);
       setError(null);
     });
 
-    const removeNotAvailableListener = (window.electron as any).ipcRenderer.on('update:not-available', () => {
+    const removeNotAvailableListener = (window as any).electron.ipcRenderer.on('update:not-available', () => {
       setUpdateState('not-available');
       setError(null);
     });
 
-    const removeDownloadProgressListener = (window.electron as any).ipcRenderer.on('update:download-progress', (progressInfo: UpdateProgress) => {
+    const removeDownloadProgressListener = (window as any).electron.ipcRenderer.on('update:download-progress', (progressInfo: UpdateProgress) => {
       setUpdateState('downloading');
       setProgress(progressInfo);
     });
 
-    const removeDownloadedListener = (window.electron as any).ipcRenderer.on('update:downloaded', () => {
+    const removeDownloadedListener = (window as any).electron.ipcRenderer.on('update:downloaded', () => {
       setUpdateState('downloaded');
       setProgress(null);
     });
 
-    const removeErrorListener = (window.electron as any).ipcRenderer.on('update:error', (errorInfo: UpdateError) => {
+    const removeErrorListener = (window as any).electron.ipcRenderer.on('update:error', (errorInfo: UpdateError) => {
       setUpdateState('error');
       setError(errorInfo);
       setProgress(null);
@@ -96,14 +96,14 @@ export const useUpdater = (): UpdaterHookReturn => {
   }, []);
 
   const checkForUpdates = useCallback(async () => {
-    if (!window.electron) {
+    if (!(window as any).electron) {
       return;
     }
 
     try {
       setUpdateState('checking');
       setError(null);
-      await (window.electron as any).ipcRenderer.invoke('check-for-updates');
+      await (window as any).electron.ipcRenderer.invoke('check-for-updates');
     } catch (err) {
       setError({
         message: err instanceof Error ? err.message : 'Failed to check for updates'
@@ -113,13 +113,13 @@ export const useUpdater = (): UpdaterHookReturn => {
   }, []);
 
   const downloadUpdate = useCallback(async () => {
-    if (!window.electron) {
+    if (!(window as any).electron) {
       return;
     }
 
     try {
       setProgress(null);
-      await (window.electron as any).ipcRenderer.invoke('download-update');
+      await (window as any).electron.ipcRenderer.invoke('download-update');
     } catch (err) {
       setError({
         message: err instanceof Error ? err.message : 'Failed to download update'
@@ -129,12 +129,12 @@ export const useUpdater = (): UpdaterHookReturn => {
   }, []);
 
   const installUpdate = useCallback(async () => {
-    if (!window.electron) {
+    if (!(window as any).electron) {
       return;
     }
 
     try {
-      await (window.electron as any).ipcRenderer.invoke('install-update');
+      await (window as any).electron.ipcRenderer.invoke('install-update');
     } catch (err) {
       setError({
         message: err instanceof Error ? err.message : 'Failed to install update'
@@ -151,11 +151,11 @@ export const useUpdater = (): UpdaterHookReturn => {
   }, []);
 
   const openRepository = useCallback(() => {
-    if (!window.electron) {
+    if (!(window as any).electron) {
       return;
     }
 
-    (window.electron as any).ipcRenderer.invoke('open-repository-url').catch((err: unknown) => {
+    (window as any).electron.ipcRenderer.invoke('open-repository-url').catch((err: unknown) => {
     });
   }, []);
 

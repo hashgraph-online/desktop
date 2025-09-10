@@ -203,27 +203,7 @@ export function FormGenerator<TSchema = Record<string, unknown>>({
     return { groups, ungrouped };
   }, [parsedSchema]);
 
-  // Note: formState and formActions are available for external access if needed
-  // const _formState: FormState<TSchema> = {
-  //   values: values as TSchema,
-  //   errors,
-  //   _isValidating,
-  //   isSubmitting,
-  //   isDirty,
-  //   touchedFields
-  // };
 
-  // const _formActions: FormActions<TSchema> = {
-  //   setValue,
-  //   setValues: setFieldValues,
-  //   setError,
-  //   clearError,
-  //   clearErrors,
-  //   reset,
-  //   submit,
-  //   validate,
-  //   touchField
-  // };
 
   const { groups, ungrouped } = getFieldsByGroup();
   const progressiveConfig = options.progressiveDisclosure;

@@ -148,7 +148,7 @@ export const OPENAI_MODELS: ModelInfo[] = [
 
 export const ANTHROPIC_MODELS: ModelInfo[] = [
   {
-    id: 'claude-3-5-sonnet-20241022',
+    id: 'claude-3-7-sonnet-latest',
     name: 'Claude 3.5 Sonnet',
     description: 'Latest flagship model with exceptional coding abilities and reasoning. Sets new industry benchmarks across multiple domains.',
     provider: 'anthropic',

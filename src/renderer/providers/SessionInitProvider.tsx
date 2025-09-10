@@ -20,8 +20,7 @@ export const SessionInitProvider: React.FC<SessionInitProviderProps> = ({
 
   useEffect(() => {
     if (!isInitialized) {
-      initializeSessions().catch(() => {
-      });
+      initializeSessions().catch(() => {});
     }
   }, [initializeSessions, isInitialized]);
 

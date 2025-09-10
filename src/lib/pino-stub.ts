@@ -32,8 +32,27 @@ export default function pino(): StubLogger {
 }
 
 export type { StubLogger };
-
-
+/** Minimal levels map to satisfy packages that import `levels` from pino */
+export const levels = {
+  values: {
+    fatal: 60,
+    error: 50,
+    warn: 40,
+    info: 30,
+    debug: 20,
+    trace: 10,
+    silent: 0,
+  },
+  labels: {
+    60: 'fatal',
+    50: 'error',
+    40: 'warn',
+    30: 'info',
+    20: 'debug',
+    10: 'trace',
+    0: 'silent',
+  } as Record<number, string>,
+};
 
 
 

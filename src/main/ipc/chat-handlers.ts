@@ -13,6 +13,12 @@ import {
   isNull,
 } from 'drizzle-orm';
 import { Logger } from '../utils/logger';
+import { z } from 'zod';
+import {
+  MessageMetadataPatchSchema,
+  applyMetadataPatch,
+  isRecord,
+} from './utils/message-metadata';
 
 const logger = new Logger({ module: 'ChatHandlers' });
 
@@ -568,6 +574,95 @@ const cleanupDuplicateHCS10Sessions = async (
 };
 
 /**
+ * Updates an existing chat message's metadata by ID
+ */
+const updateMessageMetadata = async (
+  _event: IpcMainInvokeEvent,
+  {
+    messageId,
+    sessionId,
+    metadata,
+  }: { messageId: string; sessionId: string; metadata: Record<string, unknown> }
+): Promise<{ success: boolean; error?: string }> => {
+  try {
+    const db = getDatabase();
+    if (!db) throw new Error('Database not available');
+
+    const payloadSchema = z.object({
+      messageId: z.string().min(6),
+      sessionId: z.string().min(6),
+      metadata: z.object({}).passthrough(),
+    });
+    payloadSchema.parse({ messageId, sessionId, metadata });
+
+    const existing = db
+      .select()
+      .from(schema.chatMessages)
+      .where(eq(schema.chatMessages.id, messageId))
+      .get();
+    if (!existing) return { success: false, error: 'Message not found' };
+    if (existing.sessionId !== sessionId) {
+      return { success: false, error: 'Message not in session' };
+    }
+
+    const currentMeta = (() => {
+      if (!existing.metadata) return {} as Record<string, unknown>;
+      try {
+        const parsed = JSON.parse(existing.metadata);
+        return isRecord(parsed) ? parsed : {};
+      } catch {
+        return {} as Record<string, unknown>;
+      }
+    })();
+
+    const allowedKeys = [
+      'pendingApproval',
+      'approved',
+      'transactionId',
+      'executedAt',
+      'approvalError',
+    ] as const;
+
+    const patchCandidate: Record<string, unknown> = {};
+    for (const k of allowedKeys) {
+      if (Object.prototype.hasOwnProperty.call(metadata, k)) {
+        patchCandidate[k] = (metadata as Record<string, unknown>)[k];
+      }
+    }
+
+    const patchParse = MessageMetadataPatchSchema.safeParse(patchCandidate);
+    if (!patchParse.success) {
+      return { success: false, error: 'Invalid patch payload' };
+    }
+    logger.info('Applying message metadata patch', {
+      messageId,
+      sessionId,
+      keys: Object.keys(patchCandidate),
+    });
+    const { merged } = applyMetadataPatch(currentMeta, patchParse.data);
+
+    const serialized = JSON.stringify(merged);
+    if (serialized.length > 4096) {
+      return { success: false, error: 'Metadata too large' };
+    }
+
+    db.update(schema.chatMessages)
+      .set({ metadata: serialized } as ChatMessage)
+      .where(eq(schema.chatMessages.id, messageId))
+      .run();
+
+    logger.info(`Updated chat message metadata: ${messageId}`);
+    return { success: true };
+  } catch (error) {
+    logger.error('Failed to update chat message metadata:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+};
+
+/**
  * JSDoc for setupChatHandlers
  * Registers all chat-related IPC handlers
  */
@@ -582,6 +677,7 @@ export function setupChatHandlers(): void {
   ipcMain.handle('chat:load-session-messages', loadSessionMessages);
   ipcMain.handle('chat:find-form-by-id', findFormMessageById);
   ipcMain.handle('chat:update-form-state', updateFormCompletionState);
+  ipcMain.handle('chat:update-message-metadata', updateMessageMetadata);
 
   ipcMain.handle('chat:cleanup-duplicates', cleanupDuplicateHCS10Sessions);
 

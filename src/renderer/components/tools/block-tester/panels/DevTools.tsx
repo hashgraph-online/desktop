@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { 
+import {
   HiDocumentArrowDown,
   HiDocumentArrowUp,
   HiGlobeAlt,
@@ -8,11 +8,12 @@ import {
   HiExclamationTriangle,
   HiInformationCircle,
   HiBookOpen,
-  HiFolder
+  HiFolder,
 } from 'react-icons/hi2';
 import { Button } from '../../../ui/Button';
 import Typography from '../../../ui/Typography';
 import { useBlockTesterStore } from '../../../../stores/blockTesterStore';
+import { BlockCategory } from '../../../../types/block-tester.types';
 import { cn } from '../../../../lib/utils';
 import { Logger } from '@hashgraphonline/standards-sdk';
 
@@ -33,7 +34,7 @@ const DevTools: React.FC<DevToolsProps> = ({ className }) => {
     importBlock,
     validateBlock,
     errors,
-    addError
+    addError,
   } = useBlockTesterStore();
 
   const [isExporting, setIsExporting] = useState(false);
@@ -53,9 +54,15 @@ const DevTools: React.FC<DevToolsProps> = ({ className }) => {
   </div>
 </div>`,
       attributes: {
-        title: { schema: { type: 'string', label: 'Card Title' }, value: 'Card Title' },
-        description: { schema: { type: 'textarea', label: 'Description' }, value: 'Card description goes here.' }
-      }
+        title: {
+          schema: { type: 'string', label: 'Card Title' },
+          value: 'Card Title',
+        },
+        description: {
+          schema: { type: 'textarea', label: 'Description' },
+          value: 'Card description goes here.',
+        },
+      },
     },
     {
       id: 'button-cta',
@@ -66,8 +73,11 @@ const DevTools: React.FC<DevToolsProps> = ({ className }) => {
   {{buttonText}}
 </button>`,
       attributes: {
-        buttonText: { schema: { type: 'string', label: 'Button Text' }, value: 'Click Me' }
-      }
+        buttonText: {
+          schema: { type: 'string', label: 'Button Text' },
+          value: 'Click Me',
+        },
+      },
     },
     {
       id: 'alert-info',
@@ -90,10 +100,16 @@ const DevTools: React.FC<DevToolsProps> = ({ className }) => {
   </div>
 </div>`,
       attributes: {
-        title: { schema: { type: 'string', label: 'Alert Title' }, value: 'Information' },
-        message: { schema: { type: 'textarea', label: 'Alert Message' }, value: 'This is an informational alert message.' }
-      }
-    }
+        title: {
+          schema: { type: 'string', label: 'Alert Title' },
+          value: 'Information',
+        },
+        message: {
+          schema: { type: 'textarea', label: 'Alert Message' },
+          value: 'This is an informational alert message.',
+        },
+      },
+    },
   ];
 
   const handleExport = async (format: 'json' | 'html' | 'hcs-1') => {
@@ -101,42 +117,48 @@ const DevTools: React.FC<DevToolsProps> = ({ className }) => {
       addError({
         type: 'export',
         source: 'export',
-        message: 'No block to export'
+        message: 'No block to export',
       });
       return;
     }
 
     try {
       setIsExporting(true);
-      
-      if (typeof window !== 'undefined' && (window as any).electronAPI?.showSaveDialog) {
+
+      if (
+        typeof window !== 'undefined' &&
+        (window as any).electronAPI?.showSaveDialog
+      ) {
         const filters = {
           json: [{ name: 'JSON Files', extensions: ['json'] }],
           html: [{ name: 'HTML Files', extensions: ['html'] }],
-          'hcs-1': [{ name: 'HCS-1 Files', extensions: ['json'] }]
+          'hcs-1': [{ name: 'HCS-1 Files', extensions: ['json'] }],
         };
 
         const result = await (window as any).electronAPI.showSaveDialog({
           filters: filters[format],
-          defaultPath: `${currentBlock.name || 'block'}.${format === 'hcs-1' ? 'hcs1.json' : format}`
+          defaultPath: `${currentBlock.name || 'block'}.${format === 'hcs-1' ? 'hcs1.json' : format}`,
         });
 
         if (!result.canceled && result.filePath) {
           const exportedContent = exportBlock(format);
-          await (window as any).electronAPI.writeFile(result.filePath, exportedContent);
-          
+          await (window as any).electronAPI.writeFile(
+            result.filePath,
+            exportedContent
+          );
+
           if ((window as any).electronAPI?.showNotification) {
             (window as any).electronAPI.showNotification({
               type: 'success',
               title: 'Export Successful',
-              message: `Block exported to ${result.filePath}`
+              message: `Block exported to ${result.filePath}`,
             });
           }
         }
       } else {
         const exportedContent = exportBlock(format);
-        const blob = new Blob([exportedContent], { 
-          type: format === 'html' ? 'text/html' : 'application/json' 
+        const blob = new Blob([exportedContent], {
+          type: format === 'html' ? 'text/html' : 'application/json',
         });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -152,7 +174,7 @@ const DevTools: React.FC<DevToolsProps> = ({ className }) => {
       addError({
         type: 'export',
         source: 'export',
-        message: `Export failed: ${error.message}`
+        message: `Export failed: ${error.message}`,
       });
     } finally {
       setIsExporting(false);
@@ -162,25 +184,30 @@ const DevTools: React.FC<DevToolsProps> = ({ className }) => {
   const handleImport = async () => {
     try {
       setIsImporting(true);
-      
-      if (typeof window !== 'undefined' && (window as any).electronAPI?.showOpenDialog) {
+
+      if (
+        typeof window !== 'undefined' &&
+        (window as any).electronAPI?.showOpenDialog
+      ) {
         const result = await (window as any).electronAPI.showOpenDialog({
           filters: [
             { name: 'JSON Files', extensions: ['json'] },
-            { name: 'All Files', extensions: ['*'] }
+            { name: 'All Files', extensions: ['*'] },
           ],
-          properties: ['openFile']
+          properties: ['openFile'],
         });
 
         if (!result.canceled && result.filePaths.length > 0) {
-          const fileContent = await (window as any).electronAPI.readFile(result.filePaths[0]);
+          const fileContent = await (window as any).electronAPI.readFile(
+            result.filePaths[0]
+          );
           importBlock(fileContent);
-          
+
           if ((window as any).electronAPI?.showNotification) {
             (window as any).electronAPI.showNotification({
               type: 'success',
               title: 'Import Successful',
-              message: 'Block imported successfully'
+              message: 'Block imported successfully',
             });
           }
         }
@@ -201,7 +228,7 @@ const DevTools: React.FC<DevToolsProps> = ({ className }) => {
                 addError({
                   type: 'import',
                   source: 'import',
-                  message: `Import failed: ${error.message}`
+                  message: `Import failed: ${error.message}`,
                 });
               }
             };
@@ -215,14 +242,14 @@ const DevTools: React.FC<DevToolsProps> = ({ className }) => {
       addError({
         type: 'import',
         source: 'import',
-        message: `Import failed: ${error.message}`
+        message: `Import failed: ${error.message}`,
       });
     } finally {
       setIsImporting(false);
     }
   };
 
-  const loadTemplateExample = (template: typeof templateExamples[0]) => {
+  const loadTemplateExample = (template: (typeof templateExamples)[0]) => {
     const blockAttributes: Record<string, any> = {};
     Object.entries(template.attributes).forEach(([key, attr]) => {
       blockAttributes[key] = attr.schema;
@@ -233,7 +260,7 @@ const DevTools: React.FC<DevToolsProps> = ({ className }) => {
       name: template.name,
       title: template.name,
       description: template.description,
-      category: template.category as any,
+      category: template.category as BlockCategory,
       template: template.template,
       templateSource: {
         type: 'inline' as const,
@@ -256,53 +283,57 @@ const DevTools: React.FC<DevToolsProps> = ({ className }) => {
   const hasWarnings = validation.warnings.length > 0;
 
   return (
-    <div className={cn("space-y-6", className)}>
+    <div className={cn('space-y-6', className)}>
       {/* Export/Import Section */}
       <div>
-        <div className="flex items-center gap-2 mb-4">
-          <HiFolder className="w-4 h-4 text-muted-foreground" />
-          <Typography variant="h4" className="text-sm font-semibold" noMargin>
+        <div className='flex items-center gap-2 mb-4'>
+          <HiFolder className='w-4 h-4 text-muted-foreground' />
+          <Typography variant='h4' className='text-sm font-semibold' noMargin>
             File Operations
           </Typography>
         </div>
-        
-        <div className="space-y-4 pl-6">
+
+        <div className='space-y-4 pl-6'>
           {/* Export Options */}
           <div>
-            <Typography variant="body2" className="font-medium mb-2 text-muted-foreground" noMargin>
+            <Typography
+              variant='body2'
+              className='font-medium mb-2 text-muted-foreground'
+              noMargin
+            >
               Export Block
             </Typography>
-            <div className="flex flex-wrap gap-2">
-              <Button 
-                onClick={() => handleExport('json')} 
-                variant="outline" 
-                size="sm"
+            <div className='flex flex-wrap gap-2'>
+              <Button
+                onClick={() => handleExport('json')}
+                variant='outline'
+                size='sm'
                 disabled={!currentBlock || isExporting}
-                className="gap-2"
+                className='gap-2'
               >
-                <HiDocumentArrowDown className="w-3.5 h-3.5" />
+                <HiDocumentArrowDown className='w-3.5 h-3.5' />
                 JSON
               </Button>
-              
-              <Button 
-                onClick={() => handleExport('html')} 
-                variant="outline" 
-                size="sm"
+
+              <Button
+                onClick={() => handleExport('html')}
+                variant='outline'
+                size='sm'
                 disabled={!currentBlock || isExporting}
-                className="gap-2"
+                className='gap-2'
               >
-                <HiCodeBracket className="w-3.5 h-3.5" />
+                <HiCodeBracket className='w-3.5 h-3.5' />
                 HTML
               </Button>
-              
-              <Button 
-                onClick={() => handleExport('hcs-1')} 
-                variant="outline" 
-                size="sm"
+
+              <Button
+                onClick={() => handleExport('hcs-1')}
+                variant='outline'
+                size='sm'
                 disabled={!currentBlock || isExporting}
-                className="gap-2"
+                className='gap-2'
               >
-                <HiGlobeAlt className="w-3.5 h-3.5" />
+                <HiGlobeAlt className='w-3.5 h-3.5' />
                 HCS-1
               </Button>
             </div>
@@ -310,17 +341,21 @@ const DevTools: React.FC<DevToolsProps> = ({ className }) => {
 
           {/* Import Button */}
           <div>
-            <Typography variant="body2" className="font-medium mb-2 text-muted-foreground" noMargin>
+            <Typography
+              variant='body2'
+              className='font-medium mb-2 text-muted-foreground'
+              noMargin
+            >
               Import Block
             </Typography>
-            <Button 
-              onClick={handleImport} 
-              variant="outline" 
-              size="sm"
+            <Button
+              onClick={handleImport}
+              variant='outline'
+              size='sm'
               disabled={isImporting}
-              className="gap-2"
+              className='gap-2'
             >
-              <HiDocumentArrowUp className="w-3.5 h-3.5" />
+              <HiDocumentArrowUp className='w-3.5 h-3.5' />
               {isImporting ? 'Importing...' : 'Import JSON'}
             </Button>
           </div>
@@ -329,40 +364,53 @@ const DevTools: React.FC<DevToolsProps> = ({ className }) => {
 
       {/* Validation Section */}
       <div>
-        <div className="flex items-center gap-2 mb-4">
-          <HiCheckCircle className="w-4 h-4 text-muted-foreground" />
-          <Typography variant="h4" className="text-sm font-semibold" noMargin>
+        <div className='flex items-center gap-2 mb-4'>
+          <HiCheckCircle className='w-4 h-4 text-muted-foreground' />
+          <Typography variant='h4' className='text-sm font-semibold' noMargin>
             Block Validation
           </Typography>
         </div>
-        
-        <div className="pl-6">
+
+        <div className='pl-6'>
           {!hasErrors && !hasWarnings ? (
-            <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
-              <HiCheckCircle className="w-4 h-4" />
-              <Typography variant="body2" className="font-medium" noMargin>
+            <div className='flex items-center gap-2 text-green-600 dark:text-green-400'>
+              <HiCheckCircle className='w-4 h-4' />
+              <Typography variant='body2' className='font-medium' noMargin>
                 Block is valid
               </Typography>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className='space-y-3'>
               {/* Errors */}
               {hasErrors && (
                 <div>
-                  <div className="flex items-center gap-2 text-red-600 dark:text-red-400 mb-2">
-                    <HiExclamationTriangle className="w-4 h-4" />
-                    <Typography variant="body2" className="font-medium" noMargin>
-                      {validation.errors.length} Error{validation.errors.length !== 1 ? 's' : ''}
+                  <div className='flex items-center gap-2 text-red-600 dark:text-red-400 mb-2'>
+                    <HiExclamationTriangle className='w-4 h-4' />
+                    <Typography
+                      variant='body2'
+                      className='font-medium'
+                      noMargin
+                    >
+                      {validation.errors.length} Error
+                      {validation.errors.length !== 1 ? 's' : ''}
                     </Typography>
                   </div>
-                  <div className="space-y-1.5 ml-6">
+                  <div className='space-y-1.5 ml-6'>
                     {validation.errors.slice(0, 3).map((error, index) => (
-                      <div key={index} className="text-xs text-red-600 dark:text-red-400">
-                        <span className="font-medium">{error.field}:</span> {error.message}
+                      <div
+                        key={index}
+                        className='text-xs text-red-600 dark:text-red-400'
+                      >
+                        <span className='font-medium'>{error.field}:</span>{' '}
+                        {error.message}
                       </div>
                     ))}
                     {validation.errors.length > 3 && (
-                      <Typography variant="caption" className="text-muted-foreground" noMargin>
+                      <Typography
+                        variant='caption'
+                        className='text-muted-foreground'
+                        noMargin
+                      >
                         +{validation.errors.length - 3} more
                       </Typography>
                     )}
@@ -373,25 +421,38 @@ const DevTools: React.FC<DevToolsProps> = ({ className }) => {
               {/* Warnings */}
               {hasWarnings && (
                 <div>
-                  <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-400 mb-2">
-                    <HiInformationCircle className="w-4 h-4" />
-                    <Typography variant="body2" className="font-medium" noMargin>
-                      {validation.warnings.length} Warning{validation.warnings.length !== 1 ? 's' : ''}
+                  <div className='flex items-center gap-2 text-yellow-600 dark:text-yellow-400 mb-2'>
+                    <HiInformationCircle className='w-4 h-4' />
+                    <Typography
+                      variant='body2'
+                      className='font-medium'
+                      noMargin
+                    >
+                      {validation.warnings.length} Warning
+                      {validation.warnings.length !== 1 ? 's' : ''}
                     </Typography>
                   </div>
-                  <div className="space-y-1.5 ml-6">
+                  <div className='space-y-1.5 ml-6'>
                     {validation.warnings.slice(0, 3).map((warning, index) => (
-                      <div key={index} className="text-xs text-yellow-600 dark:text-yellow-400">
-                        <span className="font-medium">{warning.field}:</span> {warning.message}
+                      <div
+                        key={index}
+                        className='text-xs text-yellow-600 dark:text-yellow-400'
+                      >
+                        <span className='font-medium'>{warning.field}:</span>{' '}
+                        {warning.message}
                         {warning.suggestion && (
-                          <div className="text-xs opacity-75 ml-2">
+                          <div className='text-xs opacity-75 ml-2'>
                             → {warning.suggestion}
                           </div>
                         )}
                       </div>
                     ))}
                     {validation.warnings.length > 3 && (
-                      <Typography variant="caption" className="text-muted-foreground" noMargin>
+                      <Typography
+                        variant='caption'
+                        className='text-muted-foreground'
+                        noMargin
+                      >
                         +{validation.warnings.length - 3} more
                       </Typography>
                     )}
@@ -405,46 +466,58 @@ const DevTools: React.FC<DevToolsProps> = ({ className }) => {
 
       {/* Template Library */}
       <div>
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <HiBookOpen className="w-4 h-4 text-muted-foreground" />
-            <Typography variant="h4" className="text-sm font-semibold" noMargin>
+        <div className='flex items-center justify-between mb-4'>
+          <div className='flex items-center gap-2'>
+            <HiBookOpen className='w-4 h-4 text-muted-foreground' />
+            <Typography variant='h4' className='text-sm font-semibold' noMargin>
               Template Library
             </Typography>
           </div>
           <Button
-            variant="ghost"
-            size="sm"
+            variant='ghost'
+            size='sm'
             onClick={() => setShowTemplateLibrary(!showTemplateLibrary)}
-            className="text-xs"
+            className='text-xs'
           >
             {showTemplateLibrary ? 'Hide' : 'Show'}
           </Button>
         </div>
-        
+
         {showTemplateLibrary && (
-          <div className="space-y-2 pl-6">
+          <div className='space-y-2 pl-6'>
             {templateExamples.map((template) => (
               <button
                 key={template.id}
-                className="w-full p-3 text-left rounded-lg hover:bg-accent/50 transition-colors group"
+                className='w-full p-3 text-left rounded-lg hover:bg-accent/50 transition-colors group'
                 onClick={() => loadTemplateExample(template)}
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <Typography variant="body2" className="font-medium group-hover:text-primary transition-colors" noMargin>
+                <div className='flex items-start justify-between'>
+                  <div className='flex-1'>
+                    <Typography
+                      variant='body2'
+                      className='font-medium group-hover:text-primary transition-colors'
+                      noMargin
+                    >
                       {template.name}
                     </Typography>
-                    <Typography variant="caption" className="text-muted-foreground" noMargin>
+                    <Typography
+                      variant='caption'
+                      className='text-muted-foreground'
+                      noMargin
+                    >
                       {template.description}
                     </Typography>
-                    <div className="mt-1">
-                      <span className="inline-block px-1.5 py-0.5 bg-muted rounded text-xs">
+                    <div className='mt-1'>
+                      <span className='inline-block px-1.5 py-0.5 bg-muted rounded text-xs'>
                         {template.category}
                       </span>
                     </div>
                   </div>
-                  <Typography variant="caption" className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" noMargin>
+                  <Typography
+                    variant='caption'
+                    className='text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity'
+                    noMargin
+                  >
                     Load →
                   </Typography>
                 </div>

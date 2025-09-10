@@ -66,12 +66,12 @@ export const TransactionContent: React.FC<TransactionContentProps> = ({
 
   return (
     <div className='relative'>
-      <div className='relative bg-black/20 rounded-xl border border-white/10 p-5'>
+      <div className='space-y-4'>
         {/* Header Section */}
         <div className='flex items-start gap-3'>
           <div
             className={cn(
-              'relative flex items-center justify-center w-10 h-10 rounded-lg',
+              'relative flex items-center justify-center w-10 h-10 rounded-lg flex-shrink-0',
               isScheduleExpired
                 ? 'bg-white/5 border border-white/20'
                 : 'bg-white/10'
@@ -87,29 +87,23 @@ export const TransactionContent: React.FC<TransactionContentProps> = ({
               return <FiClock className='text-white h-5 w-5' />;
             })()}
             {!isAlreadyExecuted && !isScheduleExpired && !isLoadingDetails ? (
-              <span className='absolute -top-1 -right-1 h-2 w-2'>
-                <span className='animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75'></span>
-                <span className='relative inline-flex rounded-full h-2 w-2 bg-yellow-400'></span>
-              </span>
+              <div className='absolute -top-1 -right-1 h-2 w-2'>
+                <div className='animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75'></div>
+                <div className='relative inline-flex rounded-full h-2 w-2 bg-yellow-400'></div>
+              </div>
             ) : null}
           </div>
 
-          <div className='flex-1'>
-            <Typography
-              variant='h6'
-              className='font-semibold text-white leading-tight'
-            >
+          <div className='flex-1 min-w-0'>
+            <h2 className='text-lg font-semibold text-white leading-tight mb-1'>
               {(() => {
                 if (isAlreadyExecuted) return 'Transaction Executed';
                 if (isScheduleExpired) return 'Transaction Expired';
                 return 'Transaction Approval Required';
               })()}
-            </Typography>
+            </h2>
 
-            <Typography
-              variant='body2'
-              className='text-white/90 mt-1 leading-relaxed'
-            >
+            <p className='text-white text-sm leading-relaxed'>
               {(() => {
                 if (isAlreadyExecuted) {
                   return `Executed ${
@@ -121,56 +115,53 @@ export const TransactionContent: React.FC<TransactionContentProps> = ({
                 if (isScheduleExpired) {
                   return `This scheduled transaction expired after ${scheduleAge}`;
                 }
-                return description ||
+                return (
+                  description ||
                   transactionDetails?.humanReadableType ||
-                  'Review and approve the transaction details below';
+                  'Review and approve the transaction details below'
+                );
               })()}
-            </Typography>
+            </p>
 
-            {isScheduleExpired && scheduleId ? (
-              <Typography
-                variant='caption'
-                className='text-white/60 mt-2 block'
-              >
-                <FiInfo className='inline-block mr-1 h-3 w-3' />
+            {isScheduleExpired && scheduleId && (
+              <p className='text-white text-xs mt-2 flex items-center gap-1'>
+                <FiInfo className='h-3 w-3 flex-shrink-0' />
                 Schedule ID {scheduleId} exists on the network but can no longer
                 be executed
-              </Typography>
-            ) : null}
+              </p>
+            )}
 
             {/* Notes Section */}
-            {notes && notes.length > 0 ? (
-              <div className='mt-3 pl-4 border-l-2 border-white/30'>
+            {notes && notes.length > 0 && (
+              <div className='mt-3 pl-4 border-l-2 border-white/20'>
                 {notes.map((note: string, index: number) => (
-                  <Typography
+                  <p
                     key={index}
-                    variant='body2'
-                    className='text-white/90 leading-relaxed mb-1 last:mb-0'
+                    className='text-white text-sm leading-relaxed mb-1 last:mb-0'
                   >
                     {note}
-                  </Typography>
+                  </p>
                 ))}
               </div>
-            ) : null}
+            )}
           </div>
         </div>
 
         {/* Transaction Details Section */}
         {isLoadingDetails ? (
-          <div className='mt-5 flex items-center justify-center py-6'>
+          <div className='flex items-center justify-center py-8'>
             <div className='flex flex-col items-center gap-3'>
               <div className='relative'>
-                <div className='w-10 h-10 border-3 border-white/20 rounded-full' />
-                <div className='absolute top-0 w-10 h-10 border-3 border-white rounded-full border-t-transparent animate-spin' />
+                <div className='w-8 h-8 border-2 border-white/30 rounded-full' />
+                <div className='absolute top-0 w-8 h-8 border-2 border-white rounded-full border-t-transparent animate-spin' />
               </div>
-              <Typography variant='caption' className='text-white text-sm'>
+              <p className='text-white text-sm'>
                 Loading transaction details...
-              </Typography>
+              </p>
             </div>
           </div>
         ) : transactionDetails ? (
           (() => {
-            const hideHeader = true;
             const transfers = Array.isArray(transactionDetails.transfers)
               ? transactionDetails.transfers
               : [];
@@ -195,20 +186,18 @@ export const TransactionContent: React.FC<TransactionContentProps> = ({
             );
 
             return (
-              <div className='mt-4'>
-                <TransactionDetails
-                  {...transactionDetails}
-                  humanReadableType={transactionDetails.humanReadableType || ''}
-                  transfers={hbarTransfersForDisplay}
-                  tokenTransfers={tokenTransfersForDisplay}
-                  expirationTime={expirationTime || undefined}
-                  scheduleId={scheduleId || ''}
-                  hideHeader={hideHeader}
-                  network={network}
-                  variant='embedded'
-                  className='[&>div]:!bg-transparent [&>div]:!border-0 [&>div]:!shadow-none [&>div]:!p-0 [&_table]:!bg-transparent [&_table]:!border-0 [&_thead]:!border-b [&_thead]:!border-white/20 [&_th]:!bg-transparent [&_th]:!text-white/90 [&_th]:!font-medium [&_th]:!text-xs [&_th]:!uppercase [&_th]:!tracking-wider [&_th]:!border-0 [&_th]:!pb-2 [&_td]:!text-white [&_td]:!text-sm [&_td]:!border-0 [&_td]:!py-2 [&_tr]:!border-0 [&_tbody_tr]:!border-b [&_tbody_tr]:!border-white/10 [&_tbody_tr:last-child]:!border-0 [&_tr:hover]:!bg-white/5 [&_.text-gray-500]:!text-white/90 [&_.text-gray-600]:!text-white [&_.text-gray-700]:!text-white [&_.bg-gray-50]:!bg-transparent [&_.bg-gray-100]:!bg-transparent [&_.bg-white]:!bg-transparent [&_.border-gray-200]:!border-white/20 [&_.shadow-sm]:!shadow-none'
-                />
-              </div>
+              <TransactionDetails
+                {...transactionDetails}
+                humanReadableType={transactionDetails.humanReadableType || ''}
+                transfers={hbarTransfersForDisplay}
+                tokenTransfers={tokenTransfersForDisplay}
+                expirationTime={expirationTime || undefined}
+                scheduleId={scheduleId || ''}
+                hideHeader={true}
+                network={network}
+                variant='embedded'
+                className='bg-transparent border-0 shadow-none p-0 [&>*]:bg-transparent [&>*]:border-0 [&>*]:shadow-none [&>*]:p-0 [&_table]:bg-transparent [&_table]:border-0 [&_thead]:border-b [&_thead]:border-white/20 [&_th]:bg-transparent [&_th]:text-white [&_th]:font-medium [&_th]:text-xs [&_th]:uppercase [&_th]:tracking-wider [&_th]:border-0 [&_th]:pb-2 [&_td]:text-white [&_td]:text-sm [&_td]:border-0 [&_tr]:border-0 [&_tbody_tr]:border-0 [&_tr:hover]:bg-white/5 [&_.text-gray-500]:text-white [&_.text-gray-600]:text-white [&_.text-gray-700]:text-white [&_.bg-gray-50]:bg-white/5 [&_.bg-gray-100]:bg-white/10 [&_.bg-white]:bg-white/5 [&_.border-gray-200]:border-white/20 [&_.shadow-sm]:shadow-none'
+              />
             );
           })()
         ) : null}

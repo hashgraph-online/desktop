@@ -569,7 +569,6 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({
 
   const { updateAttributes } = useBlockTesterStore();
   
-  // Initialize state from templateSource prop
   useEffect(() => {
     if (templateSourceProp) {
       if (templateSourceProp.type === 'hcs' && templateSourceProp.topicId) {

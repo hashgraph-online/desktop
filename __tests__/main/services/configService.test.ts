@@ -1,4 +1,15 @@
-import { ConfigService } from '../../../src/main/services/ConfigService'
+const mockLogger = {
+  info: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn(),
+  debug: jest.fn()
+};
+
+jest.doMock('../../../src/main/utils/logger', () => ({
+  Logger: jest.fn().mockImplementation(() => mockLogger)
+}))
+
+import { ConfigService } from '../../../src/main/services/config-service'
 import { app, safeStorage } from 'electron'
 import * as fs from 'fs'
 
@@ -25,8 +36,6 @@ jest.mock('fs', () => ({
   }
 }))
 
-jest.mock('../../../src/main/utils/logger')
-
 describe('ConfigService - Main Process', () => {
   let configService: ConfigService
   const mockUserDataPath = '/mock/user/data'
@@ -35,7 +44,7 @@ describe('ConfigService - Main Process', () => {
   const testConfig = {
     hedera: {
       accountId: '0.0.12345',
-      privateKey: 'myPrivateKey123456789012345678901234567890123456789012345678901234',
+      privateKey: '302e020100300506032b6570042204200123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
       network: 'testnet' as const
     },
     openai: {
@@ -44,14 +53,18 @@ describe('ConfigService - Main Process', () => {
     },
     anthropic: {
       apiKey: 'sk-ant-test123456789',
-      model: 'claude-3-5-sonnet-20241022'
+      model: 'claude-3-7-sonnet-latest'
     },
     advanced: {
       theme: 'dark' as const,
       autoStart: true,
       logLevel: 'debug' as const
     },
-    llmProvider: 'openai' as const
+    llmProvider: 'openai' as const,
+    legalAcceptance: {
+      termsAccepted: false,
+      privacyAccepted: false
+    }
   }
 
   beforeEach(() => {
@@ -89,7 +102,7 @@ describe('ConfigService - Main Process', () => {
     })
     
     ;(fs.existsSync as jest.Mock).mockReturnValue(false)
-    
+
     configService = ConfigService.getInstance()
   })
 
@@ -236,14 +249,18 @@ describe('ConfigService - Main Process', () => {
         },
         anthropic: {
           apiKey: '',
-          model: 'claude-3-5-sonnet-20241022'
+          model: 'claude-3-7-sonnet-latest'
         },
         advanced: {
           theme: 'light',
           autoStart: false,
           logLevel: 'info'
         },
-        llmProvider: 'openai'
+        llmProvider: 'openai',
+        legalAcceptance: {
+          termsAccepted: false,
+          privacyAccepted: false
+        }
       })
       expect(fs.promises.readFile).not.toHaveBeenCalled()
     })
@@ -252,7 +269,7 @@ describe('ConfigService - Main Process', () => {
       const configWithMixedValues = {
         hedera: {
           accountId: '0.0.12345',
-          privateKey: 'alreadyDecryptedPrivateKey1234567890123456789012345678901234567890',
+          privateKey: '302e020100300506032b6570042204200123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
           network: 'testnet' as const
         },
         openai: {
@@ -273,7 +290,7 @@ describe('ConfigService - Main Process', () => {
 
       const result = await configService.load()
 
-      expect(result.hedera.privateKey).toBe('alreadyDecryptedPrivateKey1234567890123456789012345678901234567890')
+      expect(result.hedera.privateKey).toBe('302e020100300506032b6570042204200123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef')
       expect(result.openai.apiKey).toBe(testConfig.openai.apiKey)
       expect(safeStorage.decryptString).toHaveBeenCalledTimes(1)
     })
@@ -392,9 +409,9 @@ describe('ConfigService - Main Process', () => {
         encryptedValues.set(base64, str)
         return encrypted
       })
-      ;(safeStorage.decryptString as jest.Mock).mockImplementation((_buffer: Buffer) => {
+      ;(safeStorage.decryptString as jest.Mock).mockImplementation((buffer: Buffer) => {
         const base64 = buffer.toString('base64')
-        return encryptedValues.get(base64) || ''
+        return encryptedValues.get(base64) || buffer.toString()
       })
 
       await configService.save(testConfig)
@@ -441,7 +458,7 @@ describe('ConfigService - Main Process', () => {
         encryptedMap.set(base64, str)
         return buffer
       })
-      ;(safeStorage.decryptString as jest.Mock).mockImplementation((_buffer: Buffer) => {
+      ;(safeStorage.decryptString as jest.Mock).mockImplementation((buffer: Buffer) => {
         const base64 = buffer.toString('base64')
         return encryptedMap.get(base64) || ''
       })

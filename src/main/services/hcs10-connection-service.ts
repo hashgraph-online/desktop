@@ -1,12 +1,8 @@
 import { Logger } from '../utils/logger';
 import { ConfigService } from './config-service';
 import { EventEmitter } from 'events';
-import {
-  HCS10Client,
-  Logger as SDKLogger,
-  ConnectionsManager,
-  Connection as SDKConnection,
-} from '@hashgraphonline/standards-sdk';
+import { Logger as SDKLogger, ConnectionsManager, Connection as SDKConnection } from '@hashgraphonline/standards-sdk';
+import { getHCS10Client } from './hcs10-client-factory';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
@@ -47,7 +43,7 @@ export class HCS10ConnectionService extends EventEmitter {
   private static instance: HCS10ConnectionService;
   private logger: Logger;
   private configService: ConfigService;
-  private hcs10Client: HCS10Client | null = null;
+  private hcs10Client: any | null = null;
   private connectionsManager: ConnectionsManager | null = null;
 
   private constructor() {
@@ -79,13 +75,7 @@ export class HCS10ConnectionService extends EventEmitter {
         return;
       }
 
-      this.hcs10Client = new HCS10Client({
-        network: config.hedera.network || 'testnet',
-        operatorId: config.hedera.accountId,
-        operatorPrivateKey: config.hedera.privateKey,
-        logLevel: 'info',
-        prettyPrint: false,
-      });
+      this.hcs10Client = await getHCS10Client();
 
       this.connectionsManager = new ConnectionsManager({
         baseClient: this.hcs10Client,

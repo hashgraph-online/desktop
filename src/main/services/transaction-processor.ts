@@ -51,14 +51,21 @@ export class TransactionProcessor {
       return null;
     }
 
-    const codeBlockRegex = /```[a-z]*\n([A-Za-z0-9+/]{50,}(?:={0,2})?)\n```/g;
+    const codeBlockRegex = /\s*```[^\n]*\n([\s\S]*?)\n\s*```/g;
     const matches = [...messageContent.matchAll(codeBlockRegex)];
 
+
+
     for (const match of matches) {
-      const potentialBytes = match[1];
+      const potentialBytes = match[1].trim();
       if (potentialBytes && potentialBytes.length > 50) {
         try {
-          Buffer.from(potentialBytes, 'base64');
+          const decoded = Buffer.from(potentialBytes, 'base64');
+
+          if (this.isObviouslyInvalidTransactionBytes(decoded)) {
+            continue; // Skip this obviously invalid content
+          }
+
           this.logger.info('Valid base64 transaction bytes found in code block');
           return potentialBytes;
         } catch {
@@ -85,6 +92,38 @@ export class TransactionProcessor {
 
     this.logger.warn('No valid transaction bytes found in message content');
     return null;
+  }
+
+  /**
+   * Check if decoded bytes represent obviously invalid transaction data
+   */
+  private isObviouslyInvalidTransactionBytes(decoded: Buffer): boolean {
+    if (decoded.length === 0) {
+      return true;
+    }
+
+    const firstByte = decoded[0];
+    let repetitiveCount = 0;
+
+    for (let i = 0; i < Math.min(decoded.length, 100); i++) {
+      if (decoded[i] === firstByte) {
+        repetitiveCount++;
+      }
+    }
+
+    if (repetitiveCount > 90) {
+      return true;
+    }
+
+    if (decoded.every(byte => byte === 0)) {
+      return true;
+    }
+
+    if (decoded.length > 10 && decoded.every(byte => byte === firstByte) && firstByte !== 0) {
+      return true;
+    }
+
+    return false;
   }
 
   /**

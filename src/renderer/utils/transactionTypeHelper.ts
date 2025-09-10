@@ -1,5 +1,5 @@
 export const getHumanReadableTransactionType = (transactionType?: string): string => {
-  if (!transactionType) return 'Unknown Transaction';
+  if (!transactionType || typeof transactionType !== 'string') return 'Unknown Transaction';
 
   const typeMap: Record<string, string> = {
     CRYPTOCREATEACCOUNT: 'Account Creation',

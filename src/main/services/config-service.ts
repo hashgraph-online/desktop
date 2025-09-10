@@ -294,11 +294,11 @@ export class ConfigService {
     };
 
     try {
-      await fs.promises.writeFile(
-        this.transactionLogPath,
-        JSON.stringify(logEntry) + '\n',
-        { flag: 'a' }
-      );
+      const existing = await fs.promises
+        .readFile(this.transactionLogPath, 'utf8')
+        .catch(() => '');
+      const next = existing + JSON.stringify(logEntry) + '\n';
+      await fs.promises.writeFile(this.transactionLogPath, next, 'utf8');
     } catch (error) {
       this.logger.error('Failed to write transaction log', error);
     }
@@ -477,7 +477,7 @@ export class ConfigService {
       },
       anthropic: {
         apiKey: process.env.ANTHROPIC_API_KEY || '',
-        model: 'claude-3-5-sonnet-20241022',
+        model: 'claude-3-7-sonnet-latest',
       },
       advanced: {
         theme: 'light',
@@ -489,7 +489,8 @@ export class ConfigService {
         termsAccepted: false,
         privacyAccepted: false,
       },
-    };
+      operationalMode: 'autonomous',
+    } as AppConfig;
   }
 
   /**

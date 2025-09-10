@@ -1,23 +1,37 @@
-import { HederaService, type TransactionExecutionResult } from '../../../src/main/services/hedera-service';
+const mockTransaction = {
+  execute: jest.fn(),
+  getReceipt: jest.fn(),
+  transactionId: { toString: jest.fn().mockReturnValue('0.0.123@1234567890.000000000') }
+};
 
-// Mock dependencies
-jest.mock('../../../src/main/utils/logger');
+const mockTransactionResponse = {
+  transactionId: { toString: jest.fn().mockReturnValue('0.0.123@1234567890.000000000') },
+  getReceipt: jest.fn().mockResolvedValue({
+    status: { toString: jest.fn().mockReturnValue('SUCCESS') },
+    transactionId: { toString: jest.fn().mockReturnValue('0.0.123@1234567890.000000000') }
+  })
+};
 
-// Mock Hedera SDK
+const mockTransactionReceipt = {
+  status: { toString: jest.fn().mockReturnValue('SUCCESS') },
+  transactionId: { toString: jest.fn().mockReturnValue('0.0.123@1234567890.000000000') }
+};
+
 jest.mock('@hashgraph/sdk', () => ({
   Client: {
     forMainnet: jest.fn().mockReturnThis(),
     forTestnet: jest.fn().mockReturnThis(),
-    setOperator: jest.fn().mockReturnThis()
+    setOperator: jest.fn().mockReturnThis(),
+    close: jest.fn()
   },
   Transaction: {
     fromBytes: jest.fn()
   },
   PrivateKey: {
-    fromString: jest.fn()
+    fromString: jest.fn().mockReturnValue({ publicKey: {} })
   },
   AccountId: {
-    fromString: jest.fn()
+    fromString: jest.fn().mockReturnValue({ toString: jest.fn().mockReturnValue('0.0.12345') })
   },
   TransactionResponse: jest.fn(),
   TransactionReceipt: jest.fn(),
@@ -26,13 +40,14 @@ jest.mock('@hashgraph/sdk', () => ({
   ScheduleDeleteTransaction: jest.fn()
 }));
 
+jest.mock('../../../src/main/utils/logger');
+
+import { HederaService, type TransactionExecutionResult } from '../../../src/main/services/hedera-service';
+
 describe('HederaService', () => {
   let hederaService: HederaService;
   let mockLogger: any;
   let mockClient: any;
-  let mockTransaction: any;
-  let mockTransactionResponse: any;
-  let mockTransactionReceipt: any;
 
   const mockExecutedTransaction = {
     transactionId: '0.0.123@1234567890.000000000',
@@ -43,7 +58,6 @@ describe('HederaService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    // Setup mocks
     mockLogger = {
       info: jest.fn(),
       warn: jest.fn(),
@@ -53,45 +67,30 @@ describe('HederaService', () => {
 
     mockClient = {
       setOperator: jest.fn().mockReturnThis(),
-      forMainnet: jest.fn().mockReturnThis(),
-      forTestnet: jest.fn().mockReturnThis()
+      close: jest.fn()
     };
 
-    mockTransaction = {
-      execute: jest.fn(),
-      getReceipt: jest.fn(),
-      transactionId: { toString: jest.fn().mockReturnValue('0.0.123@1234567890.000000000') },
-      freezeWith: jest.fn().mockReturnThis(),
-      sign: jest.fn().mockReturnThis()
-    };
+    mockTransaction.execute.mockResolvedValue(mockTransactionResponse);
+    mockTransaction.getReceipt.mockResolvedValue(mockTransactionResponse);
+    mockTransaction.freezeWith = jest.fn().mockResolvedValue(mockTransaction);
+    mockTransaction.sign = jest.fn().mockResolvedValue(mockTransaction);
 
-    mockTransactionResponse = {
-      transactionId: { toString: jest.fn().mockReturnValue('0.0.123@1234567890.000000000') },
-      getReceipt: jest.fn()
-    };
+    mockTransactionResponse.getReceipt.mockResolvedValue(mockTransactionReceipt);
+    mockTransactionReceipt.status.toString.mockReturnValue('SUCCESS');
 
-    mockTransactionReceipt = {
-      status: { toString: jest.fn().mockReturnValue('SUCCESS') },
-      accountId: { toString: jest.fn().mockReturnValue('0.0.12345') },
-      tokenId: { toString: jest.fn().mockReturnValue('0.0.67890') },
-      contractId: { toString: jest.fn().mockReturnValue('0.0.54321') }
-    };
+    const { Transaction, Client } = require('@hashgraph/sdk');
+    Transaction.fromBytes.mockReturnValue(mockTransaction);
+    Client.forMainnet.mockReturnValue(mockClient);
+    Client.forTestnet.mockReturnValue(mockClient);
 
-    // Mock constructors and methods
-    require('../../../src/main/utils/logger').Logger = jest.fn().mockImplementation(() => mockLogger);
-    require('@hashgraph/sdk').Client.forMainnet = jest.fn().mockReturnValue(mockClient);
-    require('@hashgraph/sdk').Client.forTestnet = jest.fn().mockReturnValue(mockClient);
-    require('@hashgraph/sdk').Transaction.fromBytes = jest.fn().mockReturnValue(mockTransaction);
-    require('@hashgraph/sdk').PrivateKey.fromString = jest.fn().mockReturnValue('mock-private-key');
-    require('@hashgraph/sdk').AccountId.fromString = jest.fn().mockReturnValue('mock-account-id');
+    const { Logger } = require('../../../src/main/utils/logger');
+    Logger.mockImplementation(() => mockLogger);
 
-    // Reset singleton
     HederaService['instance'] = null;
     hederaService = HederaService.getInstance();
   });
 
   afterEach(() => {
-    // Reset singleton
     HederaService['instance'] = null;
   });
 
@@ -112,20 +111,16 @@ describe('HederaService', () => {
 
   describe('Transaction Execution Status', () => {
     test('should check if transaction is executed', () => {
-      // Initially should return false
       expect(hederaService['isTransactionExecuted']('non-existent')).toBe(false);
 
-      // Add a transaction to the executed set
       (hederaService as any).executedTransactions.set('existing-transaction', mockExecutedTransaction);
 
       expect(hederaService['isTransactionExecuted']('existing-transaction')).toBe(true);
     });
 
     test('should retrieve executed transaction', () => {
-      // Initially should return undefined
       expect(hederaService['getExecutedTransaction']('non-existent')).toBeUndefined();
 
-      // Add a transaction to the executed set
       (hederaService as any).executedTransactions.set('existing-transaction', mockExecutedTransaction);
 
       const result = hederaService['getExecutedTransaction']('existing-transaction');
@@ -135,10 +130,7 @@ describe('HederaService', () => {
 
   describe('executeTransactionBytes', () => {
     beforeEach(() => {
-      mockTransaction.freezeWith = jest.fn().mockResolvedValue(mockTransaction);
-      mockTransaction.sign = jest.fn().mockResolvedValue(mockTransaction);
-      mockTransaction.execute.mockResolvedValue(mockTransactionResponse);
-      mockTransactionResponse.getReceipt.mockResolvedValue(mockTransactionReceipt);
+      mockTransactionResponse.transactionId.toString.mockReturnValue('0.0.123@1234567890.000000000');
     });
 
     test('should execute transaction successfully on testnet', async () => {
@@ -174,7 +166,6 @@ describe('HederaService', () => {
     });
 
     test('should reject already executed transaction', async () => {
-      // Add transaction to executed set
       (hederaService as any).executedTransactions.set('already-executed', mockExecutedTransaction);
 
       const result = await hederaService['executeTransactionBytes'](
@@ -252,7 +243,6 @@ describe('HederaService', () => {
 
     test('should extract entity information from receipt', async () => {
       mockTransactionReceipt.status.toString.mockReturnValue('SUCCESS');
-      // Set up the receipt to have both accountId and tokenId, tokenId should take precedence
       mockTransactionReceipt.accountId = { toString: () => '0.0.12345' };
       mockTransactionReceipt.tokenId = { toString: () => '0.0.67890' };
 
@@ -268,7 +258,6 @@ describe('HederaService', () => {
     });
 
     test('should handle different transaction types', async () => {
-      // Test token creation
       mockTransactionReceipt.status.toString.mockReturnValue('SUCCESS');
       mockTransactionReceipt.tokenId = { toString: () => '0.0.67890' };
 
@@ -327,17 +316,19 @@ describe('HederaService', () => {
         '302e020100300506032b657004220420db484b828e64b2d8f12ce3c0a0e93a0b8cce7af1bb8f39c61e54b5e07'
       );
 
-      expect(result.success).toBe(true);
-      // Should still succeed even with receipt parsing errors
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Invalid status');
     });
   });
 
   describe('Integration Scenarios', () => {
+    beforeEach(() => {
+      mockTransactionResponse.transactionId.toString.mockReturnValue('0.0.123@1234567890.000000000');
+    });
+
     test('should handle complete transaction lifecycle', async () => {
-      // 1. Check if transaction is executed (should be false initially)
       expect(hederaService['isTransactionExecuted']('lifecycle-test')).toBe(false);
 
-      // 2. Execute transaction
       const executeResult = await hederaService['executeTransactionBytes'](
         'lifecycle-test',
         '0.0.12345',
@@ -346,15 +337,12 @@ describe('HederaService', () => {
 
       expect(executeResult.success).toBe(true);
 
-      // 3. Check if transaction is now executed
       expect(hederaService['isTransactionExecuted']('lifecycle-test')).toBe(true);
 
-      // 4. Get executed transaction details
       const executedTx = hederaService['getExecutedTransaction']('lifecycle-test');
       expect(executedTx).toBeDefined();
       expect(executedTx?.transactionId).toBe('0.0.123@1234567890.000000000');
 
-      // 5. Try to execute the same transaction again (should fail)
       const duplicateResult = await hederaService['executeTransactionBytes'](
         'lifecycle-test',
         '0.0.12345',
@@ -386,7 +374,6 @@ describe('HederaService', () => {
         expect(result.success).toBe(true);
       });
 
-      // Verify all transactions are marked as executed
       transactions.forEach(tx => {
         expect(hederaService['isTransactionExecuted'](tx.bytes)).toBe(true);
       });

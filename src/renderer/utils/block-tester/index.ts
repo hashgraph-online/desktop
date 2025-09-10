@@ -3,13 +3,13 @@
  */
 
 import { cn } from '../../lib/utils';
-import { 
-  WorkingBlock, 
-  ValidationResult, 
+import {
+  WorkingBlock,
+  ValidationResult,
   ValidationError,
   ValidationWarning,
   AttributeSchema,
-  BlockCategory
+  BlockCategory,
 } from '../../types/block-tester.types';
 
 export { cn };
@@ -43,7 +43,7 @@ export function createDefaultBlock(): WorkingBlock {
         description: 'Block title',
         required: true,
         default: 'Untitled Block',
-        placeholder: 'Enter block title...'
+        placeholder: 'Enter block title...',
       },
       description: {
         type: 'string',
@@ -51,8 +51,8 @@ export function createDefaultBlock(): WorkingBlock {
         description: 'Block description',
         required: false,
         default: '',
-        placeholder: 'Enter block description...'
-      }
+        placeholder: 'Enter block description...',
+      },
     },
     actions: {},
     keywords: [],
@@ -89,13 +89,14 @@ export function validateBlock(block: WorkingBlock): ValidationResult {
     errors.push({
       field: 'name',
       message: 'Block name is required',
-      severity: 'error'
+      severity: 'error',
     });
   } else if (!/^[a-z0-9-]+$/.test(block.name)) {
     errors.push({
       field: 'name',
-      message: 'Block name must contain only lowercase letters, numbers, and hyphens',
-      severity: 'error'
+      message:
+        'Block name must contain only lowercase letters, numbers, and hyphens',
+      severity: 'error',
     });
   }
 
@@ -103,7 +104,7 @@ export function validateBlock(block: WorkingBlock): ValidationResult {
     errors.push({
       field: 'title',
       message: 'Block title is required',
-      severity: 'error'
+      severity: 'error',
     });
   }
 
@@ -111,7 +112,7 @@ export function validateBlock(block: WorkingBlock): ValidationResult {
     errors.push({
       field: 'template',
       message: 'Block template is required',
-      severity: 'error'
+      severity: 'error',
     });
   } else {
     const templateIssues = validateTemplate(block.template, block.attributes);
@@ -124,7 +125,7 @@ export function validateBlock(block: WorkingBlock): ValidationResult {
       warnings.push({
         field: `attributes.${key}.label`,
         message: `Attribute "${key}" should have a label for better UX`,
-        suggestion: 'Add a descriptive label for this attribute'
+        suggestion: 'Add a descriptive label for this attribute',
       });
     }
   });
@@ -132,7 +133,7 @@ export function validateBlock(block: WorkingBlock): ValidationResult {
   return {
     isValid: errors.length === 0,
     errors,
-    warnings
+    warnings,
   };
 }
 
@@ -140,7 +141,7 @@ export function validateBlock(block: WorkingBlock): ValidationResult {
  * Validate template syntax and structure
  */
 export function validateTemplate(
-  template: string, 
+  template: string,
   attributes: Record<string, AttributeSchema>
 ): { errors: ValidationError[]; warnings: ValidationWarning[] } {
   const errors: ValidationError[] = [];
@@ -148,36 +149,38 @@ export function validateTemplate(
 
   const openTags = template.match(/<[^/][^>]*>/g) || [];
   const closeTags = template.match(/<\/[^>]*>/g) || [];
-  
+
   if (openTags.length !== closeTags.length) {
     warnings.push({
       field: 'template',
       message: 'Template may have unbalanced HTML tags',
-      suggestion: 'Check that all opening tags have corresponding closing tags'
+      suggestion: 'Check that all opening tags have corresponding closing tags',
     });
   }
 
   const handlebarsMatches = template.match(/\{\{[^}]+\}\}/g) || [];
-  
+
   handlebarsMatches.forEach((match: string) => {
     const expression = match.slice(2, -2).trim();
-    
+
     if (expression.startsWith('attributes.')) {
       const attributeName = expression.split('.')[1];
       if (!attributes[attributeName]) {
         warnings.push({
           field: 'template',
           message: `Template references undefined attribute "${attributeName}"`,
-          suggestion: `Add "${attributeName}" to block attributes or remove the reference`
+          suggestion: `Add "${attributeName}" to block attributes or remove the reference`,
         });
       }
     }
-    
+
     if (expression.startsWith('actions.')) {
       warnings.push({
         field: 'template',
-        message: 'Action references in templates are not yet supported in preview mode',
-        suggestion: 'Action bindings will work when deployed but not in preview'
+        message:
+          'Action references in templates are not yet supported in preview mode',
+        suggestion:
+          'Action bindings will work when deployed but not in preview',
       });
     }
   });
@@ -186,7 +189,8 @@ export function validateTemplate(
     warnings.push({
       field: 'template',
       message: 'Template contains script tags',
-      suggestion: 'Consider using HCS-3 for external scripts or inline event handlers'
+      suggestion:
+        'Consider using HCS-3 for external scripts or inline event handlers',
     });
   }
 
@@ -199,7 +203,7 @@ export function validateTemplate(
  * Handles attributes, actions, and common HCS-12 template variables
  */
 export function processTemplate(
-  template: string, 
+  template: string,
   attributes: Record<string, unknown>,
   actions: Record<string, unknown> = {},
   context: Record<string, unknown> = {}
@@ -220,9 +224,11 @@ export function processTemplate(
     topicId: context.topicId || attributes.topicId || '0.0.123456',
     name: context.name || attributes.name || attributes.title || 'Test Block',
     creator: context.creator || attributes.creator || 'Block Tester',
-    hrl: context.hrl || `hcs://12/${context.topicId || attributes.topicId || '0.0.123456'}`,
+    hrl:
+      context.hrl ||
+      `hcs://12/${context.topicId || attributes.topicId || '0.0.123456'}`,
     network: context.network || 'testnet',
-    ...context // Allow override of defaults
+    ...context, // Allow override of defaults
   };
 
   Object.entries(defaultContext).forEach(([key, value]) => {
@@ -232,7 +238,10 @@ export function processTemplate(
 
   Object.entries(actions).forEach(([key, _action]) => {
     const regex = new RegExp(`\\{\\{actions\\.${key}\\}\\}`, 'g');
-    processed = processed.replace(regex, `javascript:void(0); /* Mock action: ${key} */`);
+    processed = processed.replace(
+      regex,
+      `javascript:void(0); /* Mock action: ${key} */`
+    );
   });
 
   processed = processed.replace(/\{\{[^}]+\}\}/g, '');
@@ -243,42 +252,52 @@ export function processTemplate(
 /**
  * Export block to different formats
  */
-export function exportBlock(block: WorkingBlock, format: 'json' | 'hcs-1' | 'html' | 'template'): string {
+export function exportBlock(
+  block: WorkingBlock,
+  format: 'json' | 'hcs-1' | 'html' | 'template'
+): string {
   switch (format) {
     case 'json':
       return JSON.stringify(block, null, 2);
-      
+
     case 'hcs-1':
-      return JSON.stringify({
-        p: 'hcs-12',
-        op: 'register',
-        name: block.name,
-        title: block.title,
-        description: block.description,
-        category: block.category,
-        template: block.template,
-        attributes: Object.fromEntries(
-          Object.entries(block.attributes).map(([key, schema]) => [
-            key,
-            {
-              type: schema.type,
-              default: schema.default,
-              required: schema.required
-            }
-          ])
-        ),
-        keywords: block.keywords,
-        icon: block.icon
-      }, null, 2);
-      
+      return JSON.stringify(
+        {
+          p: 'hcs-12',
+          op: 'register',
+          name: block.name,
+          title: block.title,
+          description: block.description,
+          category: block.category,
+          template: block.template,
+          attributes: Object.fromEntries(
+            Object.entries(block.attributes).map(([key, schema]) => [
+              key,
+              {
+                type: schema.type,
+                default: schema.default,
+                required: schema.required,
+              },
+            ])
+          ),
+          keywords: block.keywords,
+          icon: block.icon,
+        },
+        null,
+        2
+      );
+
     case 'html': {
       const processedTemplate = processTemplate(
-        block.template, 
+        block.template,
         Object.fromEntries(
-          Object.entries(block.attributes).map(([key, schema]) => [key, schema.default])
+          Object.entries(block.attributes).map(([key, schema]) => [
+            key,
+            schema.default,
+          ])
         )
       );
-      
+
       return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -294,10 +313,10 @@ export function exportBlock(block: WorkingBlock, format: 'json' | 'hcs-1' | 'htm
 </body>
 </html>`;
     }
-      
+
     case 'template':
       return block.template;
-      
+
     default:
       throw new Error(`Unsupported export format: ${format}`);
   }
@@ -308,7 +327,7 @@ export function exportBlock(block: WorkingBlock, format: 'json' | 'hcs-1' | 'htm
  */
 export function importBlock(data: string | object): WorkingBlock {
   let blockData: Record<string, unknown>;
-  
+
   if (typeof data === 'string') {
     try {
       blockData = JSON.parse(data);
@@ -331,7 +350,7 @@ export function importBlock(data: string | object): WorkingBlock {
             description: 'Block title',
             required: true,
             default: 'Imported Block',
-            placeholder: 'Enter block title...'
+            placeholder: 'Enter block title...',
           },
           description: {
             type: 'string',
@@ -339,8 +358,8 @@ export function importBlock(data: string | object): WorkingBlock {
             description: 'Block description',
             required: false,
             default: 'This block was imported from a template',
-            placeholder: 'Enter block description...'
-          }
+            placeholder: 'Enter block description...',
+          },
         },
         actions: {},
         keywords: [],
@@ -362,11 +381,14 @@ export function importBlock(data: string | object): WorkingBlock {
       description?: string;
       category?: BlockCategory;
       template?: string;
-      attributes?: Record<string, { type?: string; required?: boolean; default?: unknown }>;
+      attributes?: Record<
+        string,
+        { type?: string; required?: boolean; default?: unknown }
+      >;
       keywords?: string[];
       icon?: string;
     };
-    
+
     return {
       id: generateId(),
       name: hcsData.name || 'imported-block',
@@ -383,11 +405,13 @@ export function importBlock(data: string | object): WorkingBlock {
           key,
           {
             type: (attr.type as AttributeSchema['type']) || 'string',
-            label: key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()),
+            label: key
+              .replace(/([A-Z])/g, ' $1')
+              .replace(/^./, (str) => str.toUpperCase()),
             description: '',
             required: attr.required || false,
             default: attr.default || '',
-          } as AttributeSchema
+          } as AttributeSchema,
         ])
       ),
       actions: {},
@@ -403,7 +427,7 @@ export function importBlock(data: string | object): WorkingBlock {
       created?: string | Date;
       modified?: string | Date;
     };
-    
+
     return {
       id: workingBlockData.id,
       name: workingBlockData.name || 'Imported Block',
@@ -419,8 +443,12 @@ export function importBlock(data: string | object): WorkingBlock {
       actions: workingBlockData.actions || {},
       keywords: workingBlockData.keywords || [],
       icon: workingBlockData.icon,
-      created: workingBlockData.created ? new Date(workingBlockData.created) : new Date(),
-      modified: workingBlockData.modified ? new Date(workingBlockData.modified) : new Date(),
+      created: workingBlockData.created
+        ? new Date(workingBlockData.created)
+        : new Date(),
+      modified: workingBlockData.modified
+        ? new Date(workingBlockData.modified)
+        : new Date(),
     };
   }
 
@@ -435,13 +463,13 @@ export function debounce<T extends (...args: unknown[]) => unknown>(
   wait: number
 ): (...args: Parameters<T>) => void {
   let timeout: NodeJS.Timeout;
-  
+
   return function executedFunction(...args: Parameters<T>) {
     const later = () => {
       clearTimeout(timeout);
       func(...args);
     };
-    
+
     clearTimeout(timeout);
     timeout = setTimeout(later, wait);
   };
@@ -452,11 +480,11 @@ export function debounce<T extends (...args: unknown[]) => unknown>(
  */
 export function formatFileSize(bytes: number): string {
   if (bytes === 0) return '0 Bytes';
-  
+
   const k = 1024;
   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  
+
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 

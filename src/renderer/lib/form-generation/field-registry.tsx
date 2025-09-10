@@ -1,20 +1,26 @@
 import React, { ComponentType } from 'react';
-import { ComponentRegistry, FieldComponentProps, FormFieldType } from './types';
+import {
+  ComponentRegistry,
+  FieldComponentProps,
+  FormFieldType,
+  FileUploadResult,
+} from './types';
 
-export const TextFieldComponent: ComponentType<FieldComponentProps> = ({ 
-  value, 
-  onChange, 
-  error, 
-  disabled, 
-  required, 
-  placeholder, 
-  className, 
-  ...props 
+export const TextFieldComponent: ComponentType<FieldComponentProps> = ({
+  value,
+  onChange,
+  error,
+  disabled,
+  required,
+  placeholder,
+  className,
+  ...props
 }) => {
-  const stringValue = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
+  const stringValue =
+    typeof value === 'string' || typeof value === 'number' ? String(value) : '';
   return (
     <input
-      type="text"
+      type='text'
       value={stringValue}
       onChange={(e) => onChange(e.target.value)}
       disabled={disabled}
@@ -27,18 +33,18 @@ export const TextFieldComponent: ComponentType<FieldComponentProps> = ({
   );
 };
 
-export const NumberFieldComponent: ComponentType<FieldComponentProps> = ({ 
-  value, 
-  onChange, 
-  error, 
-  disabled, 
-  required, 
-  placeholder, 
-  min, 
-  max, 
-  step, 
-  className, 
-  ...props 
+export const NumberFieldComponent: ComponentType<FieldComponentProps> = ({
+  value,
+  onChange,
+  error,
+  disabled,
+  required,
+  placeholder,
+  min,
+  max,
+  step,
+  className,
+  ...props
 }) => {
   const getNumberValue = () => {
     if (typeof value === 'number') return value;
@@ -48,10 +54,11 @@ export const NumberFieldComponent: ComponentType<FieldComponentProps> = ({
   const numberValue = getNumberValue();
   return (
     <input
-      type="number"
+      type='number'
       value={numberValue}
       onChange={(e) => {
-        const numValue = e.target.value === '' ? undefined : Number(e.target.value);
+        const numValue =
+          e.target.value === '' ? undefined : Number(e.target.value);
         onChange(numValue);
       }}
       disabled={disabled}
@@ -67,16 +74,16 @@ export const NumberFieldComponent: ComponentType<FieldComponentProps> = ({
   );
 };
 
-export const SelectFieldComponent: ComponentType<FieldComponentProps> = ({ 
-  value, 
-  onChange, 
-  error, 
-  disabled, 
-  required, 
-  options = [], 
+export const SelectFieldComponent: ComponentType<FieldComponentProps> = ({
+  value,
+  onChange,
+  error,
+  disabled,
+  required,
+  options = [],
   multiple = false,
-  className, 
-  ...props 
+  className,
+  ...props
 }) => {
   if (multiple) {
     return (
@@ -84,7 +91,10 @@ export const SelectFieldComponent: ComponentType<FieldComponentProps> = ({
         multiple
         value={Array.isArray(value) ? value : []}
         onChange={(e) => {
-          const selectedValues = Array.from(e.target.selectedOptions, option => option.value);
+          const selectedValues = Array.from(
+            e.target.selectedOptions,
+            (option) => option.value
+          );
           onChange(selectedValues as any);
         }}
         disabled={disabled}
@@ -94,7 +104,11 @@ export const SelectFieldComponent: ComponentType<FieldComponentProps> = ({
         {...props}
       >
         {options.map((option, index) => (
-          <option key={index} value={String(option.value)} disabled={option.disabled}>
+          <option
+            key={index}
+            value={String(option.value)}
+            disabled={option.disabled}
+          >
             {option.label}
           </option>
         ))}
@@ -102,7 +116,8 @@ export const SelectFieldComponent: ComponentType<FieldComponentProps> = ({
     );
   }
 
-  const selectValue = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
+  const selectValue =
+    typeof value === 'string' || typeof value === 'number' ? String(value) : '';
   return (
     <select
       value={selectValue}
@@ -113,9 +128,15 @@ export const SelectFieldComponent: ComponentType<FieldComponentProps> = ({
       aria-invalid={!!error}
       {...props}
     >
-      <option value="" disabled>Select an option...</option>
+      <option value='' disabled>
+        Select an option...
+      </option>
       {options.map((option, index) => (
-        <option key={index} value={String(option.value)} disabled={option.disabled}>
+        <option
+          key={index}
+          value={String(option.value)}
+          disabled={option.disabled}
+        >
           {option.label}
         </option>
       ))}
@@ -123,18 +144,18 @@ export const SelectFieldComponent: ComponentType<FieldComponentProps> = ({
   );
 };
 
-export const CheckboxFieldComponent: ComponentType<FieldComponentProps> = ({ 
-  value, 
-  onChange, 
-  error, 
-  disabled, 
-  required, 
-  className, 
-  ...props 
+export const CheckboxFieldComponent: ComponentType<FieldComponentProps> = ({
+  value,
+  onChange,
+  error,
+  disabled,
+  required,
+  className,
+  ...props
 }) => {
   return (
     <input
-      type="checkbox"
+      type='checkbox'
       checked={!!value}
       onChange={(e) => onChange(e.target.checked)}
       disabled={disabled}
@@ -146,16 +167,16 @@ export const CheckboxFieldComponent: ComponentType<FieldComponentProps> = ({
   );
 };
 
-export const TextareaFieldComponent: ComponentType<FieldComponentProps> = ({ 
-  value, 
-  onChange, 
-  error, 
-  disabled, 
-  required, 
-  placeholder, 
-  rows, 
-  className, 
-  ...props 
+export const TextareaFieldComponent: ComponentType<FieldComponentProps> = ({
+  value,
+  onChange,
+  error,
+  disabled,
+  required,
+  placeholder,
+  rows,
+  className,
+  ...props
 }) => {
   const textValue = typeof value === 'string' ? value : '';
   return (
@@ -173,16 +194,16 @@ export const TextareaFieldComponent: ComponentType<FieldComponentProps> = ({
   );
 };
 
-export const FileFieldComponent: ComponentType<FieldComponentProps> = ({ 
-  value, 
-  onChange, 
-  error, 
-  disabled, 
-  required, 
-  accept, 
+export const FileFieldComponent: ComponentType<FieldComponentProps> = ({
+  value,
+  onChange,
+  error,
+  disabled,
+  required,
+  accept,
   multiple = false,
-  className, 
-  ...props 
+  className,
+  ...props
 }) => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -207,17 +228,17 @@ export const FileFieldComponent: ComponentType<FieldComponentProps> = ({
     };
 
     if (multiple) {
-      Promise.all(Array.from(files).map(processFile))
-        .then((results) => onChange(results as any));
+      Promise.all(Array.from(files).map(processFile)).then((results) =>
+        onChange(results as any)
+      );
     } else {
-      processFile(files[0])
-        .then((result) => onChange(result as any));
+      processFile(files[0]).then((result) => onChange(result as any));
     }
   };
 
   return (
     <input
-      type="file"
+      type='file'
       onChange={handleFileChange}
       disabled={disabled}
       required={required}
@@ -258,14 +279,19 @@ export class FieldRegistry {
   /**
    * Register a component for a field type
    */
-  register(fieldType: FormFieldType, component: ComponentType<FieldComponentProps>): void {
+  register(
+    fieldType: FormFieldType,
+    component: ComponentType<FieldComponentProps>
+  ): void {
     this.registry[fieldType] = component;
   }
 
   /**
    * Get component for a field type
    */
-  get(fieldType: FormFieldType): ComponentType<FieldComponentProps> | undefined {
+  get(
+    fieldType: FormFieldType
+  ): ComponentType<FieldComponentProps> | undefined {
     return this.registry[fieldType];
   }
 

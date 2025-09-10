@@ -79,17 +79,22 @@ export class MemoryService implements IMemoryService {
       }
 
       if (this.agent.memoryManager) {
+        const sessionId = this.sessionIdProvider
+          ? this.sessionIdProvider() || undefined
+          : undefined;
         this.agent.memoryManager.storeEntityAssociation(
           entityId,
           entityName,
           entityFormat as unknown as string,
-          transactionId
+          transactionId,
+          sessionId
         );
         this.logger.info('Stored entity association:', {
           entityName,
           entityType: entityFormat,
           entityId,
           transactionId,
+          sessionId,
         });
         return entityFormat;
       } else {
@@ -295,7 +300,8 @@ export class MemoryService implements IMemoryService {
             entity.entityId,
             entity.entityName,
             entity.entityType,
-            entity.transactionId || undefined
+            entity.transactionId || undefined,
+            entity.sessionId || undefined
           );
         }
 

@@ -5,6 +5,16 @@ import { Button } from '../components/ui/Button';
 import Typography from '../components/ui/Typography';
 import { ProfileRegistrationForm } from '../components/hcs10/ProfileRegistrationForm';
 import { RegistrationStatusDialog } from '../components/hcs10/RegistrationStatusDialog';
+import { useWalletStore } from '../stores/walletStore';
+import {
+  BrowserHCSClient,
+  AgentBuilder,
+  PersonBuilder,
+  AIAgentCapability,
+} from '@hashgraphonline/standards-sdk';
+import { useInscribe } from '../hooks/useInscribe';
+import { walletService } from '../services/walletService';
+import { Buffer } from 'buffer';
 import { useHCS10Store } from '../stores/hcs10Store';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import type {
@@ -16,6 +26,7 @@ import type { RegistrationProgressData } from '@hashgraphonline/standards-sdk';
 export function HCS10ProfileRegistration() {
   const navigate = useNavigate();
   const { addProfile, profiles } = useHCS10Store();
+  const wallet = useWalletStore();
   const [isRegistering, setIsRegistering] = useState(false);
   const [registrationResult, setRegistrationResult] =
     useState<HCS10ProfileResponse | null>(null);
@@ -46,6 +57,8 @@ export function HCS10ProfileRegistration() {
     percent: number;
     stage?: string;
   }>({ message: '', percent: 0 });
+
+  const { inscribe } = useInscribe();
 
   /**
    * Check for existing profiles and fetch profile data
@@ -214,32 +227,224 @@ export function HCS10ProfileRegistration() {
         ...submittedFormData,
       };
 
-      if (
-        submittedFormData.logo &&
-        submittedFormData.logo.startsWith('data:')
-      ) {
-        const mimeMatch = submittedFormData.logo.match(/data:([^;]+);/);
-        const mimeType = mimeMatch ? mimeMatch[1] : 'image/png';
-        const extension = mimeType.split('/')[1] || 'png';
+      /** Pre-inscribe avatar (two-step) to avoid signer receipt issues */
+      let preInscribePfpTopicId: string | undefined;
+      if (submittedFormData.logo?.startsWith('data:')) {
+        const match = submittedFormData.logo.match(
+          /^data:([^;]+);base64,(.*)$/
+        );
+        if (match && wallet.accountId && wallet.network) {
+          const mime = match[1];
+          const base64 = match[2];
+          const ext = (mime.split('/')[1] || 'png').toLowerCase();
+          const fileName = `profile.${ext}`;
 
-        registrationData.profileImageFile = {
-          data: submittedFormData.logo,
-          name: `profile.${extension}`,
-          type: mimeType,
-        };
-        delete registrationData.logo;
-      } else if (
-        submittedFormData.logo &&
-        submittedFormData.logo.startsWith('hcs://')
-      ) {
-        registrationData.profileImage = submittedFormData.logo;
-        delete registrationData.logo;
+          const buffer = Buffer.from(base64, 'base64');
+          const inscription = await inscribe(
+            {
+              type: 'buffer',
+              buffer,
+              fileName,
+              mimeType: mime,
+            },
+            { waitMaxAttempts: 200 },
+            (data) => {
+              const updated = {
+                message: data?.message || 'Inscribing profile image...',
+                percent: Math.min(95, Number(data?.progressPercent) || 0),
+                stage: data?.stage,
+                timestamp: new Date().toISOString(),
+              };
+              setProgress(updated);
+              setRegistrationProgress(updated);
+            }
+          );
+
+          if (!inscription?.topic_id) {
+            throw new Error('Avatar inscription did not complete');
+          }
+          preInscribePfpTopicId = inscription.topic_id;
+        }
       }
 
-      const result = await window.electron.invoke(
-        'hcs10:registerProfile',
-        registrationData
-      );
+      let result: {
+        success: boolean;
+        data?: HCS10ProfileResponse;
+        error?: string;
+      };
+      if (wallet.isConnected) {
+        const hwc = walletService.getSDK();
+        const client = new BrowserHCSClient({
+          network: wallet.network as 'mainnet' | 'testnet',
+          hwc,
+        });
+        let createSuccess = false;
+        let createError: string | undefined;
+        if (submittedFormData.profileType === 'person') {
+          const pBuilder = new PersonBuilder()
+            .setName(submittedFormData.name)
+            .setAlias(submittedFormData.alias)
+            .setBio(submittedFormData.description);
+
+          const socials = submittedFormData.socials || {};
+          if (socials.twitter) pBuilder.addSocial('twitter', socials.twitter);
+          if (socials.github) pBuilder.addSocial('github', socials.github);
+          if (socials.website) pBuilder.addSocial('website', socials.website);
+
+          if (preInscribePfpTopicId) {
+            pBuilder.setExistingProfilePicture(preInscribePfpTopicId);
+          } else if (
+            submittedFormData.logo &&
+            submittedFormData.logo.startsWith('hcs://')
+          ) {
+            const topicId = submittedFormData.logo.replace(
+              /^hcs:\/\/[0-9]+\//,
+              ''
+            );
+            pBuilder.setExistingProfilePicture(topicId);
+          }
+
+          const resp = await client.create(pBuilder, {
+            progressCallback: (p: {
+              message?: string;
+              progressPercent?: number;
+              stage?: string;
+              details?: unknown;
+            }) => {
+              const updated = {
+                message: p.message || 'Working...',
+                percent: Math.min(99, p.progressPercent || 0),
+                stage: p.stage,
+                timestamp: new Date().toISOString(),
+              };
+              setProgress(updated);
+              setRegistrationProgress(updated);
+            },
+            updateAccountMemo: true,
+          });
+
+          createSuccess = Boolean((resp as any)?.success);
+          createError = (resp as any)?.error;
+        } else {
+          /** Build AI Agent and register with guarded registry */
+          const aBuilder = new AgentBuilder()
+            .setNetwork(wallet.network as 'mainnet' | 'testnet')
+            .setName(submittedFormData.name)
+            .setAlias(submittedFormData.alias)
+            .setBio(submittedFormData.description)
+            .setType(
+              submittedFormData.agentType === 'autonomous'
+                ? 'autonomous'
+                : 'manual'
+            )
+            .setCreator(submittedFormData.creator);
+
+          const caps = (submittedFormData.capabilities || []).map((tag) => {
+            switch (tag) {
+              case 'text-generation':
+                return AIAgentCapability.TEXT_GENERATION;
+              case 'data-integration':
+                return AIAgentCapability.DATA_INTEGRATION;
+              case 'analytics':
+                return AIAgentCapability.MARKET_INTELLIGENCE;
+              case 'automation':
+                return AIAgentCapability.WORKFLOW_AUTOMATION;
+              case 'natural-language':
+                return AIAgentCapability.LANGUAGE_TRANSLATION;
+              case 'image-generation':
+                return AIAgentCapability.IMAGE_GENERATION;
+              case 'code-generation':
+                return AIAgentCapability.CODE_GENERATION;
+              case 'translation':
+                return AIAgentCapability.LANGUAGE_TRANSLATION;
+              case 'summarization':
+                return AIAgentCapability.SUMMARIZATION_EXTRACTION;
+              case 'api-integration':
+                return AIAgentCapability.API_INTEGRATION;
+              default:
+                return AIAgentCapability.TEXT_GENERATION;
+            }
+          });
+          aBuilder.setCapabilities(caps);
+
+          const socials = submittedFormData.socials || {};
+          if (socials.twitter) aBuilder.addSocial('twitter', socials.twitter);
+          if (socials.github) aBuilder.addSocial('github', socials.github);
+          if (socials.website) aBuilder.addSocial('website', socials.website);
+
+          if (preInscribePfpTopicId) {
+            aBuilder.setExistingProfilePicture(preInscribePfpTopicId);
+          } else if (
+            submittedFormData.logo &&
+            submittedFormData.logo.startsWith('hcs://')
+          ) {
+            const topicId = submittedFormData.logo.replace(
+              /^hcs:\/\/[0-9]+\//,
+              ''
+            );
+            aBuilder.setExistingProfilePicture(topicId);
+          }
+
+          const resp = await client.create(aBuilder, {
+            progressCallback: (p: {
+              message?: string;
+              progressPercent?: number;
+              stage?: string;
+              details?: unknown;
+            }) => {
+              const updated = {
+                message: p.message || 'Working...',
+                percent: Math.min(99, p.progressPercent || 0),
+                stage: p.stage,
+                timestamp: new Date().toISOString(),
+              };
+              setProgress(updated);
+              setRegistrationProgress(updated);
+            },
+          });
+          createSuccess = Boolean(resp?.success);
+          createError = resp?.error;
+        }
+
+        const createResp = { success: createSuccess, error: createError } as {
+          success: boolean;
+          error?: string;
+        };
+        if (createResp?.success) {
+          result = {
+            success: true,
+            data: {
+              success: true,
+              accountId: wallet.accountId!,
+              transactionId: 'submitted',
+              timestamp: new Date().toISOString(),
+              profileUrl: undefined,
+              metadata: {
+                name: submittedFormData.name,
+                description: submittedFormData.description,
+                capabilities:
+                  submittedFormData.profileType === 'aiAgent'
+                    ? submittedFormData.capabilities
+                    : [],
+                socials: submittedFormData.socials,
+                profileImage:
+                  submittedFormData.logo || submittedFormData.profileImage,
+                feeConfiguration: submittedFormData.feeConfiguration,
+              },
+            },
+          };
+        } else {
+          result = {
+            success: false,
+            error: createResp?.error || 'Registration failed',
+          };
+        }
+      } else {
+        result = await window.electron.invoke(
+          'hcs10:registerProfile',
+          registrationData
+        );
+      }
 
       if (result.success && result.data) {
         setRegistrationResult(result.data);

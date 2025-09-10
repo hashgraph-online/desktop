@@ -144,14 +144,25 @@ export class HCS10RegistrationService extends EventEmitter {
     customProperties?: Record<string, string>;
     profileType: 'person' | 'agent';
   }> {
-    const metadata: HCS10ProfileFormData & {
+    const normalizedProfileType: 'person' | 'agent' =
+      profileData.profileType === 'person' ? 'person' : 'agent';
+
+    const metadata: {
+      name: string;
+      description: string;
+      capabilities: string[];
+      socials: Record<string, unknown>;
       profilePictureBuffer?: string;
       profilePictureFilename?: string;
+      profileImage?: string;
+      customProperties?: Record<string, string>;
+      profileType: 'person' | 'agent';
     } = {
       name: profileData.name,
       description: profileData.description,
       capabilities: profileData.capabilities,
-      socials: profileData.socials,
+      socials: profileData.socials as Record<string, unknown>,
+      profileType: normalizedProfileType,
     };
 
     if (profileData.profileImageFile) {
@@ -165,7 +176,15 @@ export class HCS10RegistrationService extends EventEmitter {
     }
 
     if (profileData.customProperties) {
-      metadata.customProperties = profileData.customProperties;
+      const stringProps: Record<string, string> = {};
+      Object.entries(profileData.customProperties).forEach(([key, value]) => {
+        if (typeof value === 'string') {
+          stringProps[key] = value;
+        } else if (value != null) {
+          stringProps[key] = String(value);
+        }
+      });
+      metadata.customProperties = stringProps;
     }
 
     return metadata;

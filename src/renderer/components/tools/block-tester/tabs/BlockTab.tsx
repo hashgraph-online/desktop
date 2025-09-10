@@ -108,7 +108,6 @@ const BlockTab: React.FC<BlockTabProps> = ({
             
             <DropdownMenuItem 
               onClick={() => {
-                // TODO: Implement rename functionality
                 logger.info('Rename block', { blockId: block.id });
               }}
             >

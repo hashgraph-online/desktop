@@ -381,7 +381,7 @@ const DashboardPage: React.FC = () => {
           className='mt-12 text-center'
         >
           <Typography variant='caption' color='muted'>
-            Powered by Hedera Hashgraph • Built with love by the HashgraphOnline
+            Powered by Hedera Hashgraph • Built with love by the Moonscape Labs
             team
           </Typography>
         </motion.div>

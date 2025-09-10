@@ -1,10 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '../ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Button } from '../ui/Button';
 import Typography from '../ui/Typography';
 import { Badge } from '../ui/badge';
@@ -68,7 +63,12 @@ interface FilterState {
   agentType: 'all' | 'ai' | 'human' | 'registry';
 }
 
-const capabilityMap: { [key: number]: { name: string; icon: React.ComponentType<{ className?: string }> } } = {
+const capabilityMap: {
+  [key: number]: {
+    name: string;
+    icon: React.ComponentType<{ className?: string }>;
+  };
+} = {
   0: { name: 'Text Generation', icon: FiCode },
   1: { name: 'Image Generation', icon: FiZap },
   2: { name: 'Audio Generation', icon: FiZap },
@@ -116,10 +116,10 @@ export const AgentSelectorModal: React.FC<AgentSelectorModalProps> = ({
 
   const loadAgents = useCallback(async () => {
     if (!isOpen) return;
-    
+
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const result = await window.electron.invoke('hcs10:discover-agents', {
         search: searchTerm,
@@ -152,7 +152,8 @@ export const AgentSelectorModal: React.FC<AgentSelectorModalProps> = ({
 
   const [isConnecting, setIsConnecting] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-  const [selectedAgentToConnect, setSelectedAgentToConnect] = useState<AgentProfile | null>(null);
+  const [selectedAgentToConnect, setSelectedAgentToConnect] =
+    useState<AgentProfile | null>(null);
 
   const handleConnect = useCallback(async (agent: AgentProfile) => {
     setSelectedAgentToConnect(agent);
@@ -181,10 +182,10 @@ export const AgentSelectorModal: React.FC<AgentSelectorModalProps> = ({
   }, []);
 
   const handleFilterChange = useCallback((newFilters: Partial<FilterState>) => {
-    setFilters(prev => ({ ...prev, ...newFilters }));
+    setFilters((prev) => ({ ...prev, ...newFilters }));
   }, []);
 
-  const filteredAgents = agents.filter(agent => {
+  const filteredAgents = agents.filter((agent) => {
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
       const name = agent.profile?.display_name || agent.profile?.alias || '';
@@ -199,7 +200,8 @@ export const AgentSelectorModal: React.FC<AgentSelectorModalProps> = ({
   });
 
   const AgentCard: React.FC<{ agent: AgentProfile }> = ({ agent }) => {
-    const displayName = agent.profile?.display_name || agent.profile?.alias || 'Unknown Agent';
+    const displayName =
+      agent.profile?.display_name || agent.profile?.alias || 'Unknown Agent';
     const bio = agent.profile?.bio || 'No description available';
     const capabilities = agent.profile?.aiAgent?.capabilities || [];
     const rating = agent.rating || 0;
@@ -212,42 +214,51 @@ export const AgentSelectorModal: React.FC<AgentSelectorModalProps> = ({
     );
 
     return (
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-4 hover:shadow-lg transition-all duration-200 hover:border-blue-300 dark:hover:border-blue-700">
-        <div className="flex items-start gap-3">
+      <div className='bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-4 hover:shadow-lg transition-all duration-200 hover:border-blue-300 dark:hover:border-blue-700'>
+        <div className='flex items-start gap-3'>
           {/* Avatar */}
-          <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold shrink-0">
+          <div className='w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold shrink-0'>
             {imageLoading ? (
-              <FiRefreshCw className="w-5 h-5 animate-spin" />
+              <FiRefreshCw className='w-5 h-5 animate-spin' />
             ) : imageUrl ? (
               <img
                 src={imageUrl}
                 alt={`${displayName} avatar`}
-                className="w-12 h-12 rounded-lg object-cover"
+                className='w-12 h-12 rounded-lg object-cover'
                 onError={() => {}}
               />
             ) : isAI ? (
-              <FiCode className="w-6 h-6" />
+              <FiCode className='w-6 h-6' />
             ) : (
-              <FiUsers className="w-6 h-6" />
+              <FiUsers className='w-6 h-6' />
             )}
           </div>
 
           {/* Content */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between mb-2">
-              <div className="flex-1 min-w-0">
-                <Typography variant="body1" className="font-semibold text-gray-900 dark:text-white truncate">
+          <div className='flex-1 min-w-0'>
+            <div className='flex items-start justify-between mb-2'>
+              <div className='flex-1 min-w-0'>
+                <Typography
+                  variant='body1'
+                  className='font-semibold text-gray-900 dark:text-white truncate'
+                >
                   {displayName}
                 </Typography>
-                <Typography variant="caption" className="text-gray-600 dark:text-gray-400 text-xs">
+                <Typography
+                  variant='caption'
+                  className='text-gray-600 dark:text-gray-400 text-xs'
+                >
                   {agent.accountId}
                 </Typography>
               </div>
-              
+
               {rating > 0 && (
-                <div className="flex items-center gap-1 shrink-0">
-                  <FiStar className="w-3 h-3 text-yellow-500" />
-                  <Typography variant="caption" className="text-gray-600 dark:text-gray-400 text-xs">
+                <div className='flex items-center gap-1 shrink-0'>
+                  <FiStar className='w-3 h-3 text-yellow-500' />
+                  <Typography
+                    variant='caption'
+                    className='text-gray-600 dark:text-gray-400 text-xs'
+                  >
                     {rating.toFixed(1)} ({ratingCount})
                   </Typography>
                 </div>
@@ -255,50 +266,50 @@ export const AgentSelectorModal: React.FC<AgentSelectorModalProps> = ({
             </div>
 
             <Typography
-              variant="caption"
-              className="text-gray-700 dark:text-gray-300 text-sm line-clamp-2 mb-3"
+              variant='caption'
+              className='text-gray-700 dark:text-gray-300 text-sm line-clamp-2 mb-3'
             >
               {bio}
             </Typography>
 
             {/* Badges */}
-            <div className="flex flex-wrap gap-1 mb-3">
+            <div className='flex flex-wrap gap-1 mb-3'>
               {isAI && (
-                <Badge variant="outline" className="text-xs px-2 py-0.5">
+                <Badge variant='outline' className='text-xs px-2 py-0.5'>
                   AI Agent
                 </Badge>
               )}
               {agent.isRegistryBroker && (
-                <Badge variant="outline" className="text-xs px-2 py-0.5">
+                <Badge variant='outline' className='text-xs px-2 py-0.5'>
                   External
                 </Badge>
               )}
-              <Badge variant="outline" className="text-xs px-2 py-0.5">
+              <Badge variant='outline' className='text-xs px-2 py-0.5'>
                 {currentNetwork.toUpperCase()}
               </Badge>
             </div>
 
             {/* Capabilities */}
             {capabilities.length > 0 && (
-              <div className="flex flex-wrap gap-1 mb-3">
+              <div className='flex flex-wrap gap-1 mb-3'>
                 {capabilities.slice(0, 3).map((capId) => {
                   const cap = capabilityMap[capId];
                   if (!cap) return null;
-                  
+
                   const IconComponent = cap.icon;
                   return (
                     <div
                       key={capId}
-                      className="flex items-center gap-1 bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 px-2 py-1 rounded text-xs"
+                      className='flex items-center gap-1 bg-blue-100 dark:bg-blue-950/50 text-blue-800 dark:text-blue-200 px-2 py-1 rounded text-xs'
                       title={cap.name}
                     >
-                      <IconComponent className="w-3 h-3" />
+                      <IconComponent className='w-3 h-3' />
                       <span>{cap.name}</span>
                     </div>
                   );
                 })}
                 {capabilities.length > 3 && (
-                  <div className="flex items-center text-gray-500 dark:text-gray-400 px-2 py-1 text-xs">
+                  <div className='flex items-center text-gray-500 dark:text-gray-400 px-2 py-1 text-xs'>
                     +{capabilities.length - 3} more
                   </div>
                 )}
@@ -306,23 +317,18 @@ export const AgentSelectorModal: React.FC<AgentSelectorModalProps> = ({
             )}
 
             {/* Actions */}
-            <div className="flex gap-2">
+            <div className='flex gap-2'>
               <Button
-                size="sm"
+                size='sm'
                 onClick={() => handleConnect(agent)}
-                className="flex-1"
+                className='flex-1'
               >
-                <FiMessageSquare className="w-4 h-4 mr-2" />
+                <FiMessageSquare className='w-4 h-4 mr-2' />
                 Connect
               </Button>
-              
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                }}
-              >
-                <FiExternalLink className="w-4 h-4" />
+
+              <Button size='sm' variant='outline' onClick={() => {}}>
+                <FiExternalLink className='w-4 h-4' />
               </Button>
             </div>
           </div>
@@ -333,114 +339,136 @@ export const AgentSelectorModal: React.FC<AgentSelectorModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 shadow-xl z-50">
+      <DialogContent className='max-w-4xl max-h-[90vh] overflow-hidden bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 shadow-xl z-50'>
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FiUsers className="w-5 h-5" />
+          <DialogTitle className='flex items-center gap-2'>
+            <FiUsers className='w-5 h-5' />
             Discover Agents
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex flex-col h-[70vh]">
+        <div className='flex flex-col h-[70vh]'>
           {/* Search and filters */}
-          <div className="space-y-4 pb-4 border-b border-gray-200 dark:border-gray-800">
+          <div className='space-y-4 pb-4 border-b border-gray-200 dark:border-gray-800'>
             {/* Search bar */}
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <div className='flex gap-2'>
+              <div className='relative flex-1'>
+                <FiSearch className='absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4' />
                 <input
-                  type="text"
-                  placeholder="Search agents by name, description, or account ID..."
+                  type='text'
+                  placeholder='Search agents by name, description, or account ID...'
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className='w-full pl-10 pr-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500'
                 />
                 {searchTerm && (
                   <Button
-                    variant="ghost"
-                    size="icon"
+                    variant='ghost'
+                    size='icon'
                     onClick={() => setSearchTerm('')}
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6"
+                    className='absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6'
                   >
-                    <FiX className="h-3 w-3" />
+                    <FiX className='h-3 w-3' />
                   </Button>
                 )}
               </div>
-              
+
               <Button
-                variant="outline"
+                variant='outline'
                 onClick={() => setShowFilters(!showFilters)}
-                className={cn(showFilters && 'bg-blue-50 dark:bg-blue-950/30')}
+                className={cn(showFilters && 'bg-blue-100 dark:bg-blue-950/50')}
               >
-                <FiFilter className="w-4 h-4 mr-2" />
+                <FiFilter className='w-4 h-4 mr-2' />
                 Filters
               </Button>
-              
+
               <Button
-                variant="outline"
+                variant='outline'
                 onClick={loadAgents}
                 disabled={isLoading}
               >
-                <FiRefreshCw className={cn('w-4 h-4', isLoading && 'animate-spin')} />
+                <FiRefreshCw
+                  className={cn('w-4 h-4', isLoading && 'animate-spin')}
+                />
               </Button>
             </div>
 
             {/* Sort and filter controls */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Typography variant="caption" className="text-gray-600 dark:text-gray-400">
+            <div className='flex items-center justify-between'>
+              <div className='flex items-center gap-2'>
+                <Typography
+                  variant='caption'
+                  className='text-gray-600 dark:text-gray-400'
+                >
                   Sort by:
                 </Typography>
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as any)}
-                  className="px-3 py-1 border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-900 text-sm"
+                  className='px-3 py-1 border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-900 text-sm'
                 >
-                  <option value="rating">Rating</option>
-                  <option value="name">Name</option>
-                  <option value="recent">Recently Active</option>
+                  <option value='rating'>Rating</option>
+                  <option value='name'>Name</option>
+                  <option value='recent'>Recently Active</option>
                 </select>
               </div>
-              
-              <Typography variant="caption" className="text-gray-600 dark:text-gray-400">
+
+              <Typography
+                variant='caption'
+                className='text-gray-600 dark:text-gray-400'
+              >
                 {filteredAgents.length} agents found
               </Typography>
             </div>
 
             {/* Advanced filters */}
             {showFilters && (
-              <div className="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-lg space-y-3">
+              <div className='bg-gray-50 dark:bg-gray-900/50 p-4 rounded-lg space-y-3'>
                 <div>
-                  <Typography variant="caption" className="text-gray-700 dark:text-gray-300 mb-2 block">
+                  <Typography
+                    variant='caption'
+                    className='text-gray-700 dark:text-gray-300 mb-2 block'
+                  >
                     Agent Type
                   </Typography>
-                  <div className="flex gap-2">
-                    {(['all', 'ai', 'human', 'registry'] as const).map((type) => (
-                      <Button
-                        key={type}
-                        size="sm"
-                        variant={filters.agentType === type ? 'default' : 'outline'}
-                        onClick={() => handleFilterChange({ agentType: type })}
-                      >
-                        {type === 'all' && 'All'}
-                        {type === 'ai' && 'AI Agents'}
-                        {type === 'human' && 'Human'}
-                        {type === 'registry' && 'External'}
-                      </Button>
-                    ))}
+                  <div className='flex gap-2'>
+                    {(['all', 'ai', 'human', 'registry'] as const).map(
+                      (type) => (
+                        <Button
+                          key={type}
+                          size='sm'
+                          variant={
+                            filters.agentType === type ? 'default' : 'outline'
+                          }
+                          onClick={() =>
+                            handleFilterChange({ agentType: type })
+                          }
+                        >
+                          {type === 'all' && 'All'}
+                          {type === 'ai' && 'AI Agents'}
+                          {type === 'human' && 'Human'}
+                          {type === 'registry' && 'External'}
+                        </Button>
+                      )
+                    )}
                   </div>
                 </div>
 
                 <div>
-                  <Typography variant="caption" className="text-gray-700 dark:text-gray-300 mb-2 block">
+                  <Typography
+                    variant='caption'
+                    className='text-gray-700 dark:text-gray-300 mb-2 block'
+                  >
                     Minimum Rating
                   </Typography>
-                  <div className="flex gap-2">
+                  <div className='flex gap-2'>
                     {[0, 3, 4, 4.5].map((rating) => (
                       <Button
                         key={rating}
-                        size="sm"
-                        variant={filters.rating === rating ? 'default' : 'outline'}
+                        size='sm'
+                        variant={
+                          filters.rating === rating ? 'default' : 'outline'
+                        }
                         onClick={() => handleFilterChange({ rating })}
                       >
                         {rating === 0 ? 'Any' : `${rating}+ ⭐`}
@@ -453,36 +481,48 @@ export const AgentSelectorModal: React.FC<AgentSelectorModalProps> = ({
           </div>
 
           {/* Results */}
-          <div className="flex-1 overflow-y-auto py-4">
+          <div className='flex-1 overflow-y-auto py-4'>
             {error ? (
-              <div className="text-center py-8">
-                <Typography variant="body1" className="text-red-600 dark:text-red-400 mb-2">
+              <div className='text-center py-8'>
+                <Typography
+                  variant='body1'
+                  className='text-red-600 dark:text-red-400 mb-2'
+                >
                   {error}
                 </Typography>
-                <Button variant="outline" onClick={loadAgents}>
-                  <FiRefreshCw className="w-4 h-4 mr-2" />
+                <Button variant='outline' onClick={loadAgents}>
+                  <FiRefreshCw className='w-4 h-4 mr-2' />
                   Retry
                 </Button>
               </div>
             ) : isLoading ? (
-              <div className="text-center py-8">
-                <FiRefreshCw className="w-6 h-6 animate-spin text-gray-400 mx-auto mb-3" />
-                <Typography variant="body1" className="text-gray-600 dark:text-gray-400">
+              <div className='text-center py-8'>
+                <FiRefreshCw className='w-6 h-6 animate-spin text-gray-400 mx-auto mb-3' />
+                <Typography
+                  variant='body1'
+                  className='text-gray-600 dark:text-gray-400'
+                >
                   Discovering agents...
                 </Typography>
               </div>
             ) : filteredAgents.length === 0 ? (
-              <div className="text-center py-8">
-                <FiUsers className="w-8 h-8 text-gray-400 mx-auto mb-3" />
-                <Typography variant="body1" className="text-gray-600 dark:text-gray-400 mb-2">
+              <div className='text-center py-8'>
+                <FiUsers className='w-8 h-8 text-gray-400 mx-auto mb-3' />
+                <Typography
+                  variant='body1'
+                  className='text-gray-600 dark:text-gray-400 mb-2'
+                >
                   No agents found
                 </Typography>
-                <Typography variant="caption" className="text-gray-500 dark:text-gray-500">
+                <Typography
+                  variant='caption'
+                  className='text-gray-500 dark:text-gray-500'
+                >
                   Try adjusting your search terms or filters
                 </Typography>
               </div>
             ) : (
-              <div className="grid gap-4">
+              <div className='grid gap-4'>
                 {filteredAgents.map((agent) => (
                   <AgentCard key={agent.accountId} agent={agent} />
                 ))}
@@ -492,23 +532,26 @@ export const AgentSelectorModal: React.FC<AgentSelectorModalProps> = ({
 
           {/* Pagination */}
           {filteredAgents.length >= pageSize && (
-            <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-800">
+            <div className='flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-800'>
               <Button
-                variant="outline"
+                variant='outline'
                 disabled={currentPage === 1}
-                onClick={() => setCurrentPage(prev => prev - 1)}
+                onClick={() => setCurrentPage((prev) => prev - 1)}
               >
                 Previous
               </Button>
-              
-              <Typography variant="caption" className="text-gray-600 dark:text-gray-400">
+
+              <Typography
+                variant='caption'
+                className='text-gray-600 dark:text-gray-400'
+              >
                 Page {currentPage}
               </Typography>
-              
+
               <Button
-                variant="outline"
+                variant='outline'
                 disabled={filteredAgents.length < pageSize}
-                onClick={() => setCurrentPage(prev => prev + 1)}
+                onClick={() => setCurrentPage((prev) => prev + 1)}
               >
                 Next
               </Button>

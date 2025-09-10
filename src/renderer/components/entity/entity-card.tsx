@@ -36,7 +36,7 @@ export interface EntityCardProps {
   onDelete: () => void;
   onRename: (newName: string) => void;
   onCopyToClipboard: () => void;
-  onKeyDown?: (event: KeyboardEvent) => void;
+  onKeyDown?: (event: React.KeyboardEvent<HTMLElement>) => void;
   tabIndex?: number;
   style?: CSSProperties;
 }

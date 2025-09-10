@@ -7,6 +7,9 @@ import type {
   SearchCacheEntry
 } from '../db/schema'
 
+export type FreshnessTier = 'fresh' | 'stale' | 'expired'
+export interface FreshnessPolicy { freshMs: number; ttlMs: number }
+
 export type MCPServerInput = {
   id: string
   name: string
@@ -50,6 +53,7 @@ export interface CacheSearchResult {
   hasMore: boolean
   fromCache: boolean
   queryTime: number
+  staleness?: FreshnessTier
 }
 
 /**
@@ -63,16 +67,19 @@ export class MCPCacheManager {
   private readonly SEARCH_CACHE_TTL = 30 * 60 * 1000;
   private readonly SERVER_CACHE_TTL = 4 * 60 * 60 * 1000;
   private readonly MAX_CACHE_ENTRIES = 1000;
+  private readonly SEARCH_FRESH_MS = 5 * 60 * 1000;
+  private readonly REGISTRY_FRESH_MS = 60 * 60 * 1000;
 
   private constructor() {
     this.logger = new Logger({ module: 'MCPCacheManager' })
     this.db = getDatabase()
     
+    
     if (this.isDatabaseAvailable()) {
       this.setupPeriodicCleanup()
-      this.logger.info('Cache manager initialized with database support')
+      try { this.logger.info('Cache manager initialized with database support') } catch {}
     } else {
-      this.logger.warn('Database not available - cache manager will operate in memory-only mode')
+      try { this.logger.warn('Database not available - cache manager will operate in memory-only mode') } catch {}
     }
   }
 
@@ -92,6 +99,13 @@ export class MCPCacheManager {
       this.logger.debug('Database not available for cache operation')
     }
     return available
+  }
+
+  /**
+   * Exposes whether the persistent cache is available.
+   */
+  isCacheAvailable(): boolean {
+    return this.isDatabaseAvailable()
   }
 
   /**
@@ -118,13 +132,16 @@ export class MCPCacheManager {
       if (cachedResult) {
         const servers = await this.getServersByIds(Array.isArray(cachedResult.resultIds) ? cachedResult.resultIds : [cachedResult.resultIds])
         this.recordMetric('search', Date.now() - startTime, true, servers.length)
-        
+        if (cachedResult.staleness === 'stale') {
+          this.backgroundRevalidateSearch(options).catch(() => {})
+        }
         return {
           servers,
           total: cachedResult.totalCount,
           hasMore: cachedResult.hasMore || false,
           fromCache: true,
-          queryTime: Date.now() - startTime
+          queryTime: Date.now() - startTime,
+          staleness: cachedResult.staleness
         }
       }
 
@@ -402,9 +419,9 @@ export class MCPCacheManager {
       const nextSyncDelay = status === 'success' ? 60 * 60 * 1000 : 5 * 60 * 1000
       updateData.nextSyncAt = new Date(Date.now() + nextSyncDelay)
 
-      await this.db!.update(schema.registrySync)
-        .set(updateData)
-        .where(eq(schema.registrySync.registry, registry))
+      await this.db!.insert(schema.registrySync)
+        .values({ registry, ...updateData })
+        .onConflictDoUpdate({ target: schema.registrySync.registry, set: updateData })
         .run()
 
       this.logger.info(`Updated registry sync status for ${registry}: ${status}`)
@@ -650,7 +667,7 @@ export class MCPCacheManager {
     }
   }
 
-  private async getCachedSearch(queryHash: string): Promise<SearchCacheEntry | null> {
+  private async getCachedSearch(queryHash: string): Promise<(SearchCacheEntry & { staleness: FreshnessTier }) | null> {
     if (!this.isDatabaseAvailable()) {
       return null
     }
@@ -662,19 +679,19 @@ export class MCPCacheManager {
         .get()
 
       if (cached) {
-        const isFresh = cached.expiresAt && cached.expiresAt > new Date()
-        if (!isFresh) {
+        const staleness = this.computeSearchStaleness(cached.createdAt, cached.expiresAt)
+        if (staleness === 'expired') {
           return null
         }
 
         try {
           await this.db!.update(schema.searchCache)
-            .set({ [schema.searchCache.hitCount.name]: (cached.hitCount || 0) + 1 })
+            .set({ [schema.searchCache.hitCount.name]: cached.hitCount ? cached.hitCount + 1 : 1 })
             .where(eq(schema.searchCache.id, cached.id))
             .run()
         } catch {}
 
-        return { ...cached, resultIds: JSON.parse(cached.resultIds) }
+        return { ...cached, resultIds: JSON.parse(cached.resultIds), staleness }
       }
 
       return null
@@ -698,6 +715,51 @@ export class MCPCacheManager {
     } catch (error) {
       this.logger.error('Failed to get servers by IDs:', error)
       return []
+    }
+  }
+
+  private computeSearchStaleness(createdAt: Date | number | null | undefined, expiresAt: Date | number | null | undefined): FreshnessTier {
+    const now = Date.now()
+    const createdMs = createdAt instanceof Date ? createdAt.getTime() : (typeof createdAt === 'number' ? createdAt : now)
+    const expireMs = expiresAt instanceof Date ? expiresAt.getTime() : (typeof expiresAt === 'number' ? expiresAt : createdMs + this.SEARCH_CACHE_TTL)
+    const age = now - createdMs
+    if (age < this.SEARCH_FRESH_MS) return 'fresh'
+    if (now < expireMs) return 'stale'
+    return 'expired'
+  }
+
+  async getRegistryFreshnessTier(registry: string, policy?: FreshnessPolicy): Promise<FreshnessTier> {
+    if (!this.isDatabaseAvailable()) return 'expired'
+    try {
+      const row = await this.db!.select()
+        .from(schema.registrySync)
+        .where(eq(schema.registrySync.registry, registry))
+        .get()
+      if (!row?.lastSuccessAt) {
+        const latest = await this.db!.select({ lastFetched: schema.mcpServers.lastFetched })
+          .from(schema.mcpServers)
+          .where(and(eq(schema.mcpServers.registry, registry), eq(schema.mcpServers.isActive, true)))
+          .orderBy(desc(schema.mcpServers.lastFetched))
+          .limit(1)
+          .get()
+        const freshMs = policy?.freshMs ?? this.REGISTRY_FRESH_MS
+        const ttlMs = policy?.ttlMs ?? this.SERVER_CACHE_TTL
+        if (!latest?.lastFetched) return 'expired'
+        const last = latest.lastFetched instanceof Date ? latest.lastFetched.getTime() : Number(latest.lastFetched)
+        const age = Date.now() - last
+        if (age < freshMs) return 'fresh'
+        if (age < ttlMs) return 'stale'
+        return 'expired'
+      }
+      const freshMs = policy?.freshMs ?? this.REGISTRY_FRESH_MS
+      const ttlMs = policy?.ttlMs ?? this.SERVER_CACHE_TTL
+      const last = row.lastSuccessAt instanceof Date ? row.lastSuccessAt.getTime() : Number(row.lastSuccessAt)
+      const age = Date.now() - last
+      if (age < freshMs) return 'fresh'
+      if (age < ttlMs) return 'stale'
+      return 'expired'
+    } catch {
+      return 'expired'
     }
   }
 
@@ -952,5 +1014,16 @@ export class MCPCacheManager {
     } catch (error) {
       this.logger.warn('Failed to cleanup expired cache:', error)
     }
+  }
+
+  async backgroundRevalidateSearch(options: CacheSearchOptions): Promise<void> {
+    if (!this.isDatabaseAvailable()) return
+    const queryHash = this.generateSearchHash(options)
+    setTimeout(async () => {
+      try {
+        const fresh = await this.performDatabaseSearch(options)
+        await this.cacheSearchResult(queryHash, options, fresh)
+      } catch {}
+    }, 0)
   }
 }

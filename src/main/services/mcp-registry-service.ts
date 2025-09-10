@@ -330,6 +330,12 @@ export class MCPRegistryService {
             );
             const cachedSorted = this.sortServers(installableServers);
 
+            if ((cacheResult as { staleness?: string }).staleness === 'stale') {
+              try {
+                this.triggerBackgroundSync();
+              } catch {}
+            }
+
             try {
               const api = await Promise.race([
                 this.searchPulseMCP({
@@ -728,8 +734,8 @@ export class MCPRegistryService {
       if (!resp.ok) throw new Error(`Glama API error: ${resp.status}`);
       const data = await resp.json() as any;
       const servers = Array.isArray(data.servers) ? data.servers : [];
-      const mapped: MCPRegistryServer[] = servers.map((s: any) => {
-        const repo = s.repository?.url ? String(s.repository.url) : undefined;
+      const mapped: MCPRegistryServer[] = servers.map((s: Record<string, unknown>) => {
+        const repo = (s as any).repository?.url ? String((s as any).repository.url) : undefined;
         const normalized = this.normalizeGithubUrl(repo);
         return {
           id: String(s.id || s.name),
@@ -743,8 +749,8 @@ export class MCPRegistryService {
       return {
         servers: mapped,
         total: undefined,
-        hasMore: Boolean(data.pageInfo?.hasNextPage),
-        cursor: data.pageInfo?.endCursor || undefined,
+        hasMore: Boolean((data as any).pageInfo?.hasNextPage),
+        cursor: (data as any).pageInfo?.endCursor || undefined,
       };
     } catch (error) {
       this.logger.warn('Glama error:', error);
@@ -815,9 +821,9 @@ export class MCPRegistryService {
       createdAt: server.created_at,
       updatedAt: server.updated_at,
       installCount:
-        (server as any).package_download_count ||
-        (server as any).downloads ||
-        (server as any).install_count,
+        (server as { package_download_count?: number; downloads?: number; install_count?: number }).package_download_count ||
+        (server as { package_download_count?: number; downloads?: number; install_count?: number }).downloads ||
+        (server as { package_download_count?: number; downloads?: number; install_count?: number }).install_count,
       githubStars: server.github_stars,
       rating: server.rating,
       tools: server.tools || server.capabilities?.tools || undefined,
@@ -1025,6 +1031,13 @@ export class MCPRegistryService {
       return;
     }
 
+    try {
+      if (!this.cacheManager.isCacheAvailable()) {
+        this.logger.debug('Cache is not available (DB disabled) - skipping background sync');
+        return;
+      }
+    } catch {}
+
     if (this.backgroundSyncActive) {
       this.logger.debug('Background sync already active, skipping');
       return;
@@ -1074,8 +1087,10 @@ export class MCPRegistryService {
     const startTime = Date.now();
 
     try {
-      const isFresh = await this.cacheManager.isRegistryFresh(registry);
-      if (isFresh) {
+      const tier = await (this.cacheManager as { getRegistryFreshnessTier?: (registry: string) => Promise<string> }).getRegistryFreshnessTier
+        ? await (this.cacheManager as { getRegistryFreshnessTier?: (registry: string) => Promise<string> }).getRegistryFreshnessTier(registry)
+        : (await this.cacheManager.isRegistryFresh(registry) ? 'fresh' : 'expired')
+      if (tier === 'fresh') {
         this.logger.debug(
           `Registry ${registry} is already fresh, skipping sync`
         );
@@ -1087,7 +1102,7 @@ export class MCPRegistryService {
       let totalServers = 0;
       let offset = 0;
       let cursor: string | undefined = undefined;
-      let currentProvider: 'pulsemcp' | 'glama' = (registry as any) === 'glama' ? 'glama' : 'pulsemcp';
+      let currentProvider: 'pulsemcp' | 'glama' = (registry as string) === 'glama' ? 'glama' : 'pulsemcp';
       const servers: MCPRegistryServer[] = [];
 
       while (true) {
@@ -1140,7 +1155,7 @@ export class MCPRegistryService {
         }
 
         if (currentProvider === 'glama') {
-          cursor = (batchResults as any).cursor || cursor;
+          cursor = (batchResults as { cursor?: string }).cursor || cursor;
         } else {
           offset += this.BACKGROUND_BATCH_SIZE;
         }
@@ -1253,9 +1268,9 @@ export class MCPRegistryService {
         Array.isArray(results[0].value)
       ) {
         const fulfilled = results[0].value.find(
-          (r: any) => r.status === 'fulfilled' && r.value
-        );
-        if (fulfilled && fulfilled.value) {
+          (r: PromiseSettledResult<MCPRegistryResponse>) => r.status === 'fulfilled'
+        ) as PromiseFulfilledResult<MCPRegistryResponse> | undefined;
+        if (fulfilled) {
           totalCount = Number(fulfilled.value.total || 0);
           hasMoreResults = Boolean(fulfilled.value.hasMore);
         }

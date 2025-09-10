@@ -34,8 +34,7 @@ export function ChatComposer(props: ChatComposerProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   return (
-    <div className='px-3 sm:px-4 lg:px-6 pb-6 pt-3'>
-      <div className='max-w-5xl mx-auto'>
+    <div>
         {fileError ? (
           <Alert className='mb-3 border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/20'>
             <FiAlertCircle className='h-4 w-4 text-orange-600 dark:text-orange-400' />
@@ -161,7 +160,6 @@ export function ChatComposer(props: ChatComposerProps) {
           className='hidden'
           accept='*/*'
         />
-      </div>
     </div>
   );
 }

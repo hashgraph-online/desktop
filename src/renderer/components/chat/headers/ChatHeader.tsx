@@ -1,6 +1,7 @@
 import React from 'react';
 import Typography from '../../ui/Typography';
 import { cn } from '../../../lib/utils';
+import { useWalletStore } from '../../../stores/walletStore';
 import type { ChatSession } from '../../../../main/db/schema';
 import {
   FiPlus,
@@ -63,8 +64,8 @@ export default function ChatHeader(props: ChatHeaderProps) {
   } = props;
 
   return (
-    <header className='h-14 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-b border-gray-200/30 dark:border-gray-800/30 flex items-center justify-between px-3 sm:px-4 lg:px-6 relative z-20 gap-6 shadow-sm shadow-gray-200/10 dark:shadow-gray-900/20'>
-      <div className='max-w-5xl mx-auto w-full flex items-center justify-between gap-6'>
+    <header className='h-14 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-b border-gray-200/30 dark:border-gray-800/30 flex items-center px-3 sm:px-4 lg:px-6 relative z-20 shadow-sm shadow-gray-200/10 dark:shadow-gray-900/20'>
+      <div className='w-full flex items-center justify-between gap-6'>
         <div className='flex items-center gap-3 sm:gap-4 flex-shrink-0'>
           <div className='relative'>
             <button
@@ -80,7 +81,7 @@ export default function ChatHeader(props: ChatHeaderProps) {
                   )}
                 />
                 {mode === 'personal' ? (
-                  <FiUser className='w-4 h-4 text-blue-600 dark:text-blue-400' />
+                  <FiUser className='w-4 h-4 text-blue-500 dark:text-blue-300' />
                 ) : (
                   <FiUsers className='w-4 h-4 text-purple-600 dark:text-purple-400' />
                 )}
@@ -91,7 +92,7 @@ export default function ChatHeader(props: ChatHeaderProps) {
                   className={cn(
                     'text-xs font-medium leading-none',
                     mode === 'personal'
-                      ? 'text-blue-700 dark:text-blue-300'
+                      ? 'text-blue-600 dark:text-blue-200'
                       : 'text-purple-700 dark:text-purple-300'
                   )}
                 >
@@ -104,8 +105,8 @@ export default function ChatHeader(props: ChatHeaderProps) {
                   {currentSession
                     ? currentSession.name
                     : mode === 'personal'
-                    ? 'No session selected'
-                    : 'No agent selected'}
+                      ? 'No session selected'
+                      : 'No agent selected'}
                 </Typography>
               </div>
               <FiChevronDown className='w-3 h-3 text-gray-500 flex-shrink-0' />
@@ -268,6 +269,20 @@ export default function ChatHeader(props: ChatHeaderProps) {
               {networkLabel}
             </Typography>
           </div>
+          {(() => {
+            const s = useWalletStore.getState();
+            const label = s.isConnected
+              ? `${s.network} · ${s.accountId?.slice(-6) || '—'}`
+              : 'Disconnected';
+            return (
+              <div className='hidden sm:flex items-center gap-2 px-2.5 py-1.5 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md rounded-lg border border-gray-200/40 dark:border-gray-700/40 shadow-sm text-sm'>
+                <FiShield className={s.isConnected ? 'w-4 h-4 text-hgo-purple' : 'w-4 h-4 text-gray-400'} />
+                <Typography variant='caption' className='font-semibold'>
+                  {label}
+                </Typography>
+              </div>
+            );
+          })()}
           <div className='hidden sm:flex items-center gap-2 px-2.5 py-1.5 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md rounded-lg border border-gray-200/40 dark:border-gray-700/40 shadow-sm text-sm'>
             <FiShield className='w-4 h-4 text-hgo-purple' />
             <Typography variant='caption' className='font-semibold'>

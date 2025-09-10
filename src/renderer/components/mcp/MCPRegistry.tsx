@@ -135,7 +135,6 @@ export const MCPRegistry: React.FC<MCPRegistryProps> = ({
     }
   }, [])
 
-  // Sorting handled by pure helper above to avoid inline callbacks
 
   const searchRegistries = useCallback(async (query: string = '', tags: string[] = [], pageNum: number = 0, append: boolean = false) => {
     if (!window.electron?.searchMCPRegistry) {

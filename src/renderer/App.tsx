@@ -18,6 +18,7 @@ import { ConfigInitProvider } from './providers/ConfigInitProvider';
 import { SessionInitProvider } from './providers/SessionInitProvider';
 import { KeyboardShortcutsProvider } from './providers/KeyboardShortcutsProvider';
 import { MCPInitProvider } from './providers/MCPInitProvider';
+import { WalletInitProvider } from './providers/WalletInitProvider';
 import { NotificationContainer } from './components/notifications/NotificationContainer';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { LegalGuard } from './components/ui/LegalGuard';
@@ -29,9 +30,9 @@ interface AppProps {}
 const App: React.FC<AppProps> = () => {
   return (
     <ErrorBoundary>
-      <StoreProvider>
-        <ConfigInitProvider>
-          <SessionInitProvider>
+      <ConfigInitProvider>
+        <SessionInitProvider>
+          <WalletInitProvider>
             <LegalGuard>
               <Router>
                 <MCPInitProvider>
@@ -40,8 +41,14 @@ const App: React.FC<AppProps> = () => {
                       <Layout>
                         <Routes>
                           <Route path='/' element={<DashboardPage />} />
-                          <Route path='/dashboard' element={<DashboardPage />} />
-                          <Route path='/chat/:agentId?' element={<ChatPage />} />
+                          <Route
+                            path='/dashboard'
+                            element={<DashboardPage />}
+                          />
+                          <Route
+                            path='/chat/:agentId?'
+                            element={<ChatPage />}
+                          />
                           <Route
                             path='/discover'
                             element={<AgentDiscoveryPage />}
@@ -53,8 +60,14 @@ const App: React.FC<AppProps> = () => {
                           <Route path='/mcp' element={<MCPPage />} />
                           <Route path='/plugins' element={<PluginsPage />} />
                           <Route path='/tools' element={<ToolsPage />} />
-                          <Route path='/entity-manager' element={<EntityManagerPage />} />
-                          <Route path='/block-tester' element={<BlockTesterPage />} />
+                          <Route
+                            path='/entity-manager'
+                            element={<EntityManagerPage />}
+                          />
+                          <Route
+                            path='/block-tester'
+                            element={<BlockTesterPage />}
+                          />
                           <Route
                             path='/hcs10-profile'
                             element={<HCS10ProfileRegistration />}
@@ -73,9 +86,9 @@ const App: React.FC<AppProps> = () => {
                 </MCPInitProvider>
               </Router>
             </LegalGuard>
-          </SessionInitProvider>
-        </ConfigInitProvider>
-      </StoreProvider>
+          </WalletInitProvider>
+        </SessionInitProvider>
+      </ConfigInitProvider>
     </ErrorBoundary>
   );
 };

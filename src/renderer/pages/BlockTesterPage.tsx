@@ -58,7 +58,6 @@ const BlockTesterPage: React.FC = () => {
   const hasErrors = validation.errors.length > 0;
   const hasWarnings = validation.warnings.length > 0;
 
-  // Handle keyboard shortcuts
   useBlockTesterKeyboard({
     onNextTab: () => {
       if (blocks.length > 1) {

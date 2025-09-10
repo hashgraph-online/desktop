@@ -45,7 +45,6 @@ const BlockTabs: React.FC<BlockTabsProps> = ({
   const [showOverflow, setShowOverflow] = useState(false);
   const tabsRef = useRef<HTMLDivElement>(null);
 
-  // Check for overflow when blocks change
   useEffect(() => {
     const checkOverflow = () => {
       if (tabsRef.current) {
@@ -63,10 +62,7 @@ const BlockTabs: React.FC<BlockTabsProps> = ({
     };
   }, [blocks.length]);
 
-  // Get overflowed tabs (not visible in the main scroll area)
   const getOverflowedTabs = () => {
-    // For simplicity, show all tabs in overflow menu when overflow is detected
-    // In a more advanced implementation, you'd calculate which tabs are actually hidden
     return blocks.map((block, index) => ({ block, index }));
   };
 

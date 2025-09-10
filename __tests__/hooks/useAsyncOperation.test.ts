@@ -36,14 +36,15 @@ describe('useAsyncOperation', () => {
       const { result } = renderHook(() => useAsyncOperation())
       const mockOperation = jest.fn().mockImplementation(() => delay(100).then(() => 'success'))
 
-      const executePromise = act(async () => {
-        return result.current.execute(mockOperation)
+      let executePromise: Promise<any>
+
+      await act(async () => {
+        executePromise = result.current.execute(mockOperation)
+        expect(result.current.isLoading).toBe(true)
+        expect(result.current.isSubmitting).toBe(false)
       })
 
-      expect(result.current.isLoading).toBe(true)
-      expect(result.current.isSubmitting).toBe(false)
-
-      await executePromise
+      await executePromise!
       expect(result.current.isLoading).toBe(false)
     })
 

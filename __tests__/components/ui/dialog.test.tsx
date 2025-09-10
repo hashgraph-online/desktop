@@ -19,7 +19,6 @@ describe('Dialog', () => {
       </Dialog>
     );
     
-    // If this renders without throwing, the accessibility issue is fixed
     expect(true).toBe(true);
   });
 
@@ -34,7 +33,6 @@ describe('Dialog', () => {
       </Dialog>
     );
     
-    // If this renders without throwing, no hidden title should be added
     expect(true).toBe(true);
   });
 

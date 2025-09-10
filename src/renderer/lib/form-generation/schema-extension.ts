@@ -2,6 +2,17 @@ import { ZodType, ZodSchema } from 'zod';
 import { FormFieldConfig, ZodSchemaWithRender } from './types';
 
 /**
+ * Internal Zod schema definition types
+ */
+interface ZodDef {
+  typeName?: string;
+  value?: unknown;
+  innerType?: ZodType<unknown>;
+  defaultValue?: unknown | (() => unknown);
+  checks?: Array<{ kind: string; value?: unknown; regex?: RegExp }>;
+}
+
+/**
  * Extends a Zod schema with render configuration for form generation
  */
 export function extendZodSchema<T>(schema: ZodType<T>): ZodSchemaWithRender<T> {
@@ -21,7 +32,7 @@ export function extendZodSchema<T>(schema: ZodType<T>): ZodSchemaWithRender<T> {
  * Checks if a schema has render configuration
  */
 export function hasRenderConfig(schema: unknown): schema is ZodSchemaWithRender {
-  return schema && typeof (schema as any).withRender === 'function';
+  return schema && typeof (schema as ZodSchemaWithRender<unknown>).withRender === 'function';
 }
 
 /**
@@ -98,7 +109,7 @@ export function extractOptionsFromSchema(schema: ZodType<unknown>): Array<{ valu
     if (Array.isArray(unionOptions)) {
       for (const option of unionOptions) {
         if ((option._def as Record<string, unknown>)?.typeName === 'ZodLiteral') {
-          const value = (option._def as any)?.value;
+          const value = (option._def as ZodDef)?.value;
           if (value !== undefined) {
             options.push({
               value,
@@ -129,7 +140,7 @@ export function isOptionalSchema(schema: ZodType<any>): boolean {
 export function getInnerSchema(schema: ZodType<any>): ZodType<any> {
   const typeName = (schema._def as Record<string, unknown>)?.typeName;
   if (typeName === 'ZodOptional' || typeName === 'ZodDefault') {
-    const innerType = (schema._def as any)?.innerType;
+    const innerType = (schema._def as ZodDef)?.innerType;
     return innerType || schema;
   }
   return schema;
@@ -140,11 +151,11 @@ export function getInnerSchema(schema: ZodType<any>): ZodType<any> {
  */
 export function extractValidationConstraints(schema: ZodType<any>) {
   const innerSchema = getInnerSchema(schema);
-  const typeName = (innerSchema._def as any)?.typeName;
+  const typeName = (innerSchema._def as ZodDef)?.typeName;
   const constraints: Record<string, any> = {};
   
   if (typeName === 'ZodString') {
-    const def = innerSchema._def as any;
+    const def = innerSchema._def as ZodDef;
     if (def.checks && Array.isArray(def.checks)) {
       for (const check of def.checks) {
         switch (check.kind) {
@@ -169,7 +180,7 @@ export function extractValidationConstraints(schema: ZodType<any>) {
   }
   
   if (typeName === 'ZodNumber') {
-    const def = innerSchema._def as any;
+    const def = innerSchema._def as ZodDef;
     if (def.checks && Array.isArray(def.checks)) {
       for (const check of def.checks) {
         switch (check.kind) {
@@ -196,7 +207,7 @@ export function extractValidationConstraints(schema: ZodType<any>) {
 export function getDefaultValue(schema: ZodType<any>): any {
   const typeName = (schema._def as Record<string, unknown>)?.typeName;
   if (typeName === 'ZodDefault') {
-    const defaultValue = (schema._def as any)?.defaultValue;
+    const defaultValue = (schema._def as ZodDef)?.defaultValue;
     if (typeof defaultValue === 'function') {
       return defaultValue();
     }
@@ -204,7 +215,7 @@ export function getDefaultValue(schema: ZodType<any>): any {
   }
   
   const innerSchema = getInnerSchema(schema);
-  const innerTypeName = (innerSchema._def as any)?.typeName;
+  const innerTypeName = (innerSchema._def as ZodDef)?.typeName;
   
   switch (innerTypeName) {
     case 'ZodString':

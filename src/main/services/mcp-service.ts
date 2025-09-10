@@ -816,6 +816,15 @@ export class MCPService {
     switch (serverConfig.type) {
       case 'filesystem':
         if (serverConfig.config.type === 'filesystem') {
+          try {
+            const root = serverConfig.config.rootPath || process.cwd();
+            if (!fs.existsSync(root)) {
+              fs.mkdirSync(root, { recursive: true });
+              this.logger.info(`Created missing filesystem MCP root: ${root}`);
+            }
+          } catch (e) {
+            this.logger.warn('Failed to ensure filesystem MCP root exists:', e);
+          }
           return {
             command: 'npx',
             args: [

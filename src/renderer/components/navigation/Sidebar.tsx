@@ -33,7 +33,6 @@ import AgentItem from './AgentItem';
 import ConnectionRequestItem from './ConnectionRequestItem';
 import NavItem from './NavItem';
 
-// Use the ConnectionRequest type from HCS10Context
 interface ConnectionRequest {
   id: string;
   requesting_account_id: string;
@@ -204,7 +203,6 @@ const SidebarContent: React.FC<SidebarProps & { location: Location }> = React.me
       try {
         await refreshConnections();
       } catch {
-        // Silently handle refresh errors
       }
       setTimeout(() => setIsRefreshing(false), 1500);
     }, [isRefreshing, refreshConnections]);
@@ -219,7 +217,6 @@ const SidebarContent: React.FC<SidebarProps & { location: Location }> = React.me
         try {
           await actionFn();
         } catch {
-          // Action errors are handled elsewhere
         } finally {
           setActionLoading((prev) => ({ ...prev, [actionId]: false }));
         }
@@ -275,7 +272,6 @@ const SidebarContent: React.FC<SidebarProps & { location: Location }> = React.me
           navigate('/chat');
           toast.success('New session created successfully!');
         } catch {
-          // Navigation errors are handled by router
         }
         setIsSessionCreationModalOpen(false);
       },

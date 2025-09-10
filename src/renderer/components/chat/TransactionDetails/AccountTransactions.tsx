@@ -179,7 +179,7 @@ export const CryptoApproveAllowanceSection: React.FC<{
                   Token: {allowance.tokenId} | Owner: {allowance.ownerAccountId}{' '}
                   → Spender: {allowance.spenderAccountId}
                   {allowance.approvedForAll && (
-                    <span className='ml-2 text-xs bg-blue-100 text-blue-800 px-1 rounded'>
+                    <span className='ml-2 text-xs bg-blue-200 dark:bg-blue-900/50 text-blue-900 dark:text-blue-200 px-1 rounded'>
                       ALL
                     </span>
                   )}

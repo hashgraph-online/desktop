@@ -1,7 +1,8 @@
 import { ipcMain, IpcMainInvokeEvent } from 'electron';
 import { IPCResponse } from '../../../shared/schemas';
 import { AgentService } from "../../services/agent-service";
-import type { AgentConfig, ChatHistory } from "../../services/agent-service";
+import type { AgentConfig } from "../../services/agent-service";
+import type { ChatHistory } from "../../interfaces/services";
 import { ConfigService } from "../../services/config-service";
 import { Logger } from '../../utils/logger';
 import { handleIPCError, createSuccessResponse } from './shared-handler-utils';
@@ -34,14 +35,12 @@ export function setupAgentHandlers(): void {
         const privateKey = storedConfig.hedera?.privateKey || config.privateKey;
         const accountId = storedConfig.hedera?.accountId || config.accountId;
 
-        if (!privateKey || typeof privateKey !== 'string') {
-          logger.error(
-            'Agent initialization failed: missing or invalid private key'
-          );
+        const opMode = config.operationalMode || storedConfig.operationalMode || 'autonomous';
+        if ((!privateKey || typeof privateKey !== 'string') && opMode !== 'provideBytes' && opMode !== 'returnBytes') {
+          logger.error('Agent initialization failed: missing or invalid private key (autonomous mode)');
           return {
             success: false,
-            error:
-              'Invalid or missing private key in configuration. Please check your Hedera credentials in Settings.',
+            error: 'Missing private key while in autonomous mode. Switch to Provide Bytes or configure a private key in Settings.',
           };
         }
 
@@ -82,10 +81,11 @@ export function setupAgentHandlers(): void {
             config.modelName ||
             (config.llmProvider === 'openai'
               ? storedConfig.openai?.model || 'gpt-4o-mini'
-              : storedConfig.anthropic?.model || 'claude-3-5-sonnet-20241022'),
-          operationalMode: config.operationalMode || 'autonomous',
+              : storedConfig.anthropic?.model || 'claude-3-7-sonnet-latest'),
+          operationalMode: opMode as 'autonomous' | 'provideBytes' | 'returnBytes',
           llmProvider:
             config.llmProvider || storedConfig.llmProvider || 'openai',
+          userAccountId: (config as AgentConfig).userAccountId || accountId,
         };
 
         logger.info('Initializing agent with merged configuration', {

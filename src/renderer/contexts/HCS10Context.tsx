@@ -10,6 +10,9 @@ import React, {
 import { useNavigate } from 'react-router-dom';
 import { isEqual } from 'lodash';
 import { useConfigStore } from '../stores/configStore';
+import { useWalletStore } from '../stores/walletStore';
+import { ConnectionsManager, type NetworkType } from '@hashgraphonline/standards-sdk';
+import { getHCS10Client } from '../services/hcs10ClientFactory';
 
 export interface Agent {
   id: string;
@@ -71,6 +74,7 @@ interface HCS10ProviderProps {
 export const HCS10Provider: React.FC<HCS10ProviderProps> = ({ children }) => {
   const navigate = useNavigate();
   const { config } = useConfigStore();
+  const wallet = useWalletStore();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [connectionRequests, setConnectionRequests] = useState<
     ConnectionRequest[]
@@ -78,7 +82,23 @@ export const HCS10Provider: React.FC<HCS10ProviderProps> = ({ children }) => {
   const [isLoadingAgents, setIsLoadingAgents] = useState(false);
   const [activeTopicId, setActiveTopicId] = useState<string>();
 
-  const isConnected = config?.hedera?.accountId && config?.hedera?.privateKey;
+  const hasOperatorCreds = Boolean(config?.hedera?.accountId && config?.hedera?.privateKey);
+  const canPollViaWallet = Boolean(wallet.isConnected && wallet.accountId && wallet.network);
+  const isConnected = hasOperatorCreds || canPollViaWallet;
+
+  const cmRef = React.useRef<ConnectionsManager | null>(null);
+  const ensureRendererCM = useCallback(async (): Promise<ConnectionsManager | null> => {
+    if (!canPollViaWallet) return null;
+    if (cmRef.current) return cmRef.current;
+    const net = (wallet.network || 'testnet') as NetworkType;
+    const baseClient = getHCS10Client(net, {
+      walletConnected: true,
+      accountId: config?.hedera?.accountId,
+      privateKey: config?.hedera?.privateKey,
+    });
+    cmRef.current = new ConnectionsManager({ baseClient, logLevel: 'info', silent: true });
+    return cmRef.current;
+  }, [canPollViaWallet, wallet.network, config?.hedera?.accountId, config?.hedera?.privateKey]);
 
   const fetchConnectionData = useCallback(async () => {
     if (!isConnected) {
@@ -87,45 +107,71 @@ export const HCS10Provider: React.FC<HCS10ProviderProps> = ({ children }) => {
 
     setIsLoadingAgents(true);
     try {
-      const agentsResult = await window.electron.invoke(
-        'hcs10:get-active-agents'
-      );
-      if (agentsResult.success) {
-        const newAgents = agentsResult.agents || [];
+      if (hasOperatorCreds && !canPollViaWallet) {
+        const agentsResult = await window.electron.invoke('hcs10:get-active-agents');
+        if (agentsResult.success) {
+          const newAgents = agentsResult.agents || [];
+          setAgents((prevAgents) => (isEqual(prevAgents, newAgents) ? prevAgents : newAgents));
+        }
 
-        setAgents((prevAgents) => {
-          if (isEqual(prevAgents, newAgents)) {
-            return prevAgents;
-          }
-          return newAgents;
-        });
-      }
+        const requestsResult = await window.electron.invoke('hcs10:get-connection-requests');
+        if (requestsResult.success) {
+          const newRequests = requestsResult.requests || [];
+          setConnectionRequests((prevRequests) => (isEqual(prevRequests, newRequests) ? prevRequests : newRequests));
+        }
+      } else if (canPollViaWallet) {
+        const cm = await ensureRendererCM();
+        if (!cm) return;
+        const accountId = wallet.accountId as string;
+        await cm.fetchConnectionData(accountId);
 
-      const requestsResult = await window.electron.invoke(
-        'hcs10:get-connection-requests'
-      );
-      if (requestsResult.success) {
-        const newRequests = requestsResult.requests || [];
+        const active = cm.getActiveConnections?.() || [];
+        const pending = cm.getPendingRequests?.() || [];
 
-        setConnectionRequests((prevRequests) => {
-          if (isEqual(prevRequests, newRequests)) {
-            return prevRequests;
-          }
-          return newRequests;
-        });
+        const mappedAgents: Agent[] = active.map((c: any) => ({
+          id: c.connectionTopicId || c.id,
+          accountId: c.targetAccountId,
+          name: c.profileInfo?.displayName || c.targetAccountId || 'Unknown Agent',
+          type: 'active',
+          lastMessage: c.memo,
+          timestamp: c.lastActivity ? new Date(c.lastActivity) : new Date(),
+          profile: {
+            display_name: c.profileInfo?.displayName || c.targetAccountId,
+            bio: c.profileInfo?.bio,
+            profileImage: c.profileInfo?.avatar,
+            alias: c.profileInfo?.alias,
+            isAI: true,
+          },
+          network: (wallet.network || config?.hedera?.network || 'testnet') as string,
+          unreadCount: 0,
+        }));
+        setAgents((prev) => (isEqual(prev, mappedAgents) ? prev : mappedAgents));
+
+        const mappedReqs: ConnectionRequest[] = (pending || [])
+          .filter((c: any) => (c.needsConfirmation || c.status === 'needs_confirmation') || c.inboundRequestId)
+          .map((conn: any) => ({
+            id: conn.connectionTopicId || conn.id,
+            requesting_account_id: conn.targetAccountId,
+            sequence_number: Date.now(),
+            memo: conn.memo || '',
+            operator_id: conn.targetAccountId,
+          }));
+        setConnectionRequests((prev) => (isEqual(prev, mappedReqs) ? prev : mappedReqs));
       }
     } catch (error) {
     } finally {
       setIsLoadingAgents(false);
     }
-  }, [isConnected]);
+  }, [isConnected, hasOperatorCreds, canPollViaWallet, ensureRendererCM, wallet.accountId, wallet.network, config?.hedera?.network]);
 
   const refreshConnections = useCallback(async () => {
+    try { console.debug('[HCS10] refreshConnections()'); } catch {}
     await fetchConnectionData();
   }, [fetchConnectionData]);
 
   useEffect(() => {
     if (isConnected) {
+      try { console.debug('[HCS10] initial fetchConnectionData (isConnected=true)'); } catch {}
       fetchConnectionData();
     }
   }, [isConnected, fetchConnectionData]);
@@ -134,6 +180,7 @@ export const HCS10Provider: React.FC<HCS10ProviderProps> = ({ children }) => {
     if (!isConnected) return;
 
     const interval = setInterval(() => {
+      try { console.debug('[HCS10] interval fetchConnectionData'); } catch {}
       fetchConnectionData();
     }, 30000);
 

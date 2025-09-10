@@ -17,9 +17,9 @@ interface AttachmentDisplayProps {
  * Component to display message attachments with proper file type handling
  * Supports images with preview and click handling for modal display
  */
-const AttachmentDisplay: React.FC<AttachmentDisplayProps> = ({ 
-  attachments, 
-  onImageClick 
+const AttachmentDisplay: React.FC<AttachmentDisplayProps> = ({
+  attachments,
+  onImageClick,
 }) => {
   return (
     <div className='mt-3 space-y-2'>
@@ -37,20 +37,23 @@ const AttachmentDisplay: React.FC<AttachmentDisplayProps> = ({
             className={cn(
               'flex items-center gap-3 p-3 rounded-lg border transition-colors',
               'bg-gray-50 dark:bg-gray-800/30 border-gray-200 dark:border-gray-700/30',
-              isImage && onImageClick && 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800/50'
+              isImage &&
+                onImageClick &&
+                'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800/50'
             )}
             onClick={
               isImage && onImageClick
-                ? () => onImageClick(
-                    `data:${attachment.type};base64,${attachment.data}`,
-                    attachment.name
-                  )
+                ? () =>
+                    onImageClick(
+                      `data:${attachment.type};base64,${attachment.data}`,
+                      attachment.name
+                    )
                 : undefined
             }
           >
             <div className='flex-shrink-0'>
               {isImage ? (
-                <FiImage className='w-4 h-4 text-blue-500' />
+                <FiImage className='w-4 h-4 text-blue-600 dark:text-blue-400' />
               ) : (
                 <FiFile className='w-4 h-4 text-gray-500 dark:text-gray-400' />
               )}
@@ -58,7 +61,7 @@ const AttachmentDisplay: React.FC<AttachmentDisplayProps> = ({
             <div className='flex-1 min-w-0'>
               <Typography
                 variant='caption'
-                className='font-medium text-blue-600 dark:text-blue-400 truncate block'
+                className='font-medium text-blue-700 dark:text-blue-300 truncate block'
               >
                 {attachment.name}
               </Typography>

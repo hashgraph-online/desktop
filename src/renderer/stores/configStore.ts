@@ -45,7 +45,7 @@ export interface AdvancedConfig {
   theme: 'light' | 'dark';
   autoStart: boolean;
   logLevel: 'debug' | 'info' | 'warn' | 'error';
-  operationalMode?: 'autonomous' | 'provideBytes';
+  operationalMode?: 'autonomous' | 'provideBytes' | 'returnBytes';
 }
 
 export interface LegalAcceptanceConfig {
@@ -85,7 +85,7 @@ export interface ConfigStore {
   setTheme: (theme: 'light' | 'dark') => Promise<void>;
   setAutoStart: (autoStart: boolean) => void;
   setLogLevel: (logLevel: 'debug' | 'info' | 'warn' | 'error') => void;
-  setOperationalMode: (mode: 'autonomous' | 'provideBytes') => void;
+  setOperationalMode: (mode: 'autonomous' | 'provideBytes' | 'returnBytes') => void;
   setAutonomousMode: (enabled: boolean) => void;
 
   saveConfig: () => Promise<void>;
@@ -115,7 +115,7 @@ const defaultConfig: AppConfig = {
   },
   anthropic: {
     apiKey: '',
-    model: 'claude-3-5-sonnet-20241022',
+    model: 'claude-3-7-sonnet-latest',
   },
   advanced: {
     theme: 'light',

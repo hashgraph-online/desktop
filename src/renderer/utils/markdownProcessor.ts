@@ -68,29 +68,29 @@ export const processMarkdown = (text: string): string => {
 
   processed = processed.replace(
     /(^|\n)((?:\s*[-*]\s+.+\n?)+)/gm,
-    (_m, lead, block) => {
+    (_m: string, lead: string, block: string) => {
       const items = block
         .trimEnd()
         .split(/\n/)
         .filter(Boolean)
-        .map((line) => line.replace(/^\s*[-*]\s+/, ''))
-        .map((inner) => `<li class="ml-4">${inner}</li>`)
+        .map((line: string) => line.replace(/^\s*[-*]\s+/, ''))
+        .map((inner: string) => `<li class=\"ml-4\">${inner}</li>`)
         .join('');
-      return `${lead}<ul class="my-2 space-y-1 list-disc">${items}</ul>`;
+      return `${lead}<ul class=\"my-2 space-y-1 list-disc\">${items}</ul>`;
     }
   );
 
   processed = processed.replace(
     /(^|\n)((?:\s*\d+\.\s+.+\n?)+)/gm,
-    (_m, lead, block) => {
+    (_m: string, lead: string, block: string) => {
       const items = block
         .trimEnd()
         .split(/\n/)
         .filter(Boolean)
-        .map((line) => line.replace(/^\s*\d+\.\s+/, ''))
-        .map((inner) => `<li class="ml-4">${inner}</li>`)
+        .map((line: string) => line.replace(/^\s*\d+\.\s+/, ''))
+        .map((inner: string) => `<li class=\"ml-4\">${inner}</li>`)
         .join('');
-      return `${lead}<ol class="my-2 space-y-1 list-decimal">${items}</ol>`;
+      return `${lead}<ol class=\"my-2 space-y-1 list-decimal\">${items}</ol>`;
     }
   );
 

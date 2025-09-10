@@ -201,15 +201,15 @@ export class NPMService {
         let stdout = '';
         let stderr = '';
 
-        npmProcess.stdout.on('data', (data) => {
+        npmProcess.stdout.on('data', (data: Buffer) => {
           stdout += data.toString();
         });
 
-        npmProcess.stderr.on('data', (data) => {
+        npmProcess.stderr.on('data', (data: Buffer) => {
           stderr += data.toString();
         });
 
-        npmProcess.on('close', (code) => {
+        npmProcess.on('close', (code: number | null) => {
           if (code === 0) {
             try {
               const results = JSON.parse(stdout);
@@ -248,7 +248,7 @@ export class NPMService {
           }
         });
 
-        npmProcess.on('error', (error) => {
+        npmProcess.on('error', (error: Error) => {
           resolve({ success: false, error: error.message });
         });
       });
@@ -329,7 +329,7 @@ export class NPMService {
         let stdout = '';
         let stderr = '';
 
-        npmProcess.stdout.on('data', (data) => {
+        npmProcess.stdout.on('data', (data: Buffer) => {
           stdout += data.toString();
 
           if (progressCallback) {
@@ -361,11 +361,11 @@ export class NPMService {
           }
         });
 
-        npmProcess.stderr.on('data', (data) => {
+        npmProcess.stderr.on('data', (data: Buffer) => {
           stderr += data.toString();
         });
 
-        npmProcess.on('close', async (code) => {
+        npmProcess.on('close', async (code: number | null) => {
           this.installProcesses.delete(pluginId);
           this.installProgressCallbacks.delete(pluginId);
 
@@ -438,7 +438,7 @@ export class NPMService {
           }
         });
 
-        npmProcess.on('error', (error) => {
+        npmProcess.on('error', (error: Error) => {
           this.installProcesses.delete(pluginId);
           this.installProgressCallbacks.delete(pluginId);
 
@@ -714,11 +714,11 @@ export class NPMService {
 
         let stdout = '';
 
-        npmProcess.stdout.on('data', (data) => {
+        npmProcess.stdout.on('data', (data: Buffer) => {
           stdout += data.toString();
         });
 
-        npmProcess.on('close', (code) => {
+        npmProcess.on('close', (code: number | null) => {
           if (code === 0) {
             resolve(stdout.trim());
           } else {
@@ -726,7 +726,7 @@ export class NPMService {
           }
         });
 
-        npmProcess.on('error', () => {
+        npmProcess.on('error', (_error: Error) => {
           resolve(null);
         });
       });
@@ -786,7 +786,7 @@ export class NPMService {
 
         let stdout = '';
 
-        npmProcess.stdout.on('data', (data) => {
+        npmProcess.stdout.on('data', (data: Buffer) => {
           stdout += data.toString();
         });
 

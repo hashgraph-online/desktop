@@ -92,7 +92,6 @@ describe('MCPServerCard', () => {
   it('calls onEdit when edit button is clicked', () => {
     render(<MCPServerCard server={mockServer} {...mockHandlers} />)
     
-    // Find the edit button by its title attribute
     const buttons = screen.getAllByRole('button')
     const editButton = buttons.find(btn => btn.querySelector('svg[data-name="edit"]') || 
                                            btn.innerHTML.includes('FiEdit'))
@@ -101,7 +100,6 @@ describe('MCPServerCard', () => {
       fireEvent.click(editButton)
       expect(mockHandlers.onEdit).toHaveBeenCalledWith('test-server-1')
     } else {
-      // Fallback: click the third button (edit) based on order
       fireEvent.click(buttons[2])
       expect(mockHandlers.onEdit).toHaveBeenCalledWith('test-server-1')
     }
@@ -111,7 +109,6 @@ describe('MCPServerCard', () => {
     render(<MCPServerCard server={mockServer} {...mockHandlers} />)
     
     const buttons = screen.getAllByRole('button')
-    // Delete button should be the last one
     const deleteButton = buttons[buttons.length - 1]
     fireEvent.click(deleteButton)
     
@@ -122,7 +119,6 @@ describe('MCPServerCard', () => {
     render(<MCPServerCard server={mockServer} {...mockHandlers} />)
     
     const buttons = screen.getAllByRole('button')
-    // Test button should be the first one (play icon)
     const testButton = buttons[0]
     fireEvent.click(testButton)
     

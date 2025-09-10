@@ -10,13 +10,11 @@ jest.mock('../../../src/renderer/components/chat/MessageBubble', () => {
   };
 });
 
-// Mock scrollIntoView for tests
 Object.defineProperty(global, 'scrollIntoView', {
   value: jest.fn(),
   writable: true,
 });
 
-// Mock Element.scrollIntoView
 Object.defineProperty(Element.prototype, 'scrollIntoView', {
   value: jest.fn(),
   writable: true,

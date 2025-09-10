@@ -25,7 +25,7 @@ export const anthropicConfigSchema = z.object({
     .string()
     .min(1, 'API key is required')
     .startsWith('sk-ant-', "API key must start with 'sk-ant-'"),
-  model: z.enum(['claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022', 'claude-3-opus-20240229'])
+  model: z.enum(['claude-3-7-sonnet-latest', 'claude-3-5-haiku-20241022', 'claude-3-opus-20240229'])
 })
 
 export const advancedConfigSchema = z.object({

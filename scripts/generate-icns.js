@@ -26,7 +26,6 @@ icons.forEach(({ input, output, name }) => {
     return;
   }
 
-  // Create iconset directory
   const iconsetDir = path.join(appDir, 'build', `${name}.iconset`);
   if (fs.existsSync(iconsetDir)) {
     fs.rmSync(iconsetDir, { recursive: true });
@@ -35,7 +34,6 @@ icons.forEach(({ input, output, name }) => {
 
   console.log(`📝 Creating icon sizes for ${name}...`);
 
-  // Icon sizes needed for macOS icns file
   const iconSizes = [
     { size: 16, scale: 1, name: 'icon_16x16.png' },
     { size: 16, scale: 2, name: 'icon_16x16@2x.png' },
@@ -50,7 +48,6 @@ icons.forEach(({ input, output, name }) => {
   ];
 
   try {
-    // Generate all required icon sizes using sips
     for (const iconSize of iconSizes) {
       const actualSize = iconSize.size * iconSize.scale;
       const outputPath = path.join(iconsetDir, iconSize.name);
@@ -66,7 +63,6 @@ icons.forEach(({ input, output, name }) => {
       }
     }
 
-    // Convert iconset to icns using iconutil
     console.log(`🔄 Converting ${name} to .icns format...`);
     try {
       execSync(`iconutil -c icns "${iconsetDir}" -o "${output}"`, { stdio: 'pipe' });
@@ -75,13 +71,11 @@ icons.forEach(({ input, output, name }) => {
       console.error(`❌ Failed to create ${name}.icns - ${error.message}`);
     }
 
-    // Clean up iconset directory
     fs.rmSync(iconsetDir, { recursive: true });
     
   } catch (error) {
     console.error(`❌ Error processing ${name}:`, error.message);
     
-    // Clean up on error
     if (fs.existsSync(iconsetDir)) {
       fs.rmSync(iconsetDir, { recursive: true });
     }

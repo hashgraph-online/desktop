@@ -11,6 +11,7 @@ import {
   ScheduleSignTransaction,
   ScheduleDeleteTransaction,
 } from '@hashgraph/sdk';
+import { getPayerFromTransactionBytes } from '../../shared/tx/payer';
 
 export interface TransactionExecutionResult {
   success: boolean;
@@ -96,6 +97,22 @@ export class HederaService {
           Buffer.from(transactionBytes, 'base64')
         );
         this.logger.info('Successfully parsed transaction from bytes');
+
+        const payerInBytes = getPayerFromTransactionBytes(transactionBytes);
+        if (payerInBytes && payerInBytes !== accountId) {
+          this.logger.warn('Payer mismatch detected for transaction bytes', {
+            payerInBytes,
+            configuredSigner: accountId,
+          });
+          try {
+            client.close();
+          } catch {}
+          return {
+            success: false,
+            error:
+              `payer_mismatch: Transaction was built for payer ${payerInBytes}, but configured signer is ${accountId}. Approve in your wallet or ask the agent to rebuild the transaction for your configured signer.`,
+          };
+        }
       } catch (parseError) {
         this.logger.error('Failed to parse transaction bytes:', parseError);
         try {

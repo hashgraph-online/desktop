@@ -4,21 +4,27 @@ import Typography from '../../ui/Typography';
 import { FiLoader, FiAlertTriangle, FiX, FiCheck } from 'react-icons/fi';
 import { cn } from '../../../lib/utils';
 import { useNotificationStore } from '../../../stores/notificationStore';
-import {
-  TransactionParser,
-  HederaMirrorNode,
-} from '@hashgraphonline/standards-sdk';
-import { Hbar } from '@hashgraph/sdk';
+import { TransactionParser } from '@hashgraphonline/standards-sdk';
+import { Hbar, Transaction as SdkTransaction } from '@hashgraph/sdk';
 import { type ParsedTransaction } from '../../../types/transaction';
 import { type TokenAmount } from '@hashgraphonline/standards-sdk';
 import { type Transaction as HederaTransaction } from '@hashgraphonline/standards-sdk';
 import { useConfigStore } from '../../../stores/configStore';
+import { useWalletStore } from '../../../stores/walletStore';
+import { useAgentStore } from '../../../stores/agentStore';
+import { telemetry } from '../../../services/telemetryService';
 import { getTransactionEnrichmentHandler } from '../../../utils/transactionEnrichmentRegistry';
 import { getHumanReadableTransactionType } from '../../../utils/transactionTypeHelper';
 import { mergeTransactionDetails } from '../../../utils/transactionMerger';
 import { TransactionContent } from './TransactionContent';
+import { comparePayer } from '../../../../shared/tx/payer';
 import { EntityFormat } from '@hashgraphonline/conversational-agent';
 import { TransactionSuccessDisplay } from './TransactionSuccessDisplay';
+import {
+  isLikelyPayerOnly,
+  waitForMirrorConfirmation,
+  persistExecuted,
+} from '../../../services/txExecution';
 import { TransactionApprovedDisplay } from './TransactionApprovedDisplay';
 import { isEqual } from 'lodash';
 
@@ -32,7 +38,15 @@ interface TransactionApprovalButtonProps {
   notes?: string[];
   onApprove?: (messageId: string) => Promise<void>;
   onReject?: (messageId: string) => Promise<void>;
+  onExecuted?: (args: {
+    messageId: string;
+    transactionId?: string;
+  }) => Promise<void>;
   entityContext?: { name?: string; description?: string };
+  scheduleOp?: 'sign' | 'delete';
+  initialApproved?: boolean;
+  initialExecuted?: boolean;
+  initialTransactionId?: string;
 }
 
 /**
@@ -51,6 +65,11 @@ export const TransactionApprovalButton: React.FC<
   notes,
   onApprove,
   onReject,
+  onExecuted,
+  scheduleOp = 'sign',
+  initialApproved,
+  initialExecuted,
+  initialTransactionId,
 }) => {
   const [isApproving, setIsApproving] = useState(false);
   const [isApproved, setIsApproved] = useState(false);
@@ -88,6 +107,14 @@ export const TransactionApprovalButton: React.FC<
   );
   const config = useConfigStore((state) => state.config);
   const network = propsNetwork || config?.hedera?.network || 'testnet';
+  const {
+    isConnected: walletConnected,
+    accountId: walletAccountId,
+    executeFromBytes,
+    executeScheduleSign,
+    executeScheduleDelete,
+    network: walletNetwork,
+  } = useWalletStore();
 
   /**
    * Calculate polling interval based on poll count with intelligent backoff
@@ -364,6 +391,12 @@ export const TransactionApprovalButton: React.FC<
   ]);
 
   useEffect(() => {
+    if (initialApproved) setIsApproved(true);
+    if (initialExecuted) setIsExecuted(true);
+    if (initialTransactionId) setExecutedTransactionId(initialTransactionId);
+  }, []);
+
+  useEffect(() => {
     return () => {
       if (intervalIdRef.current) {
         clearInterval(intervalIdRef.current);
@@ -375,11 +408,53 @@ export const TransactionApprovalButton: React.FC<
   const approveTransaction = useCallback(async () => {
     setIsApproving(true);
     setError(null);
+    // Clear any stale executed transaction ID before starting a new approval flow
+    setExecutedTransactionId(null);
 
     try {
       if (scheduleId) {
-        const result =
-          await window.electron.executeScheduledTransaction(scheduleId);
+        let result: {
+          success: boolean;
+          transactionId?: string;
+          error?: string;
+          status?: string;
+        };
+        if (walletConnected) {
+          if ((walletNetwork || 'testnet') !== (network || 'testnet')) {
+            const msg = `Wallet network (${walletNetwork}) differs from app network (${network}). Open Settings → Wallet to align networks, then try again.`;
+            setError(msg);
+            addNotification({
+              type: 'warning',
+              title: 'Network Mismatch',
+              message: msg,
+            });
+            telemetry.emit('wallet_network_mismatch', {
+              appNet: network,
+              walletNet: walletNetwork,
+            });
+            return;
+          }
+          const res =
+            scheduleOp === 'delete'
+              ? await (executeScheduleDelete?.(scheduleId) ??
+                  Promise.resolve({
+                    success: false,
+                    error: 'Schedule delete not supported',
+                  }))
+              : await executeScheduleSign(scheduleId);
+          result = { ...res };
+        } else {
+          if (
+            scheduleOp === 'delete' &&
+            typeof window.electron.deleteScheduledTransaction === 'function'
+          ) {
+            result =
+              await window.electron.deleteScheduledTransaction(scheduleId);
+          } else {
+            result =
+              await window.electron.executeScheduledTransaction(scheduleId);
+          }
+        }
 
         if (result.success) {
           setIsApproved(true);
@@ -491,16 +566,152 @@ export const TransactionApprovalButton: React.FC<
           return;
         }
 
-        setExecutionStatus('signing');
+        if (walletConnected) {
+          if ((walletNetwork || 'testnet') !== (network || 'testnet')) {
+            const msg = `Wallet network (${walletNetwork}) differs from app network (${network}). Open Settings → Wallet to align networks, then try again.`;
+            setError(msg);
+            addNotification({
+              type: 'warning',
+              title: 'Network Mismatch',
+              message: msg,
+            });
+            telemetry.emit('wallet_network_mismatch', {
+              appNet: network,
+              walletNet: walletNetwork,
+            });
+            return;
+          }
+          try {
+            const expected = walletAccountId || null;
+            const { matches, payer } = comparePayer(transactionBytes, expected);
+            if (expected && payer && !matches) {
+              const msg = `This transaction was built for payer ${payer}, but your connected wallet is ${expected}. Ask the agent to rebuild it for your wallet or use the local path.`;
+              setError(msg);
+              addNotification({
+                type: 'warning',
+                title: 'Wallet Payer Mismatch',
+                message: msg,
+              });
+              return;
+            }
+          } catch {}
 
+          try {
+            const parsed = await TransactionParser.parseTransactionBytes(
+              transactionBytes,
+              { includeRaw: false }
+            );
+            const txType = parsed.type || '';
+            if (!isLikelyPayerOnly(txType)) {
+              const msg = `This ${parsed.humanReadableType || txType} likely requires keys beyond the payer. Ask the agent to build bytes for your wallet or use the local path.`;
+              setError(msg);
+              addNotification({
+                type: 'warning',
+                title: 'Unsupported Transaction for Wallet',
+                message: msg,
+              });
+              return;
+            }
+          } catch {}
+
+          setExecutionStatus('signing');
+          const result = await executeFromBytes(transactionBytes);
+          if (result.success) {
+            setExecutionStatus('confirming');
+
+            // Confirm on mirror node before marking success
+            const txId = result.transactionId || '';
+            const confirm = txId
+              ? await waitForMirrorConfirmation(txId, network)
+              : { ok: false, error: 'Missing transactionId' };
+            if (!confirm.ok) {
+              setExecutionStatus(null);
+              const statusMsg = confirm.status
+                ? `status ${confirm.status}`
+                : confirm.error || 'not confirmed';
+              const msg = `Transaction was submitted but failed or not confirmed (${statusMsg}). It may have expired; please request new bytes and try again.`;
+              setError(msg);
+              addNotification({
+                type: 'error',
+                title: 'Submission Failed',
+                message: msg,
+              });
+              return;
+            }
+
+            setExecutionStatus('completed');
+            setIsApproved(true);
+            setIsExecuted(true);
+            setExecutedTransactionId(result.transactionId || null);
+
+            addNotification({
+              type: 'success',
+              title: 'Approved in Wallet',
+              message: txId
+                ? `Transaction ID: ${txId}`
+                : 'Transaction submitted',
+              duration: 5000,
+            });
+            if (txId) {
+              handleEnhancedTransactionSuccess(
+                txId,
+                transactionDetailsRef.current
+              );
+            }
+
+            await persistExecuted(messageId, txId);
+
+            if (messageId && onExecuted) {
+              try {
+                await onExecuted({ messageId, transactionId: txId });
+              } catch {}
+            }
+          } else {
+            setExecutionStatus(null);
+            const raw = result.error || 'Wallet approval failed';
+            const isPayerMismatch = raw.includes('payer_mismatch');
+            const msg = isPayerMismatch
+              ? 'This transaction was built for a different payer account. Ask the agent to rebuild it for your connected wallet, or switch to the local path.'
+              : raw;
+            setError(msg);
+            addNotification({
+              type: isPayerMismatch ? 'warning' : 'error',
+              title: isPayerMismatch ? 'Wallet Payer Mismatch' : 'Wallet Error',
+              message: msg,
+            });
+          }
+          return;
+        }
+
+        try {
+          const expected = config?.hedera?.accountId || null;
+          const { matches, payer } = comparePayer(transactionBytes, expected);
+          if (expected && payer && !matches) {
+            const msg = `This transaction was built for payer ${payer}, but your configured signer is ${expected}. Approve in your wallet or ask the agent to rebuild it for your server signer.`;
+            setError(msg);
+            addNotification({
+              type: 'warning',
+              title: 'Payer Mismatch',
+              message: msg,
+            });
+            return;
+          }
+        } catch {}
+
+        setExecutionStatus('signing');
         await new Promise((resolve) => setTimeout(resolve, 500));
         setExecutionStatus('submitting');
 
         const entityContext = {
           description: description || '',
           name:
-            (transactionDetails?.tokenCreation as any)?.tokenName ||
-            (transactionDetails?.details as any)?.tokenCreation?.tokenName ||
+            (transactionDetails as { tokenCreation?: { tokenName?: string } })
+              ?.tokenCreation?.tokenName ||
+            (
+              transactionDetails as {
+                details?: { tokenCreation?: { tokenName?: string } };
+              }
+            )?.details?.tokenCreation?.tokenName ||
             undefined,
         };
 
@@ -546,6 +757,14 @@ export const TransactionApprovalButton: React.FC<
               transactionDetailsRef.current
             );
           }
+
+          await persistExecuted(messageId, transactionId);
+
+          if (messageId && onExecuted) {
+            try {
+              await onExecuted({ messageId, transactionId });
+            } catch {}
+          }
         } else {
           setExecutionStatus(null);
 
@@ -557,7 +776,7 @@ export const TransactionApprovalButton: React.FC<
             setIsExecuted(true);
             setIsApproved(true);
             const match = result.error.match(/ID:\s*([^\s,)]+)/);
-            if (match) {
+            if (match && !executedTransactionId) {
               setExecutedTransactionId(match[1]);
             }
           } else if (result.error?.includes('insufficient balance')) {
@@ -613,7 +832,17 @@ export const TransactionApprovalButton: React.FC<
         setExecutionStatus(null);
       }
     }
-  }, [scheduleId, messageId, onApprove, addNotification]);
+  }, [
+    scheduleId,
+    messageId,
+    onApprove,
+    addNotification,
+    walletConnected,
+    executeFromBytes,
+    executeScheduleSign,
+    walletNetwork,
+    network,
+  ]);
 
   const rejectTransaction = useCallback(async () => {
     if (messageId && onReject) {
@@ -645,25 +874,35 @@ export const TransactionApprovalButton: React.FC<
       setIsLoadingEnhancedDetails(true);
 
       try {
-        const mirrorNode = new HederaMirrorNode(
-          network === 'mainnet' ? 'mainnet' : 'testnet'
-        );
+        // Format TX ID to hyphenated form for mirror node endpoint
+        const toHyphenId = (id: string): string =>
+          id.replace('@', '-').replace(/\.(\d+)$/, '-$1');
+        const formattedId = toHyphenId(transactionId);
 
-        const formattedTransactionId = transactionId
-          .replace('@', '-')
-          .replace(/\.(\d+)$/, '-$1');
-
+        // Small delay to allow mirror node to index the transaction
         await new Promise((resolve) => setTimeout(resolve, 2000));
 
-        const mirrorTransaction = (await Promise.race([
-          mirrorNode.getTransaction(formattedTransactionId),
+        const response = (await Promise.race([
+          window.electron.mirrorNode.getTransaction(
+            formattedId,
+            (network as 'mainnet' | 'testnet') || 'testnet'
+          ),
           new Promise<null>((_, reject) =>
             setTimeout(
               () => reject(new Error('Mirror node request timeout')),
               15000
             )
           ),
-        ])) as HederaTransaction | null;
+        ])) as {
+          success: boolean;
+          data?: HederaTransaction;
+          error?: string;
+        } | null;
+
+        const mirrorTransaction =
+          response && response.success && response.data
+            ? (response.data as HederaTransaction)
+            : undefined;
 
         if (mirrorTransaction) {
           const parsedEnhancedDetails = await parseMirrorNodeTransaction(
@@ -919,7 +1158,9 @@ export const TransactionApprovalButton: React.FC<
                         ) : (
                           <>
                             <FiCheck className='h-4 w-4 mr-2' />
-                            Approve Transaction
+                            {walletConnected
+                              ? 'Approve in Wallet'
+                              : 'Approve Transaction'}
                           </>
                         )}
                       </Button>

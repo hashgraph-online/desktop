@@ -178,86 +178,89 @@ function TransactionButtonRenderer({
  * Enhanced content extraction for both personal and HCS-10 messages
  */
 function extractHCS10MessageContent(message: Message): string {
-  const hasValidContent = (
-    content: string | undefined | null
-  ): content is string => {
-    return Boolean(content && content.trim() && content !== '[Empty message]');
-  };
+  const isNonEmpty = (v: unknown): v is string =>
+    typeof v === 'string' && v.trim().length > 0 && v !== '[Empty message]';
 
-  if (hasValidContent(message.content)) {
+  if (isNonEmpty(message.content)) {
     return message.content;
   }
 
   if (message.metadata?.isHCS10Message) {
-    const messageContent =
-      (message as any).data ||
-      (message as any).contents ||
-      (message as any).message ||
-      message.metadata?.data;
+    const meta = (message.metadata || {}) as Record<string, unknown>;
 
-    if (messageContent) {
+    const tryParseJsonString = (s: string): string | null => {
+      const str = s.trim();
+      if (!str.startsWith('{')) return isNonEmpty(str) ? str : null;
       try {
-        const normalizedData =
-          typeof messageContent === 'object' && messageContent !== null
-            ? JSON.stringify(messageContent)
-            : String(messageContent);
-
-        const shouldParse =
-          (message as any).op === 'message' ||
-          message.metadata?.op === 'message' ||
-          (typeof normalizedData === 'string' &&
-            normalizedData.trim().startsWith('{'));
-
-        if (shouldParse && normalizedData.trim().startsWith('{')) {
-          try {
-            const parsedData = JSON.parse(normalizedData);
-
-            if (typeof parsedData === 'object' && parsedData !== null) {
-              const contentFields = [
-                parsedData.text,
-                parsedData.content,
-                parsedData.message,
-                typeof parsedData.data === 'string' ? parsedData.data : null,
-              ];
-
-              for (const field of contentFields) {
-                if (hasValidContent(field)) {
-                  return field;
-                }
-              }
-
-              return normalizedData;
-            }
-          } catch {
-            if (hasValidContent(normalizedData)) {
-              return normalizedData;
-            }
-          }
-        } else if (hasValidContent(normalizedData)) {
-          return normalizedData;
+        const obj = JSON.parse(str) as unknown;
+        if (typeof obj === 'object' && obj !== null) {
+          const rec = obj as Record<string, unknown>;
+          const candidates: Array<unknown> = [
+            rec.text,
+            rec.content,
+            rec.message,
+            rec.body && typeof rec.body === 'object'
+              ? (rec.body as Record<string, unknown>).text
+              : undefined,
+            rec.body && typeof rec.body === 'object'
+              ? (rec.body as Record<string, unknown>).content
+              : undefined,
+            rec.payload && typeof rec.payload === 'object'
+              ? (rec.payload as Record<string, unknown>).text
+              : undefined,
+            rec.payload && typeof rec.payload === 'object'
+              ? (rec.payload as Record<string, unknown>).content
+              : undefined,
+            typeof rec.data === 'string' ? rec.data : undefined,
+          ];
+          const found = candidates.find(isNonEmpty);
+          if (found) return found as string;
         }
+        return str;
       } catch {
-        const fallbackContent =
-          typeof messageContent === 'string'
-            ? messageContent
-            : JSON.stringify(messageContent);
-        if (hasValidContent(fallbackContent)) {
-          return fallbackContent;
-        }
+        return isNonEmpty(s) ? s : null;
       }
+    };
+
+    const primaryRaw = meta.data;
+    if (isNonEmpty(primaryRaw)) {
+      const parsed = tryParseJsonString(primaryRaw);
+      if (parsed) return parsed;
     }
-  }
+    if (typeof primaryRaw === 'object' && primaryRaw !== null) {
+      const rec = primaryRaw as Record<string, unknown>;
+      const nestedCandidates: Array<unknown> = [
+        rec.text,
+        rec.content,
+        rec.message,
+        rec.body && typeof rec.body === 'object'
+          ? (rec.body as Record<string, unknown>).text
+          : undefined,
+        rec.body && typeof rec.body === 'object'
+          ? (rec.body as Record<string, unknown>).content
+          : undefined,
+        rec.payload && typeof rec.payload === 'object'
+          ? (rec.payload as Record<string, unknown>).text
+          : undefined,
+        rec.payload && typeof rec.payload === 'object'
+          ? (rec.payload as Record<string, unknown>).content
+          : undefined,
+        typeof rec.data === 'string' ? rec.data : undefined,
+      ];
+      const found = nestedCandidates.find(isNonEmpty);
+      if (found) return found as string;
+      const asString = JSON.stringify(primaryRaw);
+      if (isNonEmpty(asString)) return asString;
+    }
 
-  const fallbackSources = [
-    message.content,
-    String(message.metadata?.content || ''),
-    String(message.metadata?.message || ''),
-    String(message.metadata?.text || ''),
-  ];
-
-  for (const source of fallbackSources) {
-    if (hasValidContent(source)) {
-      return source;
+    const fallbackMetaKeys: Array<keyof typeof meta> = [
+      'content',
+      'message',
+      'text',
+    ];
+    for (const key of fallbackMetaKeys) {
+      const v = meta[key];
+      if (isNonEmpty(v)) return v as string;
     }
   }
 
@@ -296,61 +299,250 @@ function cleanMessageContent(content: string): string {
 }
 
 function MessageBubbleImpl({
+  message,
+  userProfile,
+  isHCS10 = false,
+  agentName,
+  onAgentProfileClick,
+}: MessageBubbleProps) {
+  const config = useConfigStore((state) => state.config);
+
+  const isUser = UserIdentificationComponent({
+    isHCS10,
     message,
-    userProfile,
-    isHCS10 = false,
-    agentName,
-    onAgentProfileClick,
-  }: MessageBubbleProps) {
-    const config = useConfigStore((state) => state.config);
+    myAccountId: config?.hedera?.accountId,
+  });
 
-    const isUser = UserIdentificationComponent({
-      isHCS10,
-      message,
-      myAccountId: config?.hedera?.accountId,
-    });
+  const isSystem = message.role === 'system';
 
-    const isSystem = message.role === 'system';
+  const getDisplayName = () => {
+    if (!isHCS10) {
+      return isUser ? 'You' : 'Assistant';
+    }
 
-    const getDisplayName = () => {
-      if (!isHCS10) {
-        return isUser ? 'You' : 'Assistant';
-      }
-
-      if (isUser) {
-        return userProfile?.display_name || userProfile?.alias || 'You';
-      } else {
-        const operatorId = message.metadata?.operatorId as string;
-        if (operatorId) {
-          if (agentName) {
-            return agentName;
-          } else {
-            const accountId = operatorId.replace(
-              /^.*?(\d+\.\d+\.\d+).*$/,
-              '$1'
-            );
-            return accountId || 'Unknown';
-          }
+    if (isUser) {
+      return userProfile?.display_name || userProfile?.alias || 'You';
+    } else {
+      const operatorId = message.metadata?.operatorId as string;
+      if (operatorId) {
+        if (agentName) {
+          return agentName;
+        } else {
+          const accountId = operatorId.replace(/^.*?(\d+\.\d+\.\d+).*$/, '$1');
+          return accountId || 'Unknown';
         }
-        return agentName || 'Agent';
       }
-    };
+      return agentName || 'Agent';
+    }
+  };
 
-    const displayName = getDisplayName();
-    const [isCopied, setIsCopied] = useState(false);
-    const [isFullscreen, setIsFullscreen] = useState(false);
-    const [imageModal, setImageModal] = useState<{
-      imageData: string;
-      imageName: string;
-    } | null>(null);
-    const operationalMode = config?.advanced?.operationalMode || 'autonomous';
+  const displayName = getDisplayName();
+  const [isCopied, setIsCopied] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [imageModal, setImageModal] = useState<{
+    imageData: string;
+    imageName: string;
+  } | null>(null);
+  const operationalMode = config?.advanced?.operationalMode || 'autonomous';
 
-    const approveTransaction = useAgentStore((s) => s.approveTransaction);
-    const rejectTransaction = useAgentStore((s) => s.rejectTransaction);
+  const approveTransaction = useAgentStore((s) => s.approveTransaction);
+  const rejectTransaction = useAgentStore((s) => s.rejectTransaction);
 
   const contentParts = useMemo(() => {
+    const rawContent = extractHCS10MessageContent(message);
+    let cleanedContent = cleanMessageContent(rawContent);
+
+    if (
+      !isUser &&
+      message.metadata?.transactionBytes &&
+      operationalMode === 'provideBytes'
+    ) {
+      const transactionType =
+        message.metadata?.parsedTransaction?.humanReadableType ||
+        message.metadata?.parsedTransaction?.type ||
+        'transaction';
+      const typeText = transactionType
+        .toLowerCase()
+        .replace(' transaction', '');
+      cleanedContent = `Your ${typeText} transaction is ready for approval!`;
+    }
+
+    const parsedContent = parseScheduleMessage(cleanedContent, isUser);
+
+    const codePattern = /```([a-z]*)\n([\s\S]*?)```/g;
+    let lastIndex = 0;
+    const results = [];
+    let match;
+
+    while ((match = codePattern.exec(parsedContent)) !== null) {
+      if (match.index > lastIndex) {
+        results.push({
+          type: 'text',
+          content: parsedContent.slice(lastIndex, match.index),
+        });
+      }
+
+      results.push({
+        type: 'code',
+        language: match[1] || 'typescript',
+        content: match[2].trim(),
+      });
+
+      lastIndex = match.index + match[0].length;
+    }
+
+    if (lastIndex < parsedContent.length) {
+      results.push({
+        type: 'text',
+        content: parsedContent.slice(lastIndex),
+      });
+    }
+
+    return results;
+  }, [message, isUser, operationalMode]);
+
+  const stableKey = (...args: string[]) => {
+    let h = 5381;
+    for (const s of args) {
+      for (let i = 0; i < s.length; i++) {
+        h = ((h << 5) + h) ^ s.charCodeAt(i);
+      }
+    }
+    return 'k' + (h >>> 0).toString(16);
+  };
+
+  const renderedParts = useMemo(
+    () =>
+      contentParts.map((part) =>
+        part.type === 'code'
+          ? {
+              type: 'code' as const,
+              key: stableKey('code', part.language || '', part.content),
+              language: part.language,
+              content: part.content,
+            }
+          : {
+              type: 'text' as const,
+              key: stableKey('text', '', part.content),
+              html: renderMarkdown(part.content),
+            }
+      ),
+    [contentParts]
+  );
+
+  const processMarkdown = (text: string) => {
+    let processed = text;
+
+    processed = processed.replace(/\\\[([\s\S]*?)\\\]/g, (_, math) => {
+      const cleanMath = math
+        .trim()
+        .replace(/\\text\{([^}]+)\}/g, '$1')
+        .replace(/\\,/g, ' ')
+        .replace(/\\/g, '');
+      return `<div class="math-display my-3 p-3 bg-white/10 dark:bg-gray-800/50 rounded-lg overflow-x-auto border border-white/20"><code class="text-sm font-mono text-white">${cleanMath}</code></div>`;
+    });
+
+    processed = processed.replace(/\\\(([\s\S]*?)\\\)/g, (_, math) => {
+      const cleanMath = math
+        .trim()
+        .replace(/\\text\{([^}]+)\}/g, '$1')
+        .replace(/\\,/g, ' ')
+        .replace(/\\/g, '');
+      return `<code class="inline-math px-1.5 py-0.5 bg-white/10 dark:bg-gray-800/50 rounded font-mono text-sm text-white">${cleanMath}</code>`;
+    });
+
+    processed = processed.replace(/\$\$([^$]+)\$\$/g, (_, math) => {
+      return `<div class="math-display my-3 p-3 bg-white/10 dark:bg-gray-800/50 rounded-lg overflow-x-auto border border-white/20"><code class="text-sm font-mono text-white">${math.trim()}</code></div>`;
+    });
+
+    processed = processed.replace(/\$([^$]+)\$/g, (_, math) => {
+      return `<code class="inline-math px-1.5 py-0.5 bg-white/10 dark:bg-gray-800/50 rounded font-mono text-sm text-white">${math}</code>`;
+    });
+
+    processed = processed.replace(/`([^`]+)`/g, (_, code) => {
+      return `<code class="inline-code-style">${code}</code>`;
+    });
+
+    processed = processed.replace(
+      /\*\*([^*]+)\*\*/g,
+      '<strong class="font-semibold">$1</strong>'
+    );
+    processed = processed.replace(
+      /__([^_]+)__/g,
+      '<strong class="font-semibold">$1</strong>'
+    );
+
+    processed = processed.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+    processed = processed.replace(/_([^_]+)_/g, '<em>$1</em>');
+
+    processed = processed.replace(
+      /\[([^\]]+)\]\(([^)]+)\)/g,
+      '<a href="$2" target="_blank" rel="noopener noreferrer" class="underline text-white hover:text-blue-200 dark:hover:text-blue-300 font-semibold">$1</a>'
+    );
+
+    processed = processed.replace(
+      /^#### (.*$)/gm,
+      '<h4 class="text-base font-bold mt-3 mb-2">$1</h4>'
+    );
+    processed = processed.replace(
+      /^### (.*$)/gm,
+      '<h3 class="text-lg font-bold mt-4 mb-2">$1</h3>'
+    );
+    processed = processed.replace(
+      /^## (.*$)/gm,
+      '<h2 class="text-xl font-bold mt-4 mb-2">$1</h2>'
+    );
+    processed = processed.replace(
+      /^# (.*$)/gm,
+      '<h1 class="text-2xl font-bold mt-4 mb-2">$1</h1>'
+    );
+
+    processed = processed.replace(
+      /^\s*[-*] (.+)$/gm,
+      '<li class="ml-4">• $1</li>'
+    );
+    processed = processed.replace(/(<li.*<\/li>)/s, '<ul class="my-2">$1</ul>');
+
+    processed = processed.replace(/\n/g, '<br />');
+
+    return processed;
+  };
+
+  useEffect(() => {}, [
+    message.metadata?.scheduleId,
+    operationalMode,
+    config?.advanced,
+  ]);
+
+  const formatTime = (timestamp: Date) => {
+    return new Intl.DateTimeFormat('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).format(timestamp);
+  };
+
+  const handleAgentProfileClick = () => {
+    if (
+      isHCS10 &&
+      !isUser &&
+      message.metadata?.operatorId &&
+      onAgentProfileClick
+    ) {
+      const operatorId = message.metadata.operatorId as string;
+      const accountId = operatorId.replace(/^.*?(\d+\.\d+\.\d+).*$/, '$1');
+      onAgentProfileClick(
+        accountId,
+        agentName || 'Agent',
+        config?.hedera?.network || 'testnet'
+      );
+    }
+  };
+
+  const handleCopyMessage = async () => {
+    try {
       const rawContent = extractHCS10MessageContent(message);
-      let cleanedContent = cleanMessageContent(rawContent);
+      let textToCopy = cleanMessageContent(rawContent);
 
       if (
         !isUser &&
@@ -364,492 +556,101 @@ function MessageBubbleImpl({
         const typeText = transactionType
           .toLowerCase()
           .replace(' transaction', '');
-        cleanedContent = `Your ${typeText} transaction is ready for approval!`;
+        textToCopy = `Your ${typeText} transaction is ready for approval!`;
       }
 
-      const parsedContent = parseScheduleMessage(cleanedContent, isUser);
+      await navigator.clipboard.writeText(textToCopy);
+      setIsCopied(true);
 
-      const codePattern = /```([a-z]*)\n([\s\S]*?)```/g;
-      let lastIndex = 0;
-      const results = [];
-      let match;
+      setTimeout(() => {
+        setIsCopied(false);
+      }, 2000);
+    } catch {}
+  };
 
-      while ((match = codePattern.exec(parsedContent)) !== null) {
-        if (match.index > lastIndex) {
-          results.push({
-            type: 'text',
-            content: parsedContent.slice(lastIndex, match.index),
-          });
-        }
-
-        results.push({
-          type: 'code',
-          language: match[1] || 'typescript',
-          content: match[2].trim(),
-        });
-
-        lastIndex = match.index + match[0].length;
-      }
-
-      if (lastIndex < parsedContent.length) {
-        results.push({
-          type: 'text',
-          content: parsedContent.slice(lastIndex),
-        });
-      }
-
-      return results;
-    }, [message, isUser, operationalMode]);
-
-    // Stable key generator for list items to avoid remount jitter
-    const stableKey = (...args: string[]) => {
-      let h = 5381;
-      for (const s of args) {
-        for (let i = 0; i < s.length; i++) {
-          h = ((h << 5) + h) ^ s.charCodeAt(i);
-        }
-      }
-      return 'k' + (h >>> 0).toString(16);
-    };
-
-    // Pre-render markdown HTML for text parts and attach stable keys
-    const renderedParts = useMemo(
-      () =>
-        contentParts.map((part) =>
-          part.type === 'code'
-            ? {
-                type: 'code' as const,
-                key: stableKey('code', part.language || '', part.content),
-                language: part.language,
-                content: part.content,
-              }
-            : {
-                type: 'text' as const,
-                key: stableKey('text', '', part.content),
-                html: renderMarkdown(part.content),
-              }
-        ),
-      [contentParts]
-    );
-
-    const processMarkdown = (text: string) => {
-      let processed = text;
-
-      processed = processed.replace(/\\\[([\s\S]*?)\\\]/g, (_, math) => {
-        const cleanMath = math
-          .trim()
-          .replace(/\\text\{([^}]+)\}/g, '$1')
-          .replace(/\\,/g, ' ')
-          .replace(/\\/g, '');
-        return `<div class="math-display my-3 p-3 bg-white/10 dark:bg-gray-800/50 rounded-lg overflow-x-auto border border-white/20"><code class="text-sm font-mono text-white">${cleanMath}</code></div>`;
-      });
-
-      processed = processed.replace(/\\\(([\s\S]*?)\\\)/g, (_, math) => {
-        const cleanMath = math
-          .trim()
-          .replace(/\\text\{([^}]+)\}/g, '$1')
-          .replace(/\\,/g, ' ')
-          .replace(/\\/g, '');
-        return `<code class="inline-math px-1.5 py-0.5 bg-white/10 dark:bg-gray-800/50 rounded font-mono text-sm text-white">${cleanMath}</code>`;
-      });
-
-      processed = processed.replace(/\$\$([^$]+)\$\$/g, (_, math) => {
-        return `<div class="math-display my-3 p-3 bg-white/10 dark:bg-gray-800/50 rounded-lg overflow-x-auto border border-white/20"><code class="text-sm font-mono text-white">${math.trim()}</code></div>`;
-      });
-
-      processed = processed.replace(/\$([^$]+)\$/g, (_, math) => {
-        return `<code class="inline-math px-1.5 py-0.5 bg-white/10 dark:bg-gray-800/50 rounded font-mono text-sm text-white">${math}</code>`;
-      });
-
-      processed = processed.replace(/`([^`]+)`/g, (_, code) => {
-        return `<code class="inline-code-style">${code}</code>`;
-      });
-
-      processed = processed.replace(
-        /\*\*([^*]+)\*\*/g,
-        '<strong class="font-semibold">$1</strong>'
-      );
-      processed = processed.replace(
-        /__([^_]+)__/g,
-        '<strong class="font-semibold">$1</strong>'
-      );
-
-      processed = processed.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-      processed = processed.replace(/_([^_]+)_/g, '<em>$1</em>');
-
-      processed = processed.replace(
-        /\[([^\]]+)\]\(([^)]+)\)/g,
-        '<a href="$2" target="_blank" rel="noopener noreferrer" class="underline text-white hover:text-blue-100 font-semibold">$1</a>'
-      );
-
-      processed = processed.replace(
-        /^#### (.*$)/gm,
-        '<h4 class="text-base font-bold mt-3 mb-2">$1</h4>'
-      );
-      processed = processed.replace(
-        /^### (.*$)/gm,
-        '<h3 class="text-lg font-bold mt-4 mb-2">$1</h3>'
-      );
-      processed = processed.replace(
-        /^## (.*$)/gm,
-        '<h2 class="text-xl font-bold mt-4 mb-2">$1</h2>'
-      );
-      processed = processed.replace(
-        /^# (.*$)/gm,
-        '<h1 class="text-2xl font-bold mt-4 mb-2">$1</h1>'
-      );
-
-      processed = processed.replace(
-        /^\s*[-*] (.+)$/gm,
-        '<li class="ml-4">• $1</li>'
-      );
-      processed = processed.replace(
-        /(<li.*<\/li>)/s,
-        '<ul class="my-2">$1</ul>'
-      );
-
-      processed = processed.replace(/\n/g, '<br />');
-
-      return processed;
-    };
-
-    useEffect(() => {}, [
-      message.metadata?.scheduleId,
-      operationalMode,
-      config?.advanced,
-    ]);
-
-    const formatTime = (timestamp: Date) => {
-      return new Intl.DateTimeFormat('en-US', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false,
-      }).format(timestamp);
-    };
-
-    const handleAgentProfileClick = () => {
-      if (
-        isHCS10 &&
-        !isUser &&
-        message.metadata?.operatorId &&
-        onAgentProfileClick
-      ) {
-        const operatorId = message.metadata.operatorId as string;
-        const accountId = operatorId.replace(/^.*?(\d+\.\d+\.\d+).*$/, '$1');
-        onAgentProfileClick(
-          accountId,
-          agentName || 'Agent',
-          config?.hedera?.network || 'testnet'
-        );
-      }
-    };
-
-    const handleCopyMessage = async () => {
-      try {
-        const rawContent = extractHCS10MessageContent(message);
-        let textToCopy = cleanMessageContent(rawContent);
-
-        if (
-          !isUser &&
-          message.metadata?.transactionBytes &&
-          operationalMode === 'provideBytes'
-        ) {
-          const transactionType =
-            message.metadata?.parsedTransaction?.humanReadableType ||
-            message.metadata?.parsedTransaction?.type ||
-            'transaction';
-          const typeText = transactionType
-            .toLowerCase()
-            .replace(' transaction', '');
-          textToCopy = `Your ${typeText} transaction is ready for approval!`;
-        }
-
-        await navigator.clipboard.writeText(textToCopy);
-        setIsCopied(true);
-
-        setTimeout(() => {
-          setIsCopied(false);
-        }, 2000);
-      } catch {
-        // Ignore copy errors silently
-      }
-    };
-
-    if (isSystem) {
-      return (
-        <div
-          className='flex justify-center py-2'
-          role='log'
-          aria-label='System message'
-        >
-          <div className='bg-gray-100 dark:bg-gray-700 px-3 py-1 rounded-full'>
-            <Typography variant='caption' color='secondary'>
-              {message.content}
-            </Typography>
-          </div>
-        </div>
-      );
-    }
-
+  if (isSystem) {
     return (
-      <>
-        {/* Fullscreen Modal */}
-        {isFullscreen && (
-          <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4'>
-            <div className='relative w-full max-w-4xl max-h-[90vh] bg-white dark:bg-gray-900 rounded-xl shadow-2xl flex flex-col'>
-              {/* Modal Header */}
-              <div className='flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800'>
-                <div className='flex items-center gap-3'>
-                  {isUser ? (
-                    <UserProfileImage
-                      profileImage={userProfile?.profileImage}
-                      displayName={
-                        userProfile?.display_name || userProfile?.alias
-                      }
-                      network={config?.hedera?.network}
-                      size='md'
-                    />
-                  ) : (
-                    <div className='w-8 h-8 rounded-full flex items-center justify-center bg-white dark:bg-white border border-gray-200 dark:border-gray-300'>
-                      <Logo size='sm' variant='icon' className='w-5 h-5' />
-                    </div>
-                  )}
-                  <Typography variant='h6' className='font-medium'>
-                    {displayName}
-                  </Typography>
-                  <Typography variant='caption' color='muted'>
-                    {formatTime(message.timestamp)}
-                  </Typography>
-                </div>
-                <button
-                  onClick={() => setIsFullscreen(false)}
-                  className='p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-700 dark:text-gray-300'
-                  aria-label='Close fullscreen'
-                >
-                  <FiX className='w-5 h-5' />
-                </button>
-              </div>
+      <div
+        className='flex justify-center py-2'
+        role='log'
+        aria-label='System message'
+      >
+        <div className='bg-gray-100 dark:bg-gray-700 px-3 py-1 rounded-full'>
+          <Typography variant='caption' color='secondary'>
+            {message.content}
+          </Typography>
+        </div>
+      </div>
+    );
+  }
 
-              {/* Modal Content */}
-              <div className='flex-1 overflow-y-auto p-6'>
-                <div className='prose prose-sm dark:prose-invert max-w-none'>
-                  {renderedParts.map((part, index) => {
-                    if (part.type === 'code') {
-                      return (
-                        <CodeBlock
-                          key={part.key}
-                          code={part.content}
-                          language={part.language}
-                          showLineNumbers
-                          className='my-4'
-                        />
-                      );
-                    }
-
-                    return (
-                      <div
-                        key={part.key}
-                        className='text-sm text-gray-900 dark:text-gray-100 select-text [&_.inline-code-style]:bg-gray-200 [&_.inline-code-style]:dark:bg-gray-700 [&_.inline-code-style]:px-1.5 [&_.inline-code-style]:py-0.5 [&_.inline-code-style]:rounded [&_.inline-code-style]:font-mono [&_.inline-code-style]:text-xs'
-                        dangerouslySetInnerHTML={{
-                          __html: part.html,
-                        }}
-                      />
-                    );
-                  })}
-
-                  {/* Show attachments in modal for user messages */}
-                  {isUser && Array.isArray(message.metadata?.attachments) && (
-                    <AttachmentDisplay
-                      attachments={
-                        message.metadata.attachments as {
-                          name: string;
-                          data: string;
-                          type: string;
-                          size: number;
-                        }[]
-                      }
-                      onImageClick={(imageData, imageName) =>
-                        setImageModal({ imageData, imageName })
-                      }
-                    />
-                  )}
-                </div>
-              </div>
-
-              {/* Modal Footer */}
-              <div className='flex justify-end gap-2 p-4 border-t border-gray-200 dark:border-gray-800'>
-                <button
-                  onClick={handleCopyMessage}
-                  className='px-4 py-2 text-sm rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex items-center gap-2'
-                >
-                  {isCopied ? (
-                    <>
-                      <FiCheck className='w-4 h-4' />
-                      Copied
-                    </>
-                  ) : (
-                    <>
-                      <FiCopy className='w-4 h-4' />
-                      Copy
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div
-          className={cn(
-            'flex w-full',
-            isUser ? 'justify-end' : 'justify-start'
-          )}
-          role='log'
-          aria-label={`${isUser ? 'User' : 'Assistant'} message at ${formatTime(
-            message.timestamp
-          )}`}
-        >
-          <div
-            className={cn(
-              'flex max-w-[min(85%,600px)] md:max-w-[min(75%,700px)] lg:max-w-[min(70%,800px)] space-x-2',
-              isUser ? 'flex-row-reverse space-x-reverse' : 'flex-row'
-            )}
-          >
-            <div className='flex-shrink-0'>
-              {isUser ? (
-                <UserProfileImage
-                  profileImage={userProfile?.profileImage}
-                  displayName={userProfile?.display_name || userProfile?.alias}
-                  network={config?.hedera?.network}
-                  size='md'
-                />
-              ) : isHCS10 && agentName ? (
-                <div
-                  onClick={handleAgentProfileClick}
-                  className='cursor-pointer hover:opacity-80 transition-opacity'
-                  title='View agent profile'
-                >
+  return (
+    <>
+      {/* Fullscreen Modal */}
+      {isFullscreen && (
+        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4'>
+          <div className='relative w-full max-w-4xl max-h-[90vh] bg-white dark:bg-gray-900 rounded-xl shadow-2xl flex flex-col'>
+            {/* Modal Header */}
+            <div className='flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800'>
+              <div className='flex items-center gap-3'>
+                {isUser ? (
                   <UserProfileImage
-                    isAgent={true}
-                    agentName={agentName}
+                    profileImage={userProfile?.profileImage}
+                    displayName={
+                      userProfile?.display_name || userProfile?.alias
+                    }
+                    network={config?.hedera?.network}
                     size='md'
                   />
-                </div>
-              ) : (
-                <div className='w-8 h-8 rounded-full flex items-center justify-center bg-white dark:bg-white border border-gray-200 dark:border-gray-300 flex-shrink-0'>
-                  <Logo size='sm' variant='icon' className='w-5 h-5' />
-                </div>
-              )}
+                ) : (
+                  <div className='w-8 h-8 rounded-full flex items-center justify-center bg-white dark:bg-white border border-gray-200 dark:border-gray-300'>
+                    <Logo size='sm' variant='icon' className='w-5 h-5' />
+                  </div>
+                )}
+                <Typography variant='h6' className='font-medium'>
+                  {displayName}
+                </Typography>
+                <Typography variant='caption' color='muted'>
+                  {formatTime(message.timestamp)}
+                </Typography>
+              </div>
+              <button
+                onClick={() => setIsFullscreen(false)}
+                className='p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-700 dark:text-gray-300'
+                aria-label='Close fullscreen'
+              >
+                <FiX className='w-5 h-5' />
+              </button>
             </div>
 
-            <div
-              className={cn(
-                'flex flex-col space-y-1 max-w-full',
-                isUser ? 'items-end' : 'items-start'
-              )}
-            >
-              <div
-                className={cn(
-                  'px-4 py-3 rounded-2xl shadow-xs select-text relative group break-words overflow-wrap-anywhere max-w-full',
-                  isUser
-                    ? 'bg-white dark:bg-gray-800 border border-gray-200/50 dark:border-gray-700/50 text-gray-900 dark:text-white rounded-tr-md'
-                    : 'bg-gradient-to-br from-blue-500 to-blue-500/90 dark:from-[#a679f0] dark:to-[#9568df] text-white rounded-tl-md shadow-blue-500/10'
-                )}
-                style={
-                  !isUser
-                    ? {
-                        WebkitUserSelect: 'text',
-                        userSelect: 'text',
-                      }
-                    : undefined
-                }
-              >
-                {/* Action buttons */}
-                <div
-                  className={cn(
-                    'absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200'
-                  )}
-                >
-                  {/* Expand button - only show for longer messages */}
-                  {contentParts.some((part) => part.content.length > 500) ? (
-                    <button
-                      onClick={() => setIsFullscreen(true)}
-                      className={cn(
-                        'p-1.5 rounded-md transition-all duration-200',
-                        isUser
-                          ? 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                          : 'bg-white/10 text-white/70 hover:bg-white/20 hover:text-white'
-                      )}
-                      title='Expand message'
-                    >
-                      <FiMaximize2 className='w-3.5 h-3.5' />
-                    </button>
-                  ) : null}
-
-                  {/* Copy button */}
-                  <button
-                    onClick={handleCopyMessage}
-                    className={cn(
-                      'p-1.5 rounded-md transition-all duration-200',
-                      isUser
-                        ? 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                        : 'bg-white/10 text-white/70 hover:bg-white/20 hover:text-white'
-                    )}
-                    title={isCopied ? 'Copied!' : 'Copy message'}
-                  >
-                    {isCopied ? (
-                      <FiCheck className='w-3.5 h-3.5' />
-                    ) : (
-                      <FiCopy className='w-3.5 h-3.5' />
-                    )}
-                  </button>
-                </div>
-
-                <TransactionButtonRenderer
-                  isHCS10={isHCS10}
-                  message={message}
-                  isUser={isUser}
-                  config={config}
-                />
-
-                <div className={contentParts.length > 1 ? 'space-y-2' : ''}>
-                  {renderedParts.map((part, index) => {
-                    if (part.type === 'code') {
-                      return (
-                        <CodeBlock
-                          key={part.key}
-                          code={part.content}
-                          language={part.language}
-                          showLineNumbers
-                          className='my-2'
-                        />
-                      );
-                    }
-
-                    if (isUser) {
-                      return (
-                        <span
-                          key={`text-${index}`}
-                          className='whitespace-pre-wrap break-words text-gray-900 dark:text-white select-text cursor-text text-sm'
-                        >
-                          {part.content}
-                        </span>
-                      );
-                    }
-
+            {/* Modal Content */}
+            <div className='flex-1 overflow-y-auto p-6'>
+              <div className='prose prose-sm dark:prose-invert max-w-none'>
+                {renderedParts.map((part, index) => {
+                  if (part.type === 'code') {
                     return (
-                      <div
+                      <CodeBlock
                         key={part.key}
-                        className='prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-li:my-0 select-text cursor-text text-sm break-words overflow-wrap-anywhere [&_.inline-code-style]:bg-gray-200 [&_.inline-code-style]:dark:bg-gray-700 [&_.inline-code-style]:px-1.5 [&_.inline-code-style]:py-0.5 [&_.inline-code-style]:rounded [&_.inline-code-style]:font-mono [&_.inline-code-style]:text-xs'
-                        dangerouslySetInnerHTML={{
-                          __html: part.html,
-                        }}
+                        code={part.content}
+                        language={part.language}
+                        showLineNumbers
+                        className='my-4'
                       />
                     );
-                  })}
-                </div>
+                  }
 
-                {/* Show attachments for user messages */}
+                  return (
+                    <div
+                      key={part.key}
+                      className='text-sm text-gray-900 dark:text-gray-100 select-text [&_.inline-code-style]:bg-gray-200 [&_.inline-code-style]:dark:bg-gray-700 [&_.inline-code-style]:px-1.5 [&_.inline-code-style]:py-0.5 [&_.inline-code-style]:rounded [&_.inline-code-style]:font-mono [&_.inline-code-style]:text-xs'
+                      dangerouslySetInnerHTML={{
+                        __html: part.html,
+                      }}
+                    />
+                  );
+                })}
+
+                {/* Show attachments in modal for user messages */}
                 {isUser && Array.isArray(message.metadata?.attachments) && (
                   <AttachmentDisplay
                     attachments={
@@ -865,268 +666,503 @@ function MessageBubbleImpl({
                     }
                   />
                 )}
-
-                {/* Transaction approval inside bubble for assistant messages */}
-                {(() => {
-                  if (operationalMode === 'provideBytes' && !isUser) {
-                    if (
-                      message.metadata?.scheduleId ||
-                      message.metadata?.transactionBytes
-                    ) {
-                      return (
-                        <div className='mt-3'>
-                          <TransactionApprovalButton
-                            scheduleId={String(
-                              message.metadata.scheduleId || ''
-                            )}
-                            transactionBytes={String(
-                              message.metadata.transactionBytes || ''
-                            )}
-                            description={String(
-                              message.metadata.description || ''
-                            )}
-                            className='!mt-0'
-                            notes={
-                              Array.isArray(message.metadata?.notes)
-                                ? (message.metadata.notes as string[])
-                                : []
-                            }
-                          />
-                        </div>
-                      );
-                    }
-                  }
-                  return null;
-                })()}
-
-                {/* Show notes when not in provideBytes mode or no transaction */}
-                {(() => {
-                  if (
-                    !isUser &&
-                    Array.isArray(message.metadata?.notes) &&
-                    message.metadata.notes.length > 0
-                  ) {
-                    const hasTransactionInProvideBytes =
-                      operationalMode === 'provideBytes' &&
-                      (message.metadata?.scheduleId ||
-                        message.metadata?.transactionBytes);
-
-                    if (!hasTransactionInProvideBytes) {
-                      return (
-                        <div
-                          className='bg-blue-900/30 dark:bg-purple-900/30 rounded-lg p-3 mt-3'
-                          role='region'
-                          aria-label='Transaction notes'
-                        >
-                          <Typography
-                            variant='caption'
-                            className='font-medium text-white/90'
-                          >
-                            Notes:
-                          </Typography>
-                          <ul className='mt-1' role='list'>
-                            {(message.metadata.notes as string[]).map(
-                              (note: string, index: number) => (
-                                <li key={index}>
-                                  <Typography
-                                    variant='caption'
-                                    className='block text-white/80'
-                                  >
-                                    • {note}
-                                  </Typography>
-                                </li>
-                              )
-                            )}
-                          </ul>
-                        </div>
-                      );
-                    }
-                  }
-                  return null;
-                })()}
-
-                {/* Render form message if present */}
-                {!isUser && message.metadata?.formMessage ? (
-                  <div className='mt-3'>
-                    <FormMessageBubble
-                      formMessage={message.metadata.formMessage}
-                      className='!mx-0 !max-w-none'
-                    />
-                  </div>
-                ) : null}
-
-                {!isUser && message.metadata?.hashLinkBlock ? (
-                  <HashLinkBlockRenderer
-                    hashLinkBlock={
-                      message.metadata.hashLinkBlock as {
-                        blockId: string;
-                        hashLink: string;
-                        template: string;
-                        attributes: Record<string, any>;
-                      }
-                    }
-                    className='mx-0 max-w-none'
-                  />
-                ) : null}
               </div>
+            </div>
 
-              <div
-                className={cn(
-                  'flex items-center space-x-2 px-2 transition-opacity duration-200 opacity-0 group-hover:opacity-100',
-                  isUser ? 'flex-row-reverse space-x-reverse' : 'flex-row'
-                )}
+            {/* Modal Footer */}
+            <div className='flex justify-end gap-2 p-4 border-t border-gray-200 dark:border-gray-800'>
+              <button
+                onClick={handleCopyMessage}
+                className='px-4 py-2 text-sm rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex items-center gap-2'
               >
-                <div className='flex items-center space-x-1'>
-                  <FiClock
-                    className='w-3 h-3 text-gray-400'
-                    aria-hidden='true'
-                  />
-                  <Typography variant='caption' color='secondary'>
-                    <time dateTime={message.timestamp.toISOString()}>
-                      {formatTime(message.timestamp)}
-                    </time>
-                  </Typography>
-                </div>
-
-                {message.metadata?.transactionId ? (
-                  <div className='flex items-center space-x-1'>
-                    <FiHash
-                      className='w-3 h-3 text-teal-500'
-                      aria-hidden='true'
-                    />
-                    <Typography
-                      variant='caption'
-                      color='secondary'
-                      className='font-mono'
-                    >
-                      <span
-                        title={`Transaction ID: ${message.metadata.transactionId}`}
-                      >
-                        {String(message.metadata.transactionId || '').slice(
-                          0,
-                          8
-                        )}
-                        ...
-                      </span>
-                    </Typography>
-                  </div>
-                ) : null}
-
-                {operationalMode === 'autonomous' &&
-                message.metadata?.scheduleId ? (
-                  <div className='flex items-center space-x-1'>
-                    <FiClock
-                      className='w-3 h-3 text-purple-500'
-                      aria-hidden='true'
-                    />
-                    <Typography
-                      variant='caption'
-                      color='secondary'
-                      className='font-mono'
-                    >
-                      <span
-                        title={`Schedule ID: ${message.metadata.scheduleId}`}
-                      >
-                        {String(message.metadata.scheduleId || '').slice(0, 8)}
-                      </span>
-                    </Typography>
-                  </div>
-                ) : null}
-              </div>
-
-              {(() => {
-                if (
-                  operationalMode === 'autonomous' &&
-                  message.metadata?.transactionBytes &&
-                  !isUser
-                ) {
-                  return (
-                    <TransactionApprovalButton
-                      messageId={message.id}
-                      transactionBytes={String(
-                        message.metadata.transactionBytes || ''
-                      )}
-                      description={
-                        String(message.metadata.description || '') ||
-                        (message.metadata?.pendingApproval
-                          ? 'Transaction requires approval'
-                          : 'Transaction Details')
-                      }
-                      onApprove={
-                        message.metadata?.pendingApproval
-                          ? approveTransaction
-                          : undefined
-                      }
-                      onReject={
-                        message.metadata?.pendingApproval
-                          ? rejectTransaction
-                          : undefined
-                      }
-                      className='mt-3'
-                    />
-                  );
-                }
-                return null;
-              })()}
+                {isCopied ? (
+                  <>
+                    <FiCheck className='w-4 h-4' />
+                    Copied
+                  </>
+                ) : (
+                  <>
+                    <FiCopy className='w-4 h-4' />
+                    Copy
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>
+      )}
 
-        {/* Image Modal */}
-        {imageModal && (
+      <div
+        className={cn('flex w-full', isUser ? 'justify-end' : 'justify-start')}
+        role='log'
+        aria-label={`${isUser ? 'User' : 'Assistant'} message at ${formatTime(
+          message.timestamp
+        )}`}
+      >
+        <div
+          className={cn(
+            'flex max-w-[min(85%,600px)] md:max-w-[min(75%,700px)] lg:max-w-[min(70%,800px)] space-x-2',
+            isUser ? 'flex-row-reverse space-x-reverse' : 'flex-row'
+          )}
+        >
+          <div className='flex-shrink-0'>
+            {isUser ? (
+              <UserProfileImage
+                profileImage={userProfile?.profileImage}
+                displayName={userProfile?.display_name || userProfile?.alias}
+                network={config?.hedera?.network}
+                size='md'
+              />
+            ) : isHCS10 && agentName ? (
+              <div
+                onClick={handleAgentProfileClick}
+                className='cursor-pointer hover:opacity-80 transition-opacity'
+                title='View agent profile'
+              >
+                <UserProfileImage
+                  isAgent={true}
+                  agentName={agentName}
+                  size='md'
+                />
+              </div>
+            ) : (
+              <div className='w-8 h-8 rounded-full flex items-center justify-center bg-white dark:bg-white border border-gray-200 dark:border-gray-300 flex-shrink-0'>
+                <Logo size='sm' variant='icon' className='w-5 h-5' />
+              </div>
+            )}
+          </div>
+
           <div
-            className='fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4'
-            onClick={() => setImageModal(null)}
+            className={cn(
+              'flex flex-col space-y-1 max-w-full',
+              isUser ? 'items-end' : 'items-start'
+            )}
           >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className='relative w-full max-w-4xl max-h-[90vh] bg-white dark:bg-gray-900 rounded-xl shadow-2xl flex flex-col'
-              onClick={(e) => e.stopPropagation()}
+            <div
+              className={cn(
+                'px-4 py-3 rounded-2xl shadow-xs select-text relative group break-words overflow-wrap-anywhere max-w-full',
+                isUser
+                  ? 'bg-white dark:bg-gray-800 border border-gray-200/50 dark:border-gray-700/50 text-gray-900 dark:text-white rounded-tr-md'
+                  : 'bg-gradient-to-br from-blue-500 to-blue-500/90 dark:from-[#a679f0] dark:to-[#9568df] text-white rounded-tl-md shadow-blue-500/10'
+              )}
+              style={
+                !isUser
+                  ? {
+                      WebkitUserSelect: 'text',
+                      userSelect: 'text',
+                    }
+                  : undefined
+              }
             >
-              {/* Modal Header */}
-              <div className='flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800'>
-                <div className='flex items-center gap-3'>
-                  <div className='w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center flex-shrink-0'>
-                    <FiImage className='w-4 h-4 text-blue-600 dark:text-blue-400' />
-                  </div>
-                  <Typography
-                    variant='h6'
-                    className='font-medium text-gray-900 dark:text-white truncate'
+              {/* Action buttons */}
+              <div
+                className={cn(
+                  'absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200'
+                )}
+              >
+                {/* Expand button - only show for longer messages */}
+                {contentParts.some((part) => part.content.length > 500) ? (
+                  <button
+                    onClick={() => setIsFullscreen(true)}
+                    className={cn(
+                      'p-1.5 rounded-md transition-all duration-200',
+                      isUser
+                        ? 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                        : 'bg-white/10 text-white/70 hover:bg-white/20 hover:text-white'
+                    )}
+                    title='Expand message'
                   >
-                    {imageModal.imageName}
-                  </Typography>
-                </div>
+                    <FiMaximize2 className='w-3.5 h-3.5' />
+                  </button>
+                ) : null}
+
+                {/* Copy button */}
                 <button
-                  onClick={() => setImageModal(null)}
-                  className='p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-700 dark:text-gray-300'
-                  aria-label='Close image'
+                  onClick={handleCopyMessage}
+                  className={cn(
+                    'p-1.5 rounded-md transition-all duration-200',
+                    isUser
+                      ? 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                      : 'bg-white/10 text-white/70 hover:bg-white/20 hover:text-white'
+                  )}
+                  title={isCopied ? 'Copied!' : 'Copy message'}
                 >
-                  <FiX className='w-5 h-5' />
+                  {isCopied ? (
+                    <FiCheck className='w-3.5 h-3.5' />
+                  ) : (
+                    <FiCopy className='w-3.5 h-3.5' />
+                  )}
                 </button>
               </div>
 
-              {/* Modal Content */}
-              <div className='flex-1 overflow-hidden p-6 flex items-center justify-center bg-gray-50 dark:bg-gray-900/50'>
-                <img
-                  src={imageModal.imageData}
-                  alt={imageModal.imageName}
-                  className='max-w-full max-h-full object-contain rounded-lg shadow-lg'
-                  onClick={() => setImageModal(null)}
-                />
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </>
-    );
-  }
+              <TransactionButtonRenderer
+                isHCS10={isHCS10}
+                message={message}
+                isUser={isUser}
+                config={config}
+              />
 
-// Only re-render when fields that actually affect the UI change
+              <div className={contentParts.length > 1 ? 'space-y-2' : ''}>
+                {isUser
+                  ? contentParts.map((part, index) => {
+                      if (part.type === 'code') {
+                        return (
+                          <CodeBlock
+                            key={stableKey(
+                              'ucode',
+                              part.language || '',
+                              part.content
+                            )}
+                            code={part.content}
+                            language={part.language}
+                            showLineNumbers
+                            className='my-2'
+                          />
+                        );
+                      }
+                      return (
+                        <span
+                          key={stableKey(
+                            'utext',
+                            '',
+                            `${index}-${part.content.slice(0, 16)}`
+                          )}
+                          className='whitespace-pre-line break-words text-gray-900 dark:text-white select-text cursor-text text-sm'
+                        >
+                          {part.content}
+                        </span>
+                      );
+                    })
+                  : renderedParts.map((part) => {
+                      if (part.type === 'code') {
+                        return (
+                          <CodeBlock
+                            key={part.key}
+                            code={part.content}
+                            language={part.language}
+                            showLineNumbers
+                            className='my-2'
+                          />
+                        );
+                      }
+                      return (
+                        <div
+                          key={part.key}
+                          className='prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-li:my-0 select-text cursor-text text-sm break-words overflow-wrap-anywhere whitespace-pre-line [&_.inline-code-style]:bg-gray-200 [&_.inline-code-style]:dark:bg-gray-700 [&_.inline-code-style]:px-1.5 [&_.inline-code-style]:py-0.5 [&_.inline-code-style]:rounded [&_.inline-code-style]:font-mono [&_.inline-code-style]:text-xs'
+                          dangerouslySetInnerHTML={{ __html: part.html }}
+                        />
+                      );
+                    })}
+              </div>
+
+              {/* Show attachments for user messages */}
+              {isUser && Array.isArray(message.metadata?.attachments) && (
+                <AttachmentDisplay
+                  attachments={
+                    message.metadata.attachments as {
+                      name: string;
+                      data: string;
+                      type: string;
+                      size: number;
+                    }[]
+                  }
+                  onImageClick={(imageData, imageName) =>
+                    setImageModal({ imageData, imageName })
+                  }
+                />
+              )}
+
+              {/* Transaction approval inside bubble for assistant messages */}
+              {(() => {
+                if (operationalMode === 'provideBytes' && !isUser) {
+                  const hasTx = Boolean(
+                    message.metadata?.scheduleId ||
+                      message.metadata?.transactionBytes
+                  );
+                  if (hasTx) {
+                    return (
+                      <div className='mt-3'>
+                        <TransactionApprovalButton
+                          scheduleId={String(message.metadata.scheduleId || '')}
+                          transactionBytes={String(
+                            message.metadata.transactionBytes || ''
+                          )}
+                          description={String(
+                            message.metadata.description || ''
+                          )}
+                          className='!mt-0'
+                          notes={
+                            Array.isArray(message.metadata?.notes)
+                              ? (message.metadata.notes as string[])
+                              : []
+                          }
+                          messageId={message.id}
+                          initialApproved={Boolean(message.metadata?.approved)}
+                          initialExecuted={Boolean(message.metadata?.approved)}
+                          initialTransactionId={
+                            message.metadata?.transactionId
+                              ? String(message.metadata.transactionId)
+                              : undefined
+                          }
+                          onExecuted={async ({ messageId, transactionId }) => {
+                            try {
+                              const sessId =
+                                useAgentStore.getState().currentSession?.id ||
+                                undefined;
+                              await useAgentStore
+                                .getState()
+                                .markTransactionExecuted(
+                                  messageId,
+                                  transactionId,
+                                  sessId
+                                );
+                            } catch {}
+                          }}
+                        />
+                      </div>
+                    );
+                  }
+                }
+                return null;
+              })()}
+
+              {/* Show notes when not in provideBytes mode or no transaction */}
+              {(() => {
+                if (
+                  !isUser &&
+                  Array.isArray(message.metadata?.notes) &&
+                  message.metadata.notes.length > 0
+                ) {
+                  const hasTransactionInProvideBytes =
+                    operationalMode === 'provideBytes' &&
+                    (message.metadata?.scheduleId ||
+                      message.metadata?.transactionBytes);
+
+                  if (!hasTransactionInProvideBytes) {
+                    return (
+                      <div
+                        className='bg-blue-900/50 dark:bg-purple-900/50 rounded-lg p-3 mt-3'
+                        role='region'
+                        aria-label='Transaction notes'
+                      >
+                        <Typography
+                          variant='caption'
+                          className='font-medium text-white/90'
+                        >
+                          Notes:
+                        </Typography>
+                        <ul className='mt-1' role='list'>
+                          {(message.metadata.notes as string[]).map(
+                            (note: string, index: number) => (
+                              <li key={index}>
+                                <Typography
+                                  variant='caption'
+                                  className='block text-white/80'
+                                >
+                                  • {note}
+                                </Typography>
+                              </li>
+                            )
+                          )}
+                        </ul>
+                      </div>
+                    );
+                  }
+                }
+                return null;
+              })()}
+
+              {/* Render form message if present */}
+              {!isUser && message.metadata?.formMessage ? (
+                <div className='mt-3'>
+                  <FormMessageBubble
+                    formMessage={message.metadata.formMessage}
+                    className='!mx-0 !max-w-none'
+                  />
+                </div>
+              ) : null}
+
+              {!isUser && message.metadata?.hashLinkBlock
+                ? ((() => {
+                    try {
+                      const block = message.metadata?.hashLinkBlock as any;
+                      console.debug(
+                        '[MessageBubble] Rendering HashLinkBlock:',
+                        {
+                          blockId: block?.blockId,
+                          hasTemplate: !!block?.template,
+                          attrKeys: block?.attributes
+                            ? Object.keys(block.attributes)
+                            : [],
+                        }
+                      );
+                    } catch {}
+                    return null;
+                  }) as () => null,
+                  (
+                    <HashLinkBlockRenderer
+                      hashLinkBlock={
+                        message.metadata.hashLinkBlock as {
+                          blockId: string;
+                          hashLink: string;
+                          template: string;
+                          attributes: Record<string, unknown>;
+                        }
+                      }
+                      className='mx-0 max-w-none'
+                    />
+                  ))
+                : null}
+            </div>
+
+            <div
+              className={cn(
+                'flex items-center space-x-2 px-2 transition-opacity duration-200 opacity-0 group-hover:opacity-100',
+                isUser ? 'flex-row-reverse space-x-reverse' : 'flex-row'
+              )}
+            >
+              <div className='flex items-center space-x-1'>
+                <FiClock className='w-3 h-3 text-gray-400' aria-hidden='true' />
+                <Typography variant='caption' color='secondary'>
+                  <time dateTime={message.timestamp.toISOString()}>
+                    {formatTime(message.timestamp)}
+                  </time>
+                </Typography>
+              </div>
+
+              {message.metadata?.transactionId ? (
+                <div className='flex items-center space-x-1'>
+                  <FiHash
+                    className='w-3 h-3 text-teal-500'
+                    aria-hidden='true'
+                  />
+                  <Typography
+                    variant='caption'
+                    color='secondary'
+                    className='font-mono'
+                  >
+                    <span
+                      title={`Transaction ID: ${message.metadata.transactionId}`}
+                    >
+                      {String(message.metadata.transactionId || '').slice(0, 8)}
+                      ...
+                    </span>
+                  </Typography>
+                </div>
+              ) : null}
+
+              {operationalMode === 'autonomous' &&
+              message.metadata?.scheduleId ? (
+                <div className='flex items-center space-x-1'>
+                  <FiClock
+                    className='w-3 h-3 text-purple-500'
+                    aria-hidden='true'
+                  />
+                  <Typography
+                    variant='caption'
+                    color='secondary'
+                    className='font-mono'
+                  >
+                    <span title={`Schedule ID: ${message.metadata.scheduleId}`}>
+                      {String(message.metadata.scheduleId || '').slice(0, 8)}
+                    </span>
+                  </Typography>
+                </div>
+              ) : null}
+            </div>
+
+            {(() => {
+              if (
+                operationalMode === 'autonomous' &&
+                message.metadata?.transactionBytes &&
+                !isUser
+              ) {
+                return (
+                  <TransactionApprovalButton
+                    messageId={message.id}
+                    transactionBytes={String(
+                      message.metadata.transactionBytes || ''
+                    )}
+                    description={
+                      String(message.metadata.description || '') ||
+                      (message.metadata?.pendingApproval
+                        ? 'Transaction requires approval'
+                        : 'Transaction Details')
+                    }
+                    onApprove={
+                      message.metadata?.pendingApproval
+                        ? approveTransaction
+                        : undefined
+                    }
+                    onReject={
+                      message.metadata?.pendingApproval
+                        ? rejectTransaction
+                        : undefined
+                    }
+                    className='mt-3'
+                  />
+                );
+              }
+              return null;
+            })()}
+          </div>
+        </div>
+      </div>
+
+      {/* Image Modal */}
+      {imageModal && (
+        <div
+          className='fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4'
+          onClick={() => setImageModal(null)}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className='relative w-full max-w-4xl max-h-[90vh] bg-white dark:bg-gray-900 rounded-xl shadow-2xl flex flex-col'
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className='flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800'>
+              <div className='flex items-center gap-3'>
+                <div className='w-8 h-8 rounded-full bg-blue-200 dark:bg-blue-900/40 flex items-center justify-center flex-shrink-0'>
+                  <FiImage className='w-4 h-4 text-blue-500 dark:text-blue-300' />
+                </div>
+                <Typography
+                  variant='h6'
+                  className='font-medium text-gray-900 dark:text-white truncate'
+                >
+                  {imageModal.imageName}
+                </Typography>
+              </div>
+              <button
+                onClick={() => setImageModal(null)}
+                className='p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-700 dark:text-gray-300'
+                aria-label='Close image'
+              >
+                <FiX className='w-5 h-5' />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className='flex-1 overflow-hidden p-6 flex items-center justify-center bg-gray-50 dark:bg-gray-900/50'>
+              <img
+                src={imageModal.imageData}
+                alt={imageModal.imageName}
+                className='max-w-full max-h-full object-contain rounded-lg shadow-lg'
+                onClick={() => setImageModal(null)}
+              />
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </>
+  );
+}
+
 function areEqual(prev: MessageBubbleProps, next: MessageBubbleProps): boolean {
-  const pm = prev.message as any;
-  const nm = next.message as any;
+  const pm = prev.message;
+  const nm = next.message;
   if (pm === nm) return true;
   if (pm.id !== nm.id) return false;
   if (pm.role !== nm.role) return false;
@@ -1135,8 +1171,10 @@ function areEqual(prev: MessageBubbleProps, next: MessageBubbleProps): boolean {
   if (pTime !== nTime) return false;
   if (pm.content !== nm.content) return false;
 
-  const pmd = pm.metadata || {};
-  const nmd = nm.metadata || {};
+  const pmd = pm.metadata ?? {};
+  const nmd = nm.metadata ?? {};
+  const pmdRec = pmd as Record<string, unknown>;
+  const nmdRec = nmd as Record<string, unknown>;
   const fields = [
     'op',
     'scheduleId',
@@ -1148,22 +1186,32 @@ function areEqual(prev: MessageBubbleProps, next: MessageBubbleProps): boolean {
     'operatorId',
   ] as const;
   for (const f of fields) {
-    if ((pmd as any)[f] !== (nmd as any)[f]) return false;
+    if (pmdRec[f as string] !== nmdRec[f as string]) return false;
   }
-  const pNotes = Array.isArray(pmd.notes) ? (pmd.notes as string[]).join('|') : '';
-  const nNotes = Array.isArray(nmd.notes) ? (nmd.notes as string[]).join('|') : '';
-  if (pNotes !== nNotes) return false;
 
-  const pAtt = Array.isArray(pmd.attachments) ? pmd.attachments : [];
-  const nAtt = Array.isArray(nmd.attachments) ? nmd.attachments : [];
+  const pNotesArr = Array.isArray(pmdRec.notes)
+    ? (pmdRec.notes as unknown[])
+    : [];
+  const nNotesArr = Array.isArray(nmdRec.notes)
+    ? (nmdRec.notes as unknown[])
+    : [];
+  if (pNotesArr.join('|') !== nNotesArr.join('|')) return false;
+
+  const pAtt = Array.isArray(pmdRec.attachments)
+    ? (pmdRec.attachments as unknown[])
+    : [];
+  const nAtt = Array.isArray(nmdRec.attachments)
+    ? (nmdRec.attachments as unknown[])
+    : [];
   if (pAtt.length !== nAtt.length) return false;
   for (let i = 0; i < pAtt.length; i++) {
-    if (pAtt[i]?.name !== nAtt[i]?.name) return false;
-    if (pAtt[i]?.size !== nAtt[i]?.size) return false;
-    if (pAtt[i]?.type !== nAtt[i]?.type) return false;
+    const pa = (pAtt[i] as Record<string, unknown>) || {};
+    const na = (nAtt[i] as Record<string, unknown>) || {};
+    if (pa.name !== na.name) return false;
+    if (pa.size !== na.size) return false;
+    if (pa.type !== na.type) return false;
   }
 
-  // Agent label hover state is CSS-only now; userProfile affects avatar only
   if (prev.isHCS10 !== next.isHCS10) return false;
   if (prev.agentName !== next.agentName) return false;
 

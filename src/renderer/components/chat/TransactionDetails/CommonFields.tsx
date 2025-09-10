@@ -9,25 +9,22 @@ export const TransactionSection: React.FC<{
   children: React.ReactNode;
 }> = ({ title, children }) => (
   <div className='space-y-2'>
-    <Typography
-      variant='caption'
-      className='font-medium text-gray-700 dark:text-gray-300'
-    >
-      {title}
-    </Typography>
-    <div className='bg-white dark:bg-gray-800 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 shadow-sm'>
+    <h3 className='font-medium text-white text-sm'>{title}</h3>
+    <div className='bg-white/5 rounded-lg border border-white/10'>
       {children}
     </div>
   </div>
 );
 
-const formatCryptographicKey = (key: string): { formatted: string; isKey: boolean } => {
+const formatCryptographicKey = (
+  key: string
+): { formatted: string; isKey: boolean } => {
   const keyMatch = key.match(/^([A-Z0-9_]+):\s*([a-fA-F0-9]{32,})$/);
   if (keyMatch) {
     const [, algorithm, hexKey] = keyMatch;
     return {
       formatted: `${algorithm}: ${hexKey.substring(0, 8)}...${hexKey.substring(-8)}`,
-      isKey: true
+      isKey: true,
     };
   }
   return { formatted: key, isKey: false };
@@ -41,31 +38,32 @@ export const FieldRow: React.FC<{
 }> = ({ label, value, isLast = false, isMono = false }) => {
   if (value === undefined || value === null || value === '') return null;
 
-  const stringValue = typeof value === 'number' ? value.toLocaleString() : String(value);
-  const { formatted, isKey } = isMono ? formatCryptographicKey(stringValue) : { formatted: stringValue, isKey: false };
+  const stringValue =
+    typeof value === 'number' ? value.toLocaleString() : String(value);
+  const { formatted, isKey } = isMono
+    ? formatCryptographicKey(stringValue)
+    : { formatted: stringValue, isKey: false };
 
   return (
     <div
       className={cn(
-        'flex justify-between items-start py-2.5 px-4',
-        !isLast && 'border-b border-gray-200 dark:border-gray-700'
+        'flex justify-between items-start py-2 px-3',
+        !isLast && 'border-b border-white/10'
       )}
     >
-      <span className='text-sm font-medium text-gray-700 dark:text-gray-300 flex-shrink-0'>
+      <span className='text-sm font-medium text-white flex-shrink-0 pr-2'>
         {label}
       </span>
-      <div className='ml-4 text-right flex-1'>
-        <span
-          className={cn(
-            'text-sm text-gray-600 dark:text-gray-400 break-all',
-            isMono && 'font-mono text-xs',
-            isKey && 'block'
-          )}
-          title={isKey ? stringValue : undefined}
-        >
-          {formatted}
-        </span>
-      </div>
+      <span
+        className={cn(
+          'text-sm text-white break-all text-right flex-1 min-w-0',
+          isMono && 'font-mono text-xs',
+          isKey && 'block'
+        )}
+        title={isKey ? stringValue : undefined}
+      >
+        {formatted}
+      </span>
     </div>
   );
 };
@@ -101,7 +99,7 @@ export const TransactionSummary: React.FC<{
         </div>
         <Typography
           variant='body2'
-          className='text-sm font-medium text-gray-700 dark:text-gray-300 leading-relaxed'
+          className='text-sm font-medium text-white leading-relaxed'
         >
           Transfer of HBAR from {sendersText} to {receiversText}
         </Typography>

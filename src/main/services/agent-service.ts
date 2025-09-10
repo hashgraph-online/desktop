@@ -3,14 +3,13 @@ import {
   FormatConverterRegistry,
   TopicIdToHrlConverter,
 } from '@hashgraphonline/conversational-agent';
-import { StringNormalizationConverter } from '@hashgraphonline/conversational-agent';
+import { StringNormalizationConverter, ParameterService } from '@hashgraphonline/conversational-agent';
 import type { EntityAssociation } from '@hashgraphonline/conversational-agent';
 import type { NetworkType } from '@hashgraphonline/standards-sdk';
 import type { ChatHistory, ServiceDependencies } from '../interfaces/services';
 import { AgentLoader } from './agent-loader';
 import type { ProgressiveLoadConfig } from '../../shared/types/mcp-performance';
 import { SessionService } from './session-service';
-import { ParameterService } from './parameter-service';
 import { MCPConnectionService } from './mcp-connection-service';
 import { MemoryService } from './memory-service';
 import { InitializationService } from './initialization-service';
@@ -31,8 +30,10 @@ export interface AgentConfig {
   network: NetworkType;
   openAIApiKey: string;
   modelName?: string;
-  operationalMode?: 'autonomous' | 'provideBytes';
+  operationalMode?: 'autonomous' | 'provideBytes' | 'returnBytes';
   llmProvider?: 'openai' | 'anthropic';
+  /** When using Provide Bytes with a connected wallet, generate user txs for this account */
+  userAccountId?: string;
   mcpServers?: MCPServer[];
   useProgressiveLoading?: boolean;
   progressiveLoadConfig?: Partial<ProgressiveLoadConfig>;

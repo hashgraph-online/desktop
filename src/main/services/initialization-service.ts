@@ -16,8 +16,15 @@ import type {
 import type { ServiceDependencies } from '../interfaces/services';
 import type { ProgressiveLoadConfig } from '../../shared/types/mcp-performance';
 import type { NetworkType } from '@hashgraphonline/standards-sdk';
+import { getCurrentWallet } from './wallet-context';
 import type { EntityAssociation } from '@hashgraphonline/conversational-agent';
 import { MCPServer } from '../db/schema';
+import { executeWithWallet } from './wallet-executor';
+import { startInscriptionViaWallet } from './wallet-bridge-main';
+import { setWalletBridgeProvider } from '@hashgraphonline/conversational-agent';
+import { SignerProviderRegistry } from '@hashgraphonline/standards-agent-kit';
+import { startHCSOperationViaLocalBuilder } from './hcs-start-bytes';
+ 
 
 interface AgentConfig {
   accountId: string;
@@ -25,8 +32,10 @@ interface AgentConfig {
   network: NetworkType;
   openAIApiKey: string;
   modelName?: string;
-  operationalMode?: 'autonomous' | 'provideBytes';
+  operationalMode?: 'autonomous' | 'provideBytes' | 'returnBytes';
   llmProvider?: 'openai' | 'anthropic';
+  /** When using Provide Bytes with a connected wallet, generate user txs for this account */
+  userAccountId?: string;
   mcpServers?: MCPServer[];
   useProgressiveLoading?: boolean;
   progressiveLoadConfig?: Partial<ProgressiveLoadConfig>;
@@ -54,6 +63,36 @@ export class InitializationService implements IInitializationService {
     this.mcpServiceWrapper = new MCPServiceWrapper(dependencies);
     this.mcpService = MCPService.getInstance();
     this.agentLoader = AgentLoader.getInstance();
+
+    try {
+      setWalletBridgeProvider({
+        status: async () => {
+          const w = getCurrentWallet();
+          return {
+            connected: !!w,
+            accountId: w?.accountId,
+            network: w?.network,
+          };
+        },
+        executeBytes: async (base64, network) => {
+          const { transactionId } = await executeWithWallet(base64, network);
+          return { transactionId };
+        },
+        startInscription: async (request, network) => {
+          return await startInscriptionViaWallet(request, network);
+        },
+        startHCS: async (op: string, request: Record<string, unknown>, network) => {
+          return await startHCSOperationViaLocalBuilder(op, request, network);
+        },
+      });
+
+      try {
+        SignerProviderRegistry.setStartHCSDelegate(async (op, request, network) => {
+          return await startHCSOperationViaLocalBuilder(op, request, network);
+        });
+      } catch {}
+
+    } catch {}
   }
 
   /**
@@ -110,7 +149,11 @@ export class InitializationService implements IInitializationService {
     this.lastConfig = { ...config };
 
     try {
-      if (!config.accountId || !config.privateKey || !config.openAIApiKey) {
+      if (
+        !config.accountId ||
+        (!config.privateKey && config.operationalMode !== 'provideBytes' && config.operationalMode !== 'returnBytes') ||
+        !config.openAIApiKey
+      ) {
         throw new Error(
           'Missing required configuration: accountId, privateKey, or API key'
         );
@@ -391,9 +434,12 @@ export class InitializationService implements IInitializationService {
         modelName = modelName.replace('anthropic/', '');
       }
 
+      const wallet = getCurrentWallet();
+      const userAccountId = config.userAccountId || wallet?.accountId || config.accountId;
+
       const agentConfig: SafeAgentConfig = {
         accountId: config.accountId,
-        userAccountId: config.accountId,
+        userAccountId,
         privateKey: config.privateKey,
         network: config.network as unknown as NetworkType,
         openAIApiKey: config.openAIApiKey,
@@ -409,6 +455,9 @@ export class InitializationService implements IInitializationService {
         },
         verbose: config.verbose ?? false,
         disableLogging: config.disableLogging ?? true,
+        walletExecutor: async (base64, net) => {
+          return await executeWithWallet(base64, net === 'mainnet' ? 'mainnet' : 'testnet');
+        },
       };
 
       this.logger.info('Creating conversational agent instance...');

@@ -1,13 +1,13 @@
-import React, { useState, useCallback, useMemo } from "react";
-import Form from "@rjsf/core";
-import { customizeValidator } from "@rjsf/validator-ajv8";
-import { rjsfTheme, FieldInteractionProvider } from "./RjsfTheme";
-import type { RJSFSchema, UiSchema } from "@rjsf/utils";
-import { Button } from "../ui/Button";
-import type { FormMessage } from "../../stores/agentStore";
-import { useAgentStore } from "../../stores/agentStore";
-import SubmitButtonContent from "./SubmitButtonContent";
-import { FiCheckCircle, FiXCircle, FiLoader } from "react-icons/fi";
+import React, { useState, useCallback, useMemo } from 'react';
+import Form from '@rjsf/core';
+import { customizeValidator } from '@rjsf/validator-ajv8';
+import { rjsfTheme, FieldInteractionProvider } from './RjsfTheme';
+import type { RJSFSchema, UiSchema } from '@rjsf/utils';
+import { Button } from '../ui/Button';
+import type { FormMessage } from '../../stores/agentStore';
+import { useAgentStore } from '../../stores/agentStore';
+import SubmitButtonContent from './SubmitButtonContent';
+import { FiCheckCircle, FiXCircle, FiLoader } from 'react-icons/fi';
 
 const typingSelector = (state: any) => state.isTyping;
 
@@ -45,33 +45,33 @@ const convertToJsonSchema = (formMessage: FormMessage): RJSFSchema => {
     };
 
     switch (field.type) {
-      case "text":
-        fieldSchema.type = "string";
+      case 'text':
+        fieldSchema.type = 'string';
         break;
-      case "number":
-      case "currency":
-      case "percentage":
-        fieldSchema.type = "number";
+      case 'number':
+      case 'currency':
+      case 'percentage':
+        fieldSchema.type = 'number';
         if (field.validation?.min !== undefined)
           fieldSchema.minimum = field.validation.min;
         if (field.validation?.max !== undefined)
           fieldSchema.maximum = field.validation.max;
         break;
-      case "textarea":
-        fieldSchema.type = "string";
+      case 'textarea':
+        fieldSchema.type = 'string';
         break;
-      case "checkbox":
-        fieldSchema.type = "boolean";
+      case 'checkbox':
+        fieldSchema.type = 'boolean';
         break;
-      case "select":
-        fieldSchema.type = "string";
+      case 'select':
+        fieldSchema.type = 'string';
         if (field.options) {
           fieldSchema.enum = field.options.map((opt) => opt.value);
           fieldSchema.enumNames = field.options.map((opt) => opt.label);
         }
         break;
       default:
-        fieldSchema.type = "string";
+        fieldSchema.type = 'string';
     }
 
     if (field.validation?.minLength)
@@ -124,7 +124,7 @@ const convertToJsonSchema = (formMessage: FormMessage): RJSFSchema => {
   });
 
   const schema = {
-    type: "object" as const,
+    type: 'object' as const,
     title: formMessage.formConfig.title,
     description: formMessage.formConfig.description,
     properties,
@@ -143,23 +143,23 @@ const convertToUiSchema = (formMessage: FormMessage): UiSchema => {
 
   formMessage.formConfig.fields.forEach((field) => {
     switch (field.type) {
-      case "textarea":
-        uiSchema[field.name] = { "ui:widget": "TextareaWidget" };
+      case 'textarea':
+        uiSchema[field.name] = { 'ui:widget': 'TextareaWidget' };
         break;
-      case "checkbox":
-        uiSchema[field.name] = { "ui:widget": "CheckboxWidget" };
+      case 'checkbox':
+        uiSchema[field.name] = { 'ui:widget': 'CheckboxWidget' };
         break;
-      case "select":
-        uiSchema[field.name] = { "ui:widget": "SelectWidget" };
+      case 'select':
+        uiSchema[field.name] = { 'ui:widget': 'SelectWidget' };
         break;
       default:
-        uiSchema[field.name] = { "ui:widget": "TextWidget" };
+        uiSchema[field.name] = { 'ui:widget': 'TextWidget' };
     }
 
     if (field.placeholder) {
       uiSchema[field.name] = {
         ...uiSchema[field.name],
-        "ui:placeholder": field.placeholder,
+        'ui:placeholder': field.placeholder,
       };
     }
   });
@@ -178,15 +178,15 @@ function RJSFForm({
   uiSchema,
 }: RJSFFormProps) {
   const [formData, setFormData] = useState<JsonRecord>(
-    (message.partialInput as JsonRecord) || {},
+    (message.partialInput as JsonRecord) || {}
   );
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const isTyping = useAgentStore(typingSelector);
 
-  const completionState = message.completionState || "active";
-  const isCompleted = completionState === "completed";
-  const isFailed = completionState === "failed";
-  const isFormSubmitting = completionState === "submitting";
+  const completionState = message.completionState || 'active';
+  const isCompleted = completionState === 'completed';
+  const isFailed = completionState === 'failed';
+  const isFormSubmitting = completionState === 'submitting';
 
   const isProcessing = isSubmitting || isTyping || isFormSubmitting;
 
@@ -194,12 +194,12 @@ function RJSFForm({
     () =>
       customizeValidator({
         ajvOptionsOverrides: {
-          removeAdditional: "all",
+          removeAdditional: 'all',
           strict: false,
           allErrors: true,
         },
       }),
-    [],
+    []
   );
 
   const handleSubmit = useCallback(
@@ -209,10 +209,10 @@ function RJSFForm({
       Promise.resolve(onSubmit((data.formData || {}) as JsonRecord)).finally(
         () => {
           setIsSubmitting(false);
-        },
+        }
       );
     },
-    [onSubmit],
+    [onSubmit]
   );
 
   const handleChange = useCallback(
@@ -221,7 +221,7 @@ function RJSFForm({
         setFormData((data.formData || {}) as JsonRecord);
       }
     },
-    [isCompleted, isFailed],
+    [isCompleted, isFailed]
   );
 
   const formatTimestamp = useCallback((timestamp: number) => {
@@ -242,12 +242,14 @@ function RJSFForm({
               </p>
             )}
           </div>
-          
+
           <div className='bg-blue-950/40 border border-blue-800/30 rounded-xl p-4 mb-4'>
             <div className='flex items-center gap-3 mb-3'>
               <FiCheckCircle className='text-blue-300 w-5 h-5 flex-shrink-0' />
               <div>
-                <span className='text-white font-medium text-base'>Form Submitted Successfully</span>
+                <span className='text-white font-medium text-base'>
+                  Form Submitted Successfully
+                </span>
                 {message.completedAt && (
                   <p className='text-white/60 text-sm mt-0.5'>
                     {formatTimestamp(message.completedAt)}
@@ -266,7 +268,7 @@ function RJSFForm({
             <Form
               schema={jsonSchema}
               uiSchema={uiSchema}
-              formData={message.partialInput as JsonRecord || {}}
+              formData={(message.partialInput as JsonRecord) || {}}
               validator={validator}
               widgets={rjsfTheme.widgets}
               templates={rjsfTheme.templates}
@@ -289,46 +291,46 @@ function RJSFForm({
   if (isFailed) {
     return (
       <FieldInteractionProvider>
-        <div className="w-full">
-          <div className="mb-6">
-            <h3 className="text-lg font-semibold text-white">
-              {message.formConfig?.title || "Complete Form"}
+        <div className='w-full'>
+          <div className='mb-6'>
+            <h3 className='text-lg font-semibold text-white'>
+              {message.formConfig?.title || 'Complete Form'}
             </h3>
             {message.formConfig?.description && (
-              <p className="text-sm text-white/90 mt-1">
+              <p className='text-sm text-white/90 mt-1'>
                 {message.formConfig.description}
               </p>
             )}
           </div>
 
-          <div className="relative mb-6 overflow-hidden rounded-2xl bg-gradient-to-br from-red-500/10 via-rose-500/10 to-orange-500/10 border border-red-500/20 backdrop-blur-sm">
-            <div className="absolute inset-0 bg-gradient-to-r from-red-500/5 via-transparent to-rose-500/5"></div>
-            <div className="relative p-6">
-              <div className="flex items-start gap-4 mb-4">
-                <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-red-400 to-rose-500 rounded-xl flex items-center justify-center shadow-lg">
-                  <FiXCircle className="text-white w-6 h-6" />
+          <div className='relative mb-6 overflow-hidden rounded-2xl bg-gradient-to-br from-red-500/10 via-rose-500/10 to-orange-500/10 border border-red-500/20 backdrop-blur-sm'>
+            <div className='absolute inset-0 bg-gradient-to-r from-red-500/5 via-transparent to-rose-500/5'></div>
+            <div className='relative p-6'>
+              <div className='flex items-start gap-4 mb-4'>
+                <div className='flex-shrink-0 w-12 h-12 bg-gradient-to-br from-red-400 to-rose-500 rounded-xl flex items-center justify-center shadow-lg'>
+                  <FiXCircle className='text-white w-6 h-6' />
                 </div>
-                <div className="flex-1">
-                  <h4 className="text-red-300 font-bold text-lg mb-1">
+                <div className='flex-1'>
+                  <h4 className='text-red-300 font-bold text-lg mb-1'>
                     Form Submission Failed
                   </h4>
-                  <p className="text-red-200/80 text-sm leading-relaxed">
+                  <p className='text-red-200/80 text-sm leading-relaxed'>
                     There was an issue processing your form submission. Please
                     review the details below and try again.
                   </p>
                 </div>
               </div>
 
-              <div className="space-y-3 pt-4 border-t border-red-500/20">
+              <div className='space-y-3 pt-4 border-t border-red-500/20'>
                 {message.completionResult?.message && (
-                  <div className="bg-red-500/10 rounded-lg p-3 border border-red-500/20">
-                    <p className="text-red-100 text-sm leading-relaxed font-medium">
+                  <div className='bg-red-500/10 rounded-lg p-3 border border-red-500/20'>
+                    <p className='text-red-100 text-sm leading-relaxed font-medium'>
                       {message.completionResult.message}
                     </p>
                   </div>
                 )}
-                <div className="flex items-center gap-2 text-red-200/70 text-sm">
-                  <div className="w-1.5 h-1.5 bg-red-400 rounded-full"></div>
+                <div className='flex items-center gap-2 text-red-200/70 text-sm'>
+                  <div className='w-1.5 h-1.5 bg-red-400 rounded-full'></div>
                   <span>
                     You can modify your responses and try submitting again
                   </span>
@@ -337,11 +339,11 @@ function RJSFForm({
             </div>
           </div>
 
-          <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-white/10 rounded-xl opacity-50"></div>
-            <div className="relative bg-black/20 rounded-xl p-4 border border-white/10">
-              <div className="mb-4">
-                <span className="text-xs text-white/50 font-medium tracking-wide uppercase">
+          <div className='relative'>
+            <div className='absolute inset-0 bg-gradient-to-b from-white/5 to-white/10 rounded-xl opacity-50'></div>
+            <div className='relative bg-black/20 rounded-xl p-4 border border-white/10'>
+              <div className='mb-4'>
+                <span className='text-xs text-white/50 font-medium tracking-wide uppercase'>
                   Retry Form Submission
                 </span>
               </div>
@@ -361,24 +363,24 @@ function RJSFForm({
                 liveOmit={true}
                 disabled={isProcessing}
               >
-                <div className="flex gap-3 mt-8">
+                <div className='flex gap-3 mt-8'>
                   <Button
-                    type="button"
-                    variant="ghost"
+                    type='button'
+                    variant='ghost'
                     onClick={onCancel}
                     disabled={isProcessing}
-                    className="px-6 py-3 bg-transparent hover:bg-white/10 border border-white/30 hover:border-white/50 rounded-xl transition-all duration-300 ease-out font-medium text-white/80 hover:text-white"
+                    className='px-6 py-3 bg-transparent hover:bg-white/10 border border-white/30 hover:border-white/50 rounded-xl transition-all duration-300 ease-out font-medium text-white/80 hover:text-white'
                   >
-                    {message.formConfig?.cancelLabel || "Cancel"}
+                    {message.formConfig?.cancelLabel || 'Cancel'}
                   </Button>
                   <Button
-                    type="submit"
+                    type='submit'
                     disabled={isProcessing}
-                    className="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 ease-out font-semibold text-base"
+                    className='px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 ease-out font-semibold text-base'
                   >
                     <SubmitButtonContent
                       submitting={isProcessing}
-                      label="Retry Submission"
+                      label='Retry Submission'
                     />
                   </Button>
                 </div>
@@ -392,20 +394,33 @@ function RJSFForm({
 
   return (
     <FieldInteractionProvider>
-      <div className="w-full">
-        <div className="mb-4">
-          <h3 className="text-lg font-semibold text-white">
-            {message.formConfig?.title || "Complete Form"}
+      <div
+        className='w-full'
+        role='region'
+        aria-labelledby='form-title'
+        aria-describedby='form-description'
+      >
+        <div className='mb-4'>
+          <h3
+            id='form-title'
+            className='text-lg font-semibold text-white'
+            tabIndex={-1}
+          >
+            {message.formConfig?.title || 'Complete Form'}
           </h3>
           {message.formConfig?.description && (
-            <p className="text-sm text-white/90 mt-1">
+            <p id='form-description' className='text-sm text-white/90 mt-1'>
               {message.formConfig.description}
             </p>
           )}
           {isFormSubmitting && (
-            <div className="flex items-center gap-2 mt-2 text-blue-300">
-              <FiLoader className="w-4 h-4 animate-spin" />
-              <span className="text-sm">Submitting form...</span>
+            <div
+              className='flex items-center gap-2 mt-2 text-blue-300'
+              role='status'
+              aria-live='polite'
+            >
+              <FiLoader className='w-4 h-4 animate-spin' aria-hidden='true' />
+              <span className='text-sm'>Submitting form...</span>
             </div>
           )}
         </div>
@@ -426,25 +441,37 @@ function RJSFForm({
             liveOmit={true}
             disabled={isProcessing}
           >
-            <div className="flex gap-3 mt-6">
+            <div
+              className='flex gap-3 mt-6'
+              role='group'
+              aria-label='Form actions'
+            >
               <Button
-                type="button"
-                variant="ghost"
+                type='button'
+                variant='ghost'
                 onClick={onCancel}
                 disabled={isProcessing}
-                className="px-6 py-3 bg-transparent hover:bg-white/10 border border-white/30 hover:border-white/50 rounded-xl transition-all duration-300 ease-out font-medium text-white/80 hover:text-white"
+                className='px-6 py-3 bg-transparent hover:bg-white/10 border border-white/30 hover:border-white/50 rounded-xl transition-all duration-300 ease-out font-medium text-white/80 hover:text-white'
+                aria-describedby='cancel-button-description'
               >
-                {message.formConfig?.cancelLabel || "Cancel"}
+                {message.formConfig?.cancelLabel || 'Cancel'}
+                <span id='cancel-button-description' className='sr-only'>
+                  Cancel form submission and close
+                </span>
               </Button>
               <Button
-                type="submit"
+                type='submit'
                 disabled={isProcessing}
-                className="px-6 py-3 bg-white hover:bg-white/90 text-blue-600 border-0 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 ease-out font-semibold text-base"
+                className='px-6 py-3 bg-white hover:bg-white/90 text-blue-600 border-0 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 ease-out font-semibold text-base'
+                aria-describedby='submit-button-description'
               >
                 <SubmitButtonContent
                   submitting={isProcessing}
-                  label={message.formConfig?.submitLabel || "Continue"}
+                  label={message.formConfig?.submitLabel || 'Continue'}
                 />
+                <span id='submit-button-description' className='sr-only'>
+                  Submit the form with current data
+                </span>
               </Button>
             </div>
           </Form>
@@ -469,19 +496,19 @@ export function FormMessageBubble({
         await processFormSubmission(formMessage.id, formData);
       } catch (error) {}
     },
-    [processFormSubmission, formMessage.id],
+    [processFormSubmission, formMessage.id]
   );
 
   const handleCancel = useCallback(() => {}, []);
 
   const jsonSchema = useMemo(
     () => formMessage.jsonSchema || convertToJsonSchema(formMessage),
-    [formMessage],
+    [formMessage]
   );
 
   const uiSchema = useMemo(
     () => formMessage.uiSchema || convertToUiSchema(formMessage),
-    [formMessage],
+    [formMessage]
   );
 
   return (
