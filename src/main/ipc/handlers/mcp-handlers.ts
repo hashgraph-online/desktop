@@ -1,7 +1,7 @@
 import { ipcMain, IpcMainInvokeEvent } from 'electron';
 import { IPCResponse } from '../../../shared/schemas';
 import { MCPService } from "../../services/mcp-service";
-import type { MCPServerConfig } from "../../services/mcp-service";
+import type { MCPServerConfig, MCPCustomConfig } from "../../services/mcp-service";
 import { MCPRegistryService } from "../../services/mcp-registry-service";
 import type { MCPRegistrySearchOptions, MCPRegistryServer } from "../../services/mcp-registry-service";
 import { MCPMetricsEnricher } from "../../services/mcp-metrics-enricher";
@@ -316,15 +316,48 @@ export function setupMCPHandlers(): void {
     'mcp:installFromRegistry',
     async (
       event: IpcMainInvokeEvent,
-      data: { serverId: string; packageName?: string }
+      data: {
+        serverId: string
+        packageName?: string
+        installCommand?: { command: string; args: string[] }
+      }
     ): Promise<IPCResponse> => {
       try {
+        const desiredCommand = data.installCommand
+          ? [data.installCommand.command, ...(data.installCommand.args ?? [])]
+              .map(part => part.trim())
+              .filter(part => part.length > 0)
+              .join(' ')
+          : null
+
         const searchResult = await registryService.searchServers({
           query: data.serverId,
         });
-        const server = searchResult.servers.find(
+        let server = searchResult.servers.find(
           (s) => s.id === data.serverId || s.name === data.serverId
         );
+
+        if (desiredCommand) {
+          const matched = searchResult.servers.find(candidate => {
+            const config = registryService.convertToMCPConfig(candidate);
+            if (!config.config || !('command' in config.config)) {
+              return false;
+            }
+            const customConfig = config.config as MCPCustomConfig;
+            const candidateCommand = [
+              customConfig.command,
+              ...(customConfig.args ?? []),
+            ]
+              .map(part => String(part).trim())
+              .filter(part => part.length > 0)
+              .join(' ');
+            return candidateCommand === desiredCommand;
+          });
+
+          if (matched) {
+            server = matched;
+          }
+        }
 
         if (server && !registryService.isServerInstallable(server)) {
           return {
@@ -375,9 +408,18 @@ export function setupMCPHandlers(): void {
           };
         }
 
+        if (data.installCommand) {
+          const customConfig = mcpConfig.config as MCPCustomConfig;
+          customConfig.command = data.installCommand.command;
+          customConfig.args = data.installCommand.args ?? [];
+        }
+
+        const serverName =
+          mcpConfig.name ?? registryServer.name ?? server?.name ?? data.serverId
+
         const serverConfig: MCPServerConfig = {
           id: `registry-${Date.now()}`,
-          name: mcpConfig.name!,
+          name: serverName,
           type: 'custom',
           status: 'disconnected',
           enabled: true,

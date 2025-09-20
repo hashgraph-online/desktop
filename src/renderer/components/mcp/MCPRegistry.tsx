@@ -5,6 +5,13 @@ import Typography from '../ui/Typography'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/input'
 import { cn } from '../../lib/utils'
+import {
+  getInstalledServerInstallKey,
+  getRegistryServerInstallKey,
+  getRegistryServerInstallCommandParts,
+  selectPreferredRegistryServer,
+  type RegistryServerLike,
+} from '../../utils/mcp-install-keys'
 
 /**
  * Utility to keep client-side ordering consistent when merging pages.
@@ -27,27 +34,69 @@ function sortServersByStars(items: MCPRegistryServer[]): MCPRegistryServer[] {
  * Builds a stable unique key for React lists and dedupe.
  */
 function uniqueKeyForServer(s: MCPRegistryServer): string {
-  return (
-    s.packageName ||
-    s.repository?.url ||
-    s.id ||
-    s.name
-  )
+  const key = getRegistryServerInstallKey(s)
+  if (key) {
+    return key
+  }
+  if (s.id) {
+    return s.id
+  }
+  return s.name
 }
 
 /**
  * Removes duplicate servers based on the unique key.
  */
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null
+
+const getString = (source: Record<string, unknown>, key: string): string | undefined => {
+  const value = source[key]
+  return typeof value === 'string' ? value : undefined
+}
+
+const getConfigFromRecord = (
+  source: Record<string, unknown>
+): { type?: string; command?: string | null; args?: string[] | null } | undefined => {
+  const value = source['config']
+  if (!isRecord(value)) {
+    return undefined
+  }
+
+  const type = getString(value, 'type')
+  const command = getString(value, 'command')
+  const argsValue = value['args']
+  const args = Array.isArray(argsValue)
+    ? argsValue.filter((item): item is string => typeof item === 'string')
+    : undefined
+
+  if (!type && !command && !args) {
+    return undefined
+  }
+
+  return {
+    type,
+    command: command ?? null,
+    args: args ?? undefined,
+  }
+}
+
 function dedupeServers(servers: MCPRegistryServer[]): MCPRegistryServer[] {
   const map = new Map<string, MCPRegistryServer>()
   for (const s of servers) {
     const key = uniqueKeyForServer(s)
-    if (!map.has(key)) map.set(key, s)
+    const existing = map.get(key)
+    if (!existing) {
+      map.set(key, s)
+      continue
+    }
+    const preferred = selectPreferredRegistryServer(existing, s)
+    map.set(key, preferred as MCPRegistryServer)
   }
   return Array.from(map.values())
 }
 
-interface MCPRegistryServer {
+interface MCPRegistryServer extends RegistryServerLike {
   id: string
   name: string
   description: string
@@ -110,8 +159,9 @@ export const MCPRegistry: React.FC<MCPRegistryProps> = ({
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [selectedCategory, setSelectedCategory] = useState<string>('')
   const [total, setTotal] = useState(0)
-  const [installingIds, setInstallingIds] = useState<Set<string>>(new Set())
-  const [installedIds, setInstalledIds] = useState<Set<string>>(new Set())
+  const [installingKey, setInstallingKey] = useState<string | null>(null)
+  const [uninstallingKey, setUninstallingKey] = useState<string | null>(null)
+  const [installedServerIds, setInstalledServerIds] = useState<Record<string, string>>({})
   const [installedServers, setInstalledServers] = useState<string[]>([])
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [page, setPage] = useState(0)
@@ -206,8 +256,33 @@ export const MCPRegistry: React.FC<MCPRegistryProps> = ({
     try {
       const result = await window.electron.loadMCPServers()
       if (result.success && result.data) {
-        const serverNames = result.data.map((server: any) => server.name.toLowerCase())
-        setInstalledServers(serverNames)
+        const keys = new Set<string>()
+        const idMap: Record<string, string> = {}
+        const records = Array.isArray(result.data)
+          ? result.data.filter(isRecord)
+          : []
+        records.forEach((server) => {
+          if (!server) {
+            return
+          }
+          const serverId = getString(server, 'id')
+          if (!serverId) {
+            return
+          }
+
+          const key = getInstalledServerInstallKey({
+            id: serverId,
+            name: getString(server, 'name'),
+            config: getConfigFromRecord(server),
+          })
+
+          if (key) {
+            keys.add(key)
+            idMap[key] = serverId
+          }
+        })
+        setInstalledServers(Array.from(keys))
+        setInstalledServerIds(idMap)
       }
     } catch (error) {
     }
@@ -309,40 +384,45 @@ export const MCPRegistry: React.FC<MCPRegistryProps> = ({
       return
     }
     
-    if (installedServers.includes(server.name.toLowerCase())) {
+    const installKey = uniqueKeyForServer(server)
+    if (installedServers.includes(installKey)) {
       setError(`${server.name} is already installed`)
       return
     }
 
-    setInstallingIds(prev => new Set(prev).add(server.id))
+    setInstallingKey(installKey)
     setError(null)
-    
+
+    const installParts = getRegistryServerInstallCommandParts(server)
+
     try {
       const result = await window.electron.installMCPFromRegistry(
         server.id,
-        server.packageName
+        server.packageName,
+        installParts
       )
 
       if (result.success) {
-        setInstalledIds(prev => new Set(prev).add(server.id))
-        setInstalledServers(prev => [...prev, server.name.toLowerCase()])
-        
+        setInstalledServers(prev => {
+          const next = new Set(prev)
+          next.add(installKey)
+          return Array.from(next)
+        })
+        if (isRecord(result.data)) {
+          const savedId = getString(result.data, 'id')
+          if (savedId) {
+            setInstalledServerIds(prev => ({ ...prev, [installKey]: savedId }))
+          }
+        }
+
         setSuccessMessage(`${server.name} installed successfully!`)
-        
+
         setTimeout(() => {
           setSuccessMessage(null)
         }, 5000)
-        
-        setTimeout(() => {
-          setInstalledIds(prev => {
-            const newSet = new Set(prev)
-            newSet.delete(server.id)
-            return newSet
-          })
-        }, 5000)
-        
+
         onInstall?.(server)
-        
+
         setTimeout(() => {
           loadInstalledServers()
         }, 1000)
@@ -352,11 +432,67 @@ export const MCPRegistry: React.FC<MCPRegistryProps> = ({
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to install server')
     } finally {
-      setInstallingIds(prev => {
-        const newSet = new Set(prev)
-        newSet.delete(server.id)
-        return newSet
+      setInstallingKey(current => (current === installKey ? null : current))
+    }
+  }
+
+  const handleUninstall = async (server: MCPRegistryServer) => {
+    const installKey = uniqueKeyForServer(server)
+    const targetId = installedServerIds[installKey]
+    if (!targetId) {
+      setError('Unable to locate installed server for removal')
+      return
+    }
+
+    setUninstallingKey(installKey)
+    setError(null)
+
+    try {
+      const currentResult = await window.electron.loadMCPServers()
+      if (!currentResult.success) {
+        throw new Error(currentResult.error || 'Failed to load current servers')
+      }
+
+      const rawServers = Array.isArray(currentResult.data)
+        ? currentResult.data.filter(isRecord)
+        : []
+
+      const targetEntry = rawServers.find(entry => getString(entry, 'id') === targetId)
+      if (!targetEntry) {
+        setError('Installed server configuration not found')
+        return
+      }
+
+      const status = getString(targetEntry, 'status')
+      if (status === 'connected') {
+        const disconnectResult = await window.electron.disconnectMCPServer(targetId)
+        if (!disconnectResult.success) {
+          throw new Error(disconnectResult.error || 'Failed to disconnect server before removal')
+        }
+      }
+
+      const remaining = rawServers.filter(entry => getString(entry, 'id') !== targetId)
+      const saveResult = await window.electron.saveMCPServers(remaining as unknown as Record<string, unknown>[])
+      if (!saveResult.success) {
+        throw new Error(saveResult.error || 'Failed to persist server removal')
+      }
+
+      setInstalledServers(prev => prev.filter(key => key !== installKey))
+      setInstalledServerIds(prev => {
+        const next = { ...prev }
+        delete next[installKey]
+        return next
       })
+
+      setSuccessMessage(`${server.name} uninstalled successfully.`)
+
+      setTimeout(() => {
+        loadInstalledServers()
+      }, 1000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to uninstall server')
+    } finally {
+      setUninstallingKey(current => (current === installKey ? null : current))
     }
   }
 
@@ -586,15 +722,21 @@ export const MCPRegistry: React.FC<MCPRegistryProps> = ({
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {sortedServers.map(server => (
-              <ServerCard
-                key={uniqueKeyForServer(server)}
-                server={server}
-                onInstall={() => handleInstall(server)}
-                isInstalling={installingIds.has(server.id)}
-                isInstalled={installedIds.has(server.id) || installedServers.includes(server.name.toLowerCase())}
-              />
-            ))}
+            {sortedServers.map(server => {
+              const serverKey = uniqueKeyForServer(server)
+              const isInstalled = Boolean(installedServerIds[serverKey])
+              return (
+                <ServerCard
+                  key={serverKey}
+                  server={server}
+                  onInstall={() => handleInstall(server)}
+                  isInstalling={installingKey === serverKey}
+                  isInstalled={isInstalled}
+                  onUninstall={() => handleUninstall(server)}
+                  isUninstalling={uninstallingKey === serverKey}
+                />
+              )
+            })}
           </div>
           
           {(hasMore || total > servers.length) && (
@@ -639,11 +781,20 @@ export const MCPRegistry: React.FC<MCPRegistryProps> = ({
 interface ServerCardProps {
   server: MCPRegistryServer
   onInstall: () => void
+  onUninstall?: () => void
   isInstalling: boolean
   isInstalled?: boolean
+  isUninstalling?: boolean
 }
 
-const ServerCard: React.FC<ServerCardProps> = ({ server, onInstall, isInstalling, isInstalled }) => {
+const ServerCard: React.FC<ServerCardProps> = ({
+  server,
+  onInstall,
+  onUninstall,
+  isInstalling,
+  isInstalled,
+  isUninstalling,
+}) => {
   const formatUpdatedAt = (dateString?: string) => {
     if (!dateString) return null
     try {
@@ -667,9 +818,21 @@ const ServerCard: React.FC<ServerCardProps> = ({ server, onInstall, isInstalling
 
       <div className="absolute top-3 right-3">
         {isInstalled ? (
-          <div className="h-8 w-8 rounded-lg bg-[#5599fe]/10 flex items-center justify-center">
-            <FiCheck className="w-4 h-4 text-[#5599fe]" />
-          </div>
+          isUninstalling ? (
+            <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center">
+              <FiRefreshCw className="w-4 h-4 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onUninstall?.()}
+              className="h-8 w-8 p-0 rounded-lg bg-[#dc2626]/10 text-[#dc2626] hover:bg-[#dc2626]/20"
+              title="Uninstall server"
+            >
+              <FiX className="w-4 h-4" />
+            </Button>
+          )
         ) : isInstalling ? (
           <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center">
             <FiRefreshCw className="w-4 h-4 animate-spin text-muted-foreground" />
@@ -693,9 +856,16 @@ const ServerCard: React.FC<ServerCardProps> = ({ server, onInstall, isInstalling
       
       <div className="mb-3">
         <div className="flex items-start justify-between mb-2">
-          <Typography variant="h6" className="line-clamp-1 pr-10">
-            {server.name}
-          </Typography>
+          <div className="flex items-center gap-2 pr-10">
+            <Typography variant="h6" className="line-clamp-1">
+              {server.name}
+            </Typography>
+            {isInstalled && (
+              <span className="px-2 py-0.5 bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300 text-xs font-medium rounded-full">
+                Installed
+              </span>
+            )}
+          </div>
           {server.rating && (
             <div className="flex items-center gap-1 text-yellow-500 mr-10">
               <FiStar className="w-3 h-3 fill-current" />

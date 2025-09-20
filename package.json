@@ -107,10 +107,10 @@
   },
   "dependencies": {
     "@hashgraph/sdk": "2.72.0",
-    "@hashgraphonline/conversational-agent": "^0.2.107",
+    "@hashgraphonline/conversational-agent": "^0.2.110",
     "@hashgraphonline/hashinal-wc": "1.0.104",
     "@hashgraphonline/standards-agent-kit": "^0.2.142",
-    "@hashgraphonline/standards-sdk": "0.0.196",
+    "@hashgraphonline/standards-sdk": "^0.1.106",
     "@hookform/resolvers": "^5.2.1",
     "@langchain/anthropic": "^0.3.27",
     "@modelcontextprotocol/sdk": "^1.17.5",
@@ -169,7 +169,13 @@
     ],
     "overrides": {
       "@hashgraphonline/hashinal-wc": "1.0.104",
-      "@hashgraph/sdk": "2.72.0"
+      "@hashgraph/sdk": "2.72.0",
+      "@langchain/core": "^0.3.75",
+      "@langchain/openai": "^0.6.11",
+      "@langchain/anthropic": "^0.3.27",
+      "@langchain/community": "^0.3.11",
+      "langchain": "^0.3.31",
+      "openai": "^5.12.2"
     }
   }
 }

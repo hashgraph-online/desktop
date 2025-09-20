@@ -83,8 +83,16 @@ const electronBridge = {
       serverId,
       packageName,
     }),
-  installMCPFromRegistry: (serverId: string, packageName?: string) =>
-    ipcRenderer.invoke('mcp:installFromRegistry', { serverId, packageName }),
+  installMCPFromRegistry: (
+    serverId: string,
+    packageName?: string,
+    installCommand?: { command: string; args: string[] }
+  ) =>
+    ipcRenderer.invoke('mcp:installFromRegistry', {
+      serverId,
+      packageName,
+      installCommand,
+    }),
   clearMCPRegistryCache: () => ipcRenderer.invoke('mcp:clearRegistryCache'),
   getMCPCacheStats: () => ipcRenderer.invoke('mcp:getCacheStats'),
   triggerMCPBackgroundSync: () =>
