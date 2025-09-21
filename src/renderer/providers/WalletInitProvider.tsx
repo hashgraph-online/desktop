@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useWalletStore } from '../stores/walletStore';
 import { InscriberBuilder } from '@hashgraphonline/standards-agent-kit';
+import useWalletOperationalMode from '../hooks/useWalletOperationalMode';
 type DAppSigner = {
   getAccountId(): { toString(): string };
   [key: string]: unknown;
@@ -14,6 +15,7 @@ export const WalletInitProvider: React.FC<Props> = ({ children }) => {
   const init = useWalletStore((s) => s.init);
   const service = useWalletStore((s) => s.service);
   const initializedRef = React.useRef(false);
+  useWalletOperationalMode();
 
   useEffect(() => {
     if (initializedRef.current) {

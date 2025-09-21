@@ -11,6 +11,7 @@
     "outDir": "dist",
     "moduleResolution": "node",
     "resolveJsonModule": true,
+    "types": ["node"]
   },
-  "include": ["src/main/**/*", "src/preload/**/*", "src/shared/**/*", "forge.config.ts", "vite.*.config.ts", "forge.env.d.ts"]
+  "include": ["src/main/**/*", "src/preload/**/*", "src/shared/**/*", "src/main/types/**/*", "forge.config.ts", "vite.*.config.ts", "forge.env.d.ts"]
 }

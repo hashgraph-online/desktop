@@ -193,7 +193,8 @@ export interface ElectronAPI {
   ) => Promise<{ success: boolean; data?: MCPServerData; error?: string }>;
   installMCPFromRegistry: (
     serverId: string,
-    packageName?: string
+    packageName?: string,
+    installCommand?: { command: string; args: string[] }
   ) => Promise<{ success: boolean; data?: MCPServerData; error?: string }>;
   clearMCPRegistryCache: () => Promise<{ success: boolean; error?: string }>;
   getMCPCacheStats: () => Promise<{
@@ -260,6 +261,17 @@ export interface ElectronAPI {
     packageName: string
   ) => Promise<PluginSecurityResult>;
   clearPluginCache: () => Promise<{ success: boolean; error?: string }>;
+
+  getPaths: () => Promise<{
+    moonscapePreload?: string;
+  }>;
+  paths?: {
+    moonscapePreload?: string;
+  };
+
+  minimizeWindow: () => void;
+  maximizeWindow: () => void;
+  closeWindow: () => void;
 
   onPluginInstallProgress: (
     callback: (progress: PluginInstallProgress) => void

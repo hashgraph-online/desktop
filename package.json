@@ -107,13 +107,13 @@
   },
   "dependencies": {
     "@hashgraph/sdk": "2.72.0",
-    "@hashgraphonline/conversational-agent": "^0.2.110",
+    "@hashgraphonline/conversational-agent": "0.2.201",
     "@hashgraphonline/hashinal-wc": "1.0.104",
-    "@hashgraphonline/standards-agent-kit": "^0.2.142",
-    "@hashgraphonline/standards-sdk": "^0.1.106",
+    "@hashgraphonline/standards-agent-kit": "0.2.143",
+    "@hashgraphonline/standards-sdk": "0.1.106",
     "@hookform/resolvers": "^5.2.1",
     "@langchain/anthropic": "^0.3.27",
-    "@modelcontextprotocol/sdk": "^1.17.5",
+    "@modelcontextprotocol/sdk": "^1.18.1",
     "@monaco-editor/react": "^4.7.0",
     "@noble/hashes": "1.8.0",
     "@radix-ui/react-alert-dialog": "^1.1.15",
@@ -137,6 +137,7 @@
     "@walletconnect/types": "^2.21.8",
     "axios": "^1.11.0",
     "better-sqlite3": "12.2.0",
+    "bignumber.js": "9.3.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dotenv": "^17.2.2",
@@ -166,16 +167,6 @@
     "onlyBuiltDependencies": [
       "electron",
       "better-sqlite3"
-    ],
-    "overrides": {
-      "@hashgraphonline/hashinal-wc": "1.0.104",
-      "@hashgraph/sdk": "2.72.0",
-      "@langchain/core": "^0.3.75",
-      "@langchain/openai": "^0.6.11",
-      "@langchain/anthropic": "^0.3.27",
-      "@langchain/community": "^0.3.11",
-      "langchain": "^0.3.31",
-      "openai": "^5.12.2"
-    }
+    ]
   }
 }

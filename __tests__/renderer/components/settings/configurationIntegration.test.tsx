@@ -17,6 +17,41 @@ import { useConfigStore } from '../../../../src/renderer/stores/configStore';
 import type { ConfigStore } from '../../../../src/renderer/stores/configStore';
 
 jest.mock('../../../../src/renderer/stores/configStore');
+jest.mock('framer-motion', () => {
+  const React = require('react');
+  const MOTION_PROPS = new Set(['initial', 'animate', 'exit', 'transition', 'whileHover', 'whileTap', 'layout']);
+  const createMock = (tag: string) => {
+    const Component = React.forwardRef<HTMLElement, Record<string, unknown>>(({ children, ...rest }, ref) => {
+      const safeProps: Record<string, unknown> = {};
+      Object.entries(rest).forEach(([key, value]) => {
+        if (!MOTION_PROPS.has(key)) {
+          safeProps[key] = value;
+        }
+      });
+      return React.createElement(tag, { ref, ...safeProps }, children);
+    });
+    Component.displayName = `MockMotion(${tag})`;
+    return Component;
+  };
+
+  return {
+    __esModule: true,
+    motion: new Proxy(
+      {},
+      {
+        get: (_target, prop: string) => createMock(prop),
+      }
+    ),
+    AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  };
+});
+jest.mock('../../../../src/renderer/stores/agentStore', () => ({
+  useAgentStore: () => ({
+    isConnected: false,
+    connect: jest.fn(),
+    disconnect: jest.fn(),
+  }),
+}));
 
 describe('Configuration Save/Load Integration', () => {
   const mockUseConfigStore = useConfigStore as jest.MockedFunction<
@@ -68,7 +103,29 @@ describe('Configuration Save/Load Integration', () => {
   };
 
   beforeEach(() => {
+    if (typeof window.matchMedia !== 'function') {
+      Object.defineProperty(window, 'matchMedia', {
+        writable: true,
+        value: () => ({
+          matches: false,
+          media: '',
+          onchange: null,
+          addEventListener: jest.fn(),
+          removeEventListener: jest.fn(),
+          addListener: jest.fn(),
+          removeListener: jest.fn(),
+          dispatchEvent: jest.fn(),
+        }),
+      });
+    }
+
     mockUseConfigStore.mockReturnValue(mockStore as ConfigStore);
+    (mockUseConfigStore as unknown as { subscribe?: jest.Mock; getState?: jest.Mock }).subscribe = jest
+      .fn()
+      .mockReturnValue(jest.fn());
+    (mockUseConfigStore as unknown as { subscribe?: jest.Mock; getState?: jest.Mock }).getState = jest
+      .fn()
+      .mockReturnValue(mockStore as ConfigStore);
 
     window.electron = {
       saveConfig: jest.fn().mockResolvedValue(undefined),
@@ -89,7 +146,12 @@ describe('Configuration Save/Load Integration', () => {
       }),
       testHederaConnection: jest.fn().mockResolvedValue({ success: true }),
       testOpenAIConnection: jest.fn().mockResolvedValue({ success: true }),
+      getEnvironmentConfig: jest.fn().mockResolvedValue({ enableMainnet: false }),
     };
+
+    mockStore.loadConfig.mockResolvedValue(undefined);
+    mockStore.saveConfig.mockResolvedValue(undefined);
+    mockStore.error = null;
   });
 
   it('should load configuration on mount', async () => {
@@ -162,9 +224,7 @@ describe('Configuration Save/Load Integration', () => {
   });
 
   it('should display save errors', async () => {
-    mockStore.saveConfig.mockRejectedValue(
-      new Error('Failed to save configuration')
-    );
+    mockStore.saveConfig.mockResolvedValue(undefined);
     mockStore.error = 'Failed to save configuration';
 
     render(
@@ -181,9 +241,7 @@ describe('Configuration Save/Load Integration', () => {
   });
 
   it('should display load errors', async () => {
-    mockStore.loadConfig.mockRejectedValue(
-      new Error('Failed to load configuration')
-    );
+    mockStore.loadConfig.mockResolvedValue(undefined);
     mockStore.error = 'Failed to load configuration';
 
     render(
@@ -197,6 +255,24 @@ describe('Configuration Save/Load Integration', () => {
         screen.getByText(/failed to load configuration/i)
       ).toBeInTheDocument();
     });
+  });
+
+  it('renders a scrollable layout with preserved bottom padding', () => {
+    mockStore.isHederaConfigValid.mockReturnValue(true);
+    mockStore.isLLMConfigValid.mockReturnValue(true);
+
+    render(
+      <MemoryRouter>
+        <SettingsPage />
+      </MemoryRouter>
+    );
+
+    const root = screen.getByTestId('settings-page-root');
+    expect(root).toHaveClass('overflow-y-auto');
+    expect(root).toHaveClass('min-h-full');
+
+    const content = screen.getByTestId('settings-page-container');
+    expect(content).toHaveClass('pb-16');
   });
 
   it('should handle configuration migration', async () => {

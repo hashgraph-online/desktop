@@ -54,6 +54,23 @@ interface AgentResponse<T = unknown> {
   error?: string;
 }
 
+export interface BrowserState {
+  requestedUrl: string;
+  currentUrl: string;
+  title: string;
+  isLoading: boolean;
+  canGoBack: boolean;
+  canGoForward: boolean;
+  lastError: string | null;
+}
+
+export interface BrowserBounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 type ElectronIPCData = string | number | boolean | null | undefined | Record<string, unknown> | unknown[];
 
 export interface CredentialAPI {
@@ -181,6 +198,21 @@ declare global {
       on: (channel: string, callback: (...args: ElectronIPCData[]) => void) => () => void
       removeListener: (channel: string, callback: (...args: ElectronIPCData[]) => void) => void
       openExternal: (url: string) => Promise<void>
+      getPaths: () => Promise<{ moonscapePreload?: string }>
+      paths?: { moonscapePreload?: string }
+      browser: {
+        navigate: (url: string) => Promise<void>
+        reload: () => Promise<void>
+        goBack: () => Promise<void>
+        goForward: () => Promise<void>
+        setBounds: (bounds: BrowserBounds) => Promise<void>
+        getState: () => Promise<BrowserState>
+        executeJavaScript: <T = unknown>(script: string) => Promise<T>
+        openDevTools: () => Promise<void>
+        attach: () => Promise<void>
+        detach: () => Promise<void>
+        onState: (listener: (state: BrowserState) => void) => () => void
+      }
     }
     
     api: {

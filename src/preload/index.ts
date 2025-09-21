@@ -1,5 +1,11 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
+interface RendererPaths {
+  moonscapePreload?: string;
+}
+
+const cachedPaths: RendererPaths = {};
+
 const electronAPI = {
   invoke: (channel: string, ...args: unknown[]) => {
     return ipcRenderer.invoke(channel, ...args);
@@ -147,6 +153,35 @@ const electronBridge = {
   },
 
   openExternal: (url: string) => ipcRenderer.invoke('open-external', url),
+
+  getPaths: async () => {
+    const result = (await ipcRenderer.invoke('paths:get')) as RendererPaths;
+    cachedPaths.moonscapePreload =
+      typeof result?.moonscapePreload === 'string' ? result.moonscapePreload : undefined;
+    return { ...cachedPaths };
+  },
+  paths: cachedPaths,
+
+  browser: {
+    navigate: (url: string) => ipcRenderer.invoke('browser:navigate', url),
+    reload: () => ipcRenderer.invoke('browser:reload'),
+    goBack: () => ipcRenderer.invoke('browser:go-back'),
+    goForward: () => ipcRenderer.invoke('browser:go-forward'),
+    setBounds: (bounds: { x: number; y: number; width: number; height: number }) =>
+      ipcRenderer.invoke('browser:set-bounds', bounds),
+    getState: () => ipcRenderer.invoke('browser:get-state'),
+    executeJavaScript: (script: string) => ipcRenderer.invoke('browser:execute-js', script),
+    openDevTools: () => ipcRenderer.invoke('browser:open-devtools'),
+    attach: () => ipcRenderer.invoke('browser:attach'),
+    detach: () => ipcRenderer.invoke('browser:detach'),
+    onState: (listener: (state: unknown) => void) => {
+      const handler = (_event: unknown, state: unknown) => {
+        listener(state);
+      };
+      ipcRenderer.on('browser:state', handler);
+      return () => ipcRenderer.removeListener('browser:state', handler);
+    },
+  },
 
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
   checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),

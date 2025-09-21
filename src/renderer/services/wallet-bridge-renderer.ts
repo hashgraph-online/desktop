@@ -1,4 +1,7 @@
-import { InscriptionSDK, type StartInscriptionRequest } from '@kiloscribe/inscription-sdk';
+import {
+  InscriptionSDK,
+  type StartInscriptionRequest,
+} from '@kiloscribe/inscription-sdk';
 import { walletService } from './walletService';
 
 function registerWalletBridgeRenderer(): void {
@@ -21,14 +24,16 @@ function registerWalletBridgeRenderer(): void {
           connectionMode: 'websocket',
         });
         const res = await sdk.startInscription(request);
-        const anyRes = res as any;
+        const anyRes = res;
         window.electron.send(`wallet:inscribe-start:reply:${requestId}`, {
           success: true,
           data: {
             transactionBytes: anyRes?.transactionBytes,
-            tx_id: anyRes?.tx_id || anyRes?.jobId || anyRes?.job_id,
-            topic_id: anyRes?.topic_id || anyRes?.jsonTopicId || anyRes?.topicId,
-            jsonTopicId: anyRes?.jsonTopicId || anyRes?.topicId || anyRes?.topic_id,
+            tx_id: anyRes?.tx_id || anyRes?.id
+            topic_id:
+              anyRes?.topic_id || anyRes?.jsonTopicId || anyRes?.topicId,
+            jsonTopicId:
+              anyRes?.jsonTopicId,
             status: anyRes?.status,
             completed: anyRes?.completed,
           },
@@ -44,4 +49,3 @@ function registerWalletBridgeRenderer(): void {
 }
 
 registerWalletBridgeRenderer();
-

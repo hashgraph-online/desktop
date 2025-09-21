@@ -39,7 +39,7 @@ export const processMarkdown = (text: string): string => {
   });
 
   processed = processed.replace(/`([^`]+)`/g, (_, code) => {
-    return `<code class="inline-code px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded font-mono text-[0.85em]">${escapeHtml(
+    return `<code class="inline-code px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded font-mono text-[0.85em] text-brand-ink dark:text-white">${escapeHtml(
       code
     )}</code>`;
   });

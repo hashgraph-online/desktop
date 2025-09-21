@@ -49,6 +49,7 @@ export default defineConfig({
       pino: resolve(currentDir, './src/lib/pino-stub.ts'),
       'thread-stream': resolve(currentDir, './src/lib/thread-stream-stub.ts'),
       'fs/promises': resolve(currentDir, './src/lib/fs-promises-stub.ts'),
+      tiktoken: resolve(currentDir, './src/lib/tiktoken-compat.ts'),
     },
     extensions: ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.json'],
   },

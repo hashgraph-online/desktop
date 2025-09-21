@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Typography from '../../ui/Typography';
 import { FiCpu, FiCode, FiShield, FiMessageSquare } from 'react-icons/fi';

@@ -4,6 +4,20 @@ import '@testing-library/jest-dom';
 import MessageList from '../../../src/renderer/components/chat/MessageList';
 import type { Message } from '../../../src/renderer/stores/agentStore';
 
+jest.mock('framer-motion', () => {
+  const React = require('react');
+  return {
+    motion: {
+      div: React.forwardRef(
+        (
+          props: React.HTMLAttributes<HTMLDivElement>,
+          ref: React.ForwardedRef<HTMLDivElement>
+        ) => React.createElement('div', { ...props, ref })
+      ),
+    },
+  };
+});
+
 jest.mock('../../../src/renderer/components/chat/MessageBubble', () => {
   return function MockMessageBubble({ message }: { message: Message }) {
     return <div data-testid={`message-${message.id}`}>{message.content}</div>;
@@ -19,6 +33,7 @@ Object.defineProperty(Element.prototype, 'scrollIntoView', {
   value: jest.fn(),
   writable: true,
 });
+
 
 describe('MessageList', () => {
   const mockMessages: Message[] = [
@@ -39,9 +54,7 @@ describe('MessageList', () => {
   it('should render empty state when no messages', () => {
     render(<MessageList messages={[]} />);
 
-    expect(
-      screen.getByText('Welcome to Conversational Agent')
-    ).toBeInTheDocument();
+    expect(screen.getByText('Welcome to HOL Desktop')).toBeInTheDocument();
     expect(
       screen.getByText(/I can help you with Hedera Hashgraph operations/)
     ).toBeInTheDocument();
@@ -77,21 +90,19 @@ describe('MessageList', () => {
   it('should show loading indicator when isLoading is true', () => {
     render(<MessageList messages={mockMessages} isLoading={true} />);
 
-    expect(screen.getByText('Agent is thinking...')).toBeInTheDocument();
+    expect(screen.getByText('Assistant is thinking...')).toBeInTheDocument();
   });
 
   it('should not show loading indicator when isLoading is false', () => {
     render(<MessageList messages={mockMessages} isLoading={false} />);
 
-    expect(screen.queryByText('Agent is thinking...')).not.toBeInTheDocument();
+    expect(screen.queryByText('Assistant is thinking...')).not.toBeInTheDocument();
   });
 
   it('should not show empty state when messages are present', () => {
     render(<MessageList messages={mockMessages} />);
 
-    expect(
-      screen.queryByText('Welcome to Conversational Agent')
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText('Welcome to HOL Desktop')).not.toBeInTheDocument();
   });
 
   it('should render messages in correct order', () => {
@@ -131,8 +142,18 @@ describe('MessageList', () => {
     render(<MessageList messages={singleMessage} />);
 
     expect(screen.getByTestId('message-msg-1')).toBeInTheDocument();
-    expect(
-      screen.queryByText('Welcome to Conversational Agent')
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText('Welcome to HOL Desktop')).not.toBeInTheDocument();
+  });
+
+  it('should render custom empty state when provided', () => {
+    render(
+      <MessageList
+        messages={[]}
+        emptyState={<div data-testid='custom-empty'>Moonscape Copilot is ready</div>}
+      />
+    );
+
+    expect(screen.getByTestId('custom-empty')).toBeInTheDocument();
+    expect(screen.queryByText('Welcome to HOL Desktop')).not.toBeInTheDocument();
   });
 });

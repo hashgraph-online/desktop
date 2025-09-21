@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { motion } from 'framer-motion';
 import Typography from '../ui/Typography';
 import type { Message } from '../../stores/agentStore';
@@ -584,6 +584,17 @@ function MessageBubbleImpl({
     );
   }
 
+  const bubbleStyle = useMemo(() => {
+    const base: CSSProperties = {
+      maxWidth: 'min(640px, calc(100% - 2.75rem))',
+    };
+    if (!isUser) {
+      base.WebkitUserSelect = 'text';
+      base.userSelect = 'text';
+    }
+    return base;
+  }, [isUser]);
+
   return (
     <>
       {/* Fullscreen Modal */}
@@ -642,7 +653,7 @@ function MessageBubbleImpl({
                   return (
                     <div
                       key={part.key}
-                      className='text-sm text-gray-900 dark:text-gray-100 select-text [&_.inline-code-style]:bg-gray-200 [&_.inline-code-style]:dark:bg-gray-700 [&_.inline-code-style]:px-1.5 [&_.inline-code-style]:py-0.5 [&_.inline-code-style]:rounded [&_.inline-code-style]:font-mono [&_.inline-code-style]:text-xs'
+                      className='text-sm text-gray-900 dark:text-gray-100 select-text [&_.inline-code-style]:bg-gray-200 [&_.inline-code-style]:dark:bg-gray-700 [&_.inline-code-style]:px-1.5 [&_.inline-code-style]:py-0.5 [&_.inline-code-style]:rounded [&_.inline-code-style]:font-mono [&_.inline-code-style]:text-xs [&_.inline-code-style]:text-brand-ink [&_.inline-code-style]:dark:text-white [&_.inline-code]:text-brand-ink [&_.inline-code]:dark:text-white [&_.inline-code]:bg-gray-100 [&_.inline-code]:dark:bg-gray-800 [&_.inline-code]:px-1.5 [&_.inline-code]:py-0.5 [&_.inline-code]:rounded'
                       dangerouslySetInnerHTML={{
                         __html: part.html,
                       }}
@@ -701,8 +712,8 @@ function MessageBubbleImpl({
       >
         <div
           className={cn(
-            'flex max-w-[min(85%,600px)] md:max-w-[min(75%,700px)] lg:max-w-[min(70%,800px)] space-x-2',
-            isUser ? 'flex-row-reverse space-x-reverse' : 'flex-row'
+            'flex w-full max-w-full items-start gap-2',
+            isUser ? 'flex-row-reverse' : 'flex-row'
           )}
         >
           <div className='flex-shrink-0'>
@@ -745,14 +756,7 @@ function MessageBubbleImpl({
                   ? 'bg-white dark:bg-gray-800 border border-gray-200/50 dark:border-gray-700/50 text-gray-900 dark:text-white rounded-tr-md'
                   : 'bg-gradient-to-br from-blue-500 to-blue-500/90 dark:from-[#a679f0] dark:to-[#9568df] text-white rounded-tl-md shadow-blue-500/10'
               )}
-              style={
-                !isUser
-                  ? {
-                      WebkitUserSelect: 'text',
-                      userSelect: 'text',
-                    }
-                  : undefined
-              }
+              style={bubbleStyle}
             >
               {/* Action buttons */}
               <div
@@ -848,7 +852,7 @@ function MessageBubbleImpl({
                       return (
                         <div
                           key={part.key}
-                          className='prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-li:my-0 select-text cursor-text text-sm break-words overflow-wrap-anywhere whitespace-pre-line [&_.inline-code-style]:bg-gray-200 [&_.inline-code-style]:dark:bg-gray-700 [&_.inline-code-style]:px-1.5 [&_.inline-code-style]:py-0.5 [&_.inline-code-style]:rounded [&_.inline-code-style]:font-mono [&_.inline-code-style]:text-xs'
+                          className='prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-li:my-0 select-text cursor-text text-sm break-words overflow-wrap-anywhere whitespace-pre-line [&_.inline-code-style]:bg-gray-200 [&_.inline-code-style]:dark:bg-gray-700 [&_.inline-code-style]:px-1.5 [&_.inline-code-style]:py-0.5 [&_.inline-code-style]:rounded [&_.inline-code-style]:font-mono [&_.inline-code-style]:text-xs [&_.inline-code-style]:text-brand-ink [&_.inline-code-style]:dark:text-white [&_.inline-code]:text-brand-ink [&_.inline-code]:dark:text-white [&_.inline-code]:bg-gray-100 [&_.inline-code]:dark:bg-gray-800 [&_.inline-code]:px-1.5 [&_.inline-code]:py-0.5 [&_.inline-code]:rounded'
                           dangerouslySetInnerHTML={{ __html: part.html }}
                         />
                       );

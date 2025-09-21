@@ -38,11 +38,12 @@ import { useHCS10 } from '../contexts/HCS10Context';
 import type { Agent } from '../contexts/HCS10Context';
 import ClearChatDialog from '../components/chat/modals/ClearChatDialog';
 import DeleteSessionDialog from '../components/chat/modals/DeleteSessionDialog';
-import useFileAttachments from '../hooks/useFileAttachments';
+import useAssistantMessageController from '../hooks/useAssistantMessageController';
 import useAgentInit from '../hooks/useAgentInit';
 import useHcs10Polling from '../hooks/useHcs10Polling';
 import useChatSessions from '../hooks/useChatSessions';
 import useChatContextInit from '../hooks/useChatContextInit';
+import useWalletOperationalMode from '../hooks/useWalletOperationalMode';
 
 interface ChatPageProps {}
 
@@ -65,6 +66,9 @@ const logger = new Logger({ module: 'ChatPage' });
 const ChatPage: React.FC<ChatPageProps> = () => {
   const navigate = useNavigate();
   const { agentId } = useParams<{ agentId?: string }>();
+  const { walletReady } = useWalletOperationalMode();
+  const operationalMode = useAgentStore((state) => state.operationalMode);
+  const setOperationalMode = useAgentStore((state) => state.setOperationalMode);
   const {
     status,
     isConnected,
@@ -101,17 +105,6 @@ const ChatPage: React.FC<ChatPageProps> = () => {
 
   const { config, isConfigured } = useConfigStore();
   const { addNotification } = useNotificationStore();
-  const [isLoading, setIsLoading] = useState(false);
-  const [inputValue, setInputValue] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const {
-    files: selectedFiles,
-    fileError,
-    addFiles,
-    removeFile,
-    reset,
-    toBase64,
-  } = useFileAttachments(5, 10);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const [showClearDialog, setShowClearDialog] = useState(false);
@@ -144,6 +137,51 @@ const ChatPage: React.FC<ChatPageProps> = () => {
   });
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
   const isManuallySelectingSession = useRef(false);
+  const manualSelectionReleaseRef = useRef<number | null>(null);
+
+  const armManualSelection = useCallback(() => {
+    isManuallySelectingSession.current = true;
+    if (manualSelectionReleaseRef.current !== null) {
+      window.clearTimeout(manualSelectionReleaseRef.current);
+      manualSelectionReleaseRef.current = null;
+    }
+  }, []);
+
+  const scheduleManualSelectionRelease = useCallback(() => {
+    if (!isManuallySelectingSession.current) {
+      return;
+    }
+    if (manualSelectionReleaseRef.current !== null) {
+      window.clearTimeout(manualSelectionReleaseRef.current);
+    }
+    manualSelectionReleaseRef.current = window.setTimeout(() => {
+      isManuallySelectingSession.current = false;
+      manualSelectionReleaseRef.current = null;
+    }, 1500);
+  }, []);
+
+  const handleControllerSessionCreated = useCallback(
+    (_: string) => {
+      scheduleManualSelectionRelease();
+    },
+    [scheduleManualSelectionRelease]
+  );
+
+  const handleControllerSessionActivated = useCallback(
+    (_: ChatSession) => {
+      scheduleManualSelectionRelease();
+    },
+    [scheduleManualSelectionRelease]
+  );
+
+  useEffect(() => {
+    return () => {
+      if (manualSelectionReleaseRef.current !== null) {
+        window.clearTimeout(manualSelectionReleaseRef.current);
+        manualSelectionReleaseRef.current = null;
+      }
+    };
+  }, []);
 
   const toggleSessionSelector = useCallback(() => {
     setShowSessionSelector((prev) => !prev);
@@ -217,8 +255,14 @@ const ChatPage: React.FC<ChatPageProps> = () => {
     };
   }, [fetchUserProfile]);
 
-  const walletReady = wallet.isConnected || wallet.isInitializing === false;
   useAgentInit({ isConfigured, config, isConnected, status, connect, ready: walletReady });
+
+  useEffect(() => {
+    if (!walletReady) {
+      return;
+    }
+    void setOperationalMode('provideBytes');
+  }, [walletReady, setOperationalMode]);
 
 
   useEffect(() => {
@@ -246,168 +290,34 @@ const ChatPage: React.FC<ChatPageProps> = () => {
     hasMessages: messages.length > 0,
   });
 
-  const handleAddFiles = (files: FileList) => addFiles(files);
-  const handleRemoveFile = (index: number) => removeFile(index);
-  const fileToBase64 = toBase64;
-
-  const handleSendMessage = async () => {
-    const message = inputValue.trim();
-    if (
-      (!message && selectedFiles.length === 0) ||
-      isSubmitting ||
-      isTyping ||
-      !isConnected
-    )
-      return;
-
-    setIsSubmitting(true);
-    setIsLoading(true);
-
-    try {
-      if (!currentSession) {
-        let sessionName: string;
-
-        if (chatContext.mode === 'personal') {
-          sessionName =
-            message.length > 50
-              ? `${message.substring(0, 47)}...`
-              : message || `Personal Chat - ${new Date().toLocaleDateString()}`;
-        } else {
-          sessionName =
-            chatContext.agentName || `HCS-10 Chat - ${chatContext.topicId}`;
+  const {
+    inputValue,
+    setInputValue,
+    isSending,
+    isSubmitting,
+    selectedFiles,
+    fileError,
+    handleFileAdd,
+    handleFileRemove,
+    handleSendMessage,
+  } = useAssistantMessageController({
+    buildSessionName: ({ message, chatContext, defaultName }) => {
+      if (chatContext.mode === 'personal') {
+        if (message.length > 50) {
+          return `${message.substring(0, 47)}...`;
         }
-
-        isManuallySelectingSession.current = true;
-
-        const newSession = await createSession(
-          sessionName,
-          chatContext.mode,
-          chatContext.mode === 'hcs10' ? chatContext.topicId : undefined
-        );
-
-        await loadSession(newSession.id);
-
-        setTimeout(() => {
-          isManuallySelectingSession.current = false;
-        }, 1500);
-
-        const { currentSession: verifiedSession } = useAgentStore.getState();
-        if (!verifiedSession) {
-          throw new Error('Failed to create active session for sending message');
-        }
+        return message || defaultName;
       }
+      return chatContext.agentName || defaultName;
+    },
+    onBeforeSessionCreate: armManualSelection,
+    onSessionCreated: handleControllerSessionCreated,
+    onSessionActivated: handleControllerSessionActivated,
+  });
 
-      const { currentSession: activeSession } = useAgentStore.getState();
-      if (!activeSession) {
-        throw new Error('No active session available for sending message');
-      }
-
-      const attachments: Array<{
-        name: string;
-        data: string;
-        type: string;
-        size: number;
-      }> = [];
-
-      if (selectedFiles.length > 0) {
-        const failedFiles: string[] = [];
-        
-        for (const file of selectedFiles) {
-          try {
-            const base64Content = await fileToBase64(file);
-            attachments.push({
-              name: file.name,
-              data: base64Content,
-              type: file.type || 'application/octet-stream',
-              size: file.size,
-            });
-          } catch (error) {
-            logger.error('File conversion failed:', error);
-            failedFiles.push(file.name);
-          }
-        }
-        
-        if (failedFiles.length > 0) {
-          const allFilesFailed = failedFiles.length === selectedFiles.length;
-          const someFilesFailed = failedFiles.length > 0 && failedFiles.length < selectedFiles.length;
-          
-          if (allFilesFailed) {
-            addNotification({
-              type: 'error',
-              title: 'File Attachment Failed',
-              message: failedFiles.length === 1 
-                ? `Failed to process file: ${failedFiles[0]}` 
-                : `Failed to process ${failedFiles.length} files: ${failedFiles.join(', ')}`,
-              duration: 8000
-            });
-            return;
-          } else if (someFilesFailed) {
-            addNotification({
-              type: 'warning',
-              title: 'Some Files Failed to Attach',
-              message: failedFiles.length === 1 
-                ? `Failed to attach: ${failedFiles[0]}` 
-                : `Failed to attach ${failedFiles.length} files: ${failedFiles.join(', ')}`,
-              duration: 6000
-            });
-          }
-        }
-      }
-
-      let sendTopicId: string | undefined;
-      if (activeSession?.mode === 'hcs10') {
-        sendTopicId = activeSession.topicId;
-      } else {
-        sendTopicId = undefined;
-      }
-      await sendMessage(message, attachments, sendTopicId);
-
-      if (activeSession) {
-        let nextSessionName = activeSession.name;
-        const isPersonalDefault =
-          activeSession.name.includes('Personal Chat -');
-        const isHcsDefault = activeSession.name.includes('HCS-10 Chat -');
-        const canUseMessageAsName = message.length > 0 && message.length <= 50;
-
-        if (isPersonalDefault && canUseMessageAsName) {
-          nextSessionName = message;
-        } else if (
-          isHcsDefault &&
-          Boolean(chatContext.agentName) &&
-          activeSession.name !== chatContext.agentName
-        ) {
-          nextSessionName = chatContext.agentName as string;
-        }
-
-        const updatedSession = {
-          ...activeSession,
-          lastMessageAt: new Date(),
-          updatedAt: new Date(),
-          name: nextSessionName,
-        } as ChatSession;
-
-        try {
-          await saveSession(updatedSession);
-        } catch (error) {
-          logger.error('Failed to save session:', error);
-        }
-      }
-
-      setInputValue('');
-    } catch (error) {
-      logger.error('Failed to send message:', error);
-      addNotification({
-        type: 'error',
-        title: 'Message Send Failed',
-        message: 'Unable to send your message. Please check your connection and try again.',
-        duration: 6000
-      });
-    } finally {
-      reset();
-      setIsSubmitting(false);
-      setIsLoading(false);
-    }
-  };
+  const isLoading = isSending;
+  const handleAddFiles = handleFileAdd;
+  const handleRemoveFile = handleFileRemove;
 
   const handleConnect = async () => {
     try {

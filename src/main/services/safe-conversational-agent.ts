@@ -12,13 +12,6 @@ import type {
 } from '@hashgraphonline/conversational-agent';
 import { ChatHistory } from '../interfaces/services';
 
-interface MCPServerConfiguration {
-  name: string;
-  enabled: boolean;
-  autoConnect?: boolean;
-  config?: Record<string, unknown>;
-}
-
 /**
  * Configuration interface extending ConversationalAgentOptions with entity memory options
  */
@@ -34,7 +27,10 @@ export type AgentConfig = {
   mcpServers?: LibMCPServerConfig[];
   verbose?: boolean;
   disableLogging?: boolean;
-  walletExecutor?: (base64: string, network: 'mainnet' | 'testnet') => Promise<{ transactionId: string }>;
+  walletExecutor?: (
+    base64: string,
+    network: 'mainnet' | 'testnet'
+  ) => Promise<{ transactionId: string }>;
 
   /** Enable entity memory functionality */
   entityMemoryEnabled?: boolean;

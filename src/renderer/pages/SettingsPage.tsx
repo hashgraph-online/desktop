@@ -164,9 +164,15 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
 
   if (isLoading) {
     return (
-      <div className='min-h-screen bg-background'>
-        <div className='container mx-auto px-6 py-8 max-w-6xl'>
-          <div className='flex items-center justify-center min-h-[400px]'>
+      <div
+        data-testid='settings-page-root'
+        className='h-full min-h-full overflow-y-auto bg-background'
+      >
+        <div
+          data-testid='settings-page-container'
+          className='container mx-auto max-w-6xl px-6 pt-8 pb-16 sm:pb-20'
+        >
+          <div className='flex min-h-[400px] items-center justify-center'>
             <Typography variant='body1' color='muted'>
               Loading configuration...
             </Typography>
@@ -177,8 +183,14 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
   }
 
   return (
-    <div className='min-h-screen bg-background'>
-      <div className='container mx-auto px-6 py-8 max-w-3xl'>
+    <div
+      data-testid='settings-page-root'
+      className='h-full min-h-full overflow-y-auto bg-background'
+    >
+      <div
+        data-testid='settings-page-container'
+        className='container mx-auto max-w-3xl px-6 pt-8 pb-16 sm:pb-20'
+      >
         <div className='mb-8'>
           <Typography variant='h1' className='text-3xl font-bold mb-2' noMargin>
             Settings
