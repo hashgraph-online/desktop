@@ -86,12 +86,27 @@ export class InitializationService implements IInitializationService {
         },
       });
 
+      SignerProviderRegistry.setWalletInfoResolver(async () => {
+        const wallet = getCurrentWallet();
+        if (!wallet) {
+          return null;
+        }
+        return {
+          accountId: wallet.accountId,
+          network: wallet.network,
+        };
+      });
+
+      SignerProviderRegistry.setWalletExecutor(async (base64, network) => {
+        const { transactionId } = await executeWithWallet(base64, network);
+        return { transactionId };
+      });
+
       try {
         SignerProviderRegistry.setStartHCSDelegate(async (op, request, network) => {
           return await startHCSOperationViaLocalBuilder(op, request, network);
         });
       } catch {}
-
     } catch {}
   }
 

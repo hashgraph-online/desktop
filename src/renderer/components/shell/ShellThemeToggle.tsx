@@ -19,10 +19,10 @@ const ShellThemeToggle: React.FC = () => {
       type='button'
       onClick={handleToggleTheme}
       className={cn(
-        'flex h-7 w-7 items-center justify-center rounded-full transition-colors duration-200',
+        'flex h-8 w-8 items-center justify-center rounded-xl border transition-all duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1',
         isDark
-          ? 'bg-white/15 text-white/85 hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70'
-          : 'bg-brand-ink/10 text-brand-ink hover:bg-brand-ink/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ink/40'
+          ? 'border-white/20 bg-white/10 text-white hover:bg-white/20 focus-visible:ring-white/40 focus-visible:ring-offset-gray-900'
+          : 'border-gray-200 bg-white text-slate-700 hover:bg-slate-100 focus-visible:ring-blue-400/50 focus-visible:ring-offset-white'
       )}
       aria-label={`Switch to ${currentTheme === 'light' ? 'dark' : 'light'} mode`}
       title={`Switch to ${currentTheme === 'light' ? 'dark' : 'light'} mode`}

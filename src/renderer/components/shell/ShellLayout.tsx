@@ -71,71 +71,52 @@ const ShellLayout: React.FC = () => {
       className={cn(
         'relative min-h-screen w-full overflow-hidden transition-all duration-500',
         isDark
-          ? 'bg-gradient-to-br from-gray-900 via-brand-ink to-gray-900 text-white'
-          : 'bg-white text-gray-900',
+          ? 'bg-gradient-to-br from-gray-950 via-brand-ink/85 to-gray-900 text-white'
+          : 'bg-gradient-to-br from-slate-100 via-white to-slate-200 text-slate-900',
         themeClassName
       )}
     >
-      <div className='pointer-events-none absolute inset-0'>
-        {isDark ? (
-          <>
-            <div className='absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,rgba(234,88,12,0.15),transparent_70%)]' />
-            <div className='absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(59,130,246,0.12),transparent_70%)]' />
-            <div className='absolute inset-0 bg-[radial-gradient(circle_at_40%_40%,rgba(234,88,12,0.08),transparent_60%)]' />
-            <div className='absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent' />
-          </>
-        ) : (
-          <>
-            <div className='absolute top-8 left-8 w-32 h-32 rounded-full bg-gradient-to-br from-orange-500/5 to-orange-600/8 blur-3xl' />
-            <div className='absolute bottom-12 right-12 w-24 h-24 rounded-full bg-gradient-to-tl from-blue-500/8 to-blue-400/6 blur-2xl' />
-            <div className='absolute top-1/2 left-1/3 w-16 h-16 rounded-full bg-gradient-to-r from-orange-500/6 to-orange-400/5 blur-xl' />
-          </>
-        )}
-      </div>
+      <div className='pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_15%,rgba(59,130,246,0.08),transparent_70%)]' />
+      <div className='pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_85%_20%,rgba(234,179,8,0.05),transparent_70%)]' />
 
       <div className='relative z-10 flex h-screen flex-col'>
         <header
           className={cn(
-            'flex h-12 items-center justify-between border-b px-6 text-sm font-medium backdrop-blur-xl transition-all duration-300',
+            'flex h-12 items-center justify-between gap-6 border-b px-6 text-xs font-medium transition-all duration-150 backdrop-blur-lg',
             isDark
-              ? 'border-white/10 bg-black/20 text-white/90'
-              : 'border-gray-100 bg-white/80 text-gray-800 shadow-sm'
+              ? 'border-white/10 bg-black/25 text-white/80'
+              : 'border-gray-200/70 bg-white/85 text-slate-700 shadow-sm'
           )}
         >
           <button
             type='button'
             onClick={handleNavigateHome}
             className={cn(
-              'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/50 focus-visible:ring-offset-2',
+              'flex items-center gap-2 rounded-xl px-3 py-1.5 text-sm font-semibold transition-colors duration-200 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-offset-1',
               isDark
-                ? 'text-white hover:bg-orange-900/20 hover:text-orange-100 focus-visible:ring-offset-transparent'
-                : 'text-gray-900 hover:bg-orange-50 hover:text-orange-900 focus-visible:ring-offset-white'
+                ? 'text-white hover:bg-white/10 focus-visible:ring-white/40 focus-visible:ring-offset-transparent'
+                : 'text-slate-900 hover:bg-slate-100 focus-visible:ring-blue-400/40 focus-visible:ring-offset-white'
             )}
           >
             <Logo variant='icon' size='sm' />
-            <span
-              className={cn(
-                'font-bold tracking-tight',
-                isDark ? 'text-white' : 'text-gray-900'
-              )}
-              style={{ fontFamily: 'Inter, sans-serif' }}
-            >
-              HOL Desktop
-            </span>
+            <span className='leading-none'>HOL Desktop</span>
           </button>
-          <div className='flex items-center gap-4'>
-            <ShellThemeToggle />
-            <WalletDisplay />
+
+          <div className='flex items-center gap-3 md:gap-4 ml-auto'>
             <div
               className={cn(
-                'flex items-center gap-2 text-sm transition-colors duration-300',
-                isDark ? 'text-white/70' : 'text-gray-600'
+                'hidden md:flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.28em]',
+                isDark
+                  ? 'border-white/10 bg-white/5 text-white/70'
+                  : 'border-gray-200/50 bg-white/60 text-slate-500'
               )}
-              style={{ fontFamily: 'Roboto Mono, monospace' }}
             >
-              <span className='hidden md:block'>{formattedDate}</span>
+              <span>{formattedDate}</span>
+              <span className='text-orange-500'>•</span>
               <span className='tabular-nums'>{formattedTime}</span>
             </div>
+            <ShellThemeToggle />
+            <WalletDisplay />
           </div>
         </header>
         <main className='flex-1 overflow-y-auto'>

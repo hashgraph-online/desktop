@@ -308,7 +308,6 @@ const BrowserAssistantPanel: React.FC<BrowserAssistantPanelProps> = (props) => {
   const isConnected = useAgentStore((state) => state.isConnected);
   const status = useAgentStore((state) => state.status);
   const connect = useAgentStore((state) => state.connect);
-  const disconnect = useAgentStore((state) => state.disconnect);
   const setOperationalMode = useAgentStore((state) => state.setOperationalMode);
   const messages = useAgentStore((state) => state.messages);
   const isTyping = useAgentStore((state) => state.isTyping);
@@ -419,7 +418,6 @@ const BrowserAssistantPanel: React.FC<BrowserAssistantPanelProps> = (props) => {
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [isDeletingAll, setIsDeletingAll] = useState(false);
   const sessionOpRef = useRef<Promise<void> | null>(null);
-  const hasReinitializedWithWalletRef = useRef(false);
 
   useAgentInit({
     isConfigured,
@@ -460,40 +458,6 @@ const BrowserAssistantPanel: React.FC<BrowserAssistantPanelProps> = (props) => {
     });
   }, [walletConnected, walletAccountId, hostLabel, pageTitle, setChatContext]);
 
-  useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-    if (!walletConnected) {
-      hasReinitializedWithWalletRef.current = false;
-      return;
-    }
-    if (hasReinitializedWithWalletRef.current) {
-      return;
-    }
-    if (status !== 'connected') {
-      return;
-    }
-    hasReinitializedWithWalletRef.current = true;
-    (async () => {
-      try {
-        await disconnect();
-      } catch (error) {
-        console.debug('BrowserAssistantPanel disconnect error', error);
-      }
-      try {
-        await connect();
-      } catch (error) {
-        console.debug('BrowserAssistantPanel reconnect error', error);
-      }
-    })();
-  }, [
-    isOpen,
-    walletConnected,
-    status,
-    disconnect,
-    connect,
-  ]);
 
   useEffect(() => {
     if (!isOpen) {

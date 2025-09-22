@@ -29,11 +29,10 @@ function registerWalletBridgeRenderer(): void {
           success: true,
           data: {
             transactionBytes: anyRes?.transactionBytes,
-            tx_id: anyRes?.tx_id || anyRes?.id
+            tx_id: anyRes?.tx_id || anyRes?.id,
             topic_id:
               anyRes?.topic_id || anyRes?.jsonTopicId || anyRes?.topicId,
-            jsonTopicId:
-              anyRes?.jsonTopicId,
+            jsonTopicId: anyRes?.jsonTopicId,
             status: anyRes?.status,
             completed: anyRes?.completed,
           },

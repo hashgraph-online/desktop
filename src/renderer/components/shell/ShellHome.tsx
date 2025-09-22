@@ -70,7 +70,7 @@ const CORE_PROGRAMS: DesktopProgramGroup[] = [
       },
       {
         id: 'media-library',
-        label: 'Media Library',
+        label: 'Media',
         description: 'Review your stored inscriptions.',
         route: '/media',
         accent: 'from-brand-purple via-brand-blue to-brand-green',
@@ -96,7 +96,7 @@ const CORE_PROGRAMS: DesktopProgramGroup[] = [
       },
       {
         id: 'bookmark-bonzo',
-        label: 'Bonzo Finance',
+        label: 'Bonzo',
         description: 'Lend and borrow assets.',
         route: `/browser?target=${encodeURIComponent('https://bonzo.finance')}`,
         accent: 'from-hol-gold via-brand-purple to-brand-blue',
@@ -145,7 +145,7 @@ const CORE_PROGRAMS: DesktopProgramGroup[] = [
       },
       {
         id: 'mcp',
-        label: 'MCP Servers',
+        label: 'MCP',
         description: 'Configure MCP access.',
         route: '/mcp',
         accent: 'from-brand-purple via-brand-blue to-brand-green',
@@ -175,7 +175,7 @@ const CORE_PROGRAMS: DesktopProgramGroup[] = [
     programs: [
       {
         id: 'profile',
-        label: 'My Profile',
+        label: 'Profile',
         description: 'Update your identity.',
         route: '/hcs10-profile',
         accent: 'from-brand-purple via-brand-blue to-brand-purple',
@@ -197,7 +197,7 @@ const CORE_PROGRAMS: DesktopProgramGroup[] = [
     programs: [
       {
         id: 'help',
-        label: 'Help & Docs',
+        label: 'Help',
         description: 'Guides and troubleshooting.',
         route: '/help',
         accent: 'from-brand-blue via-brand-purple to-brand-blue',
@@ -205,7 +205,7 @@ const CORE_PROGRAMS: DesktopProgramGroup[] = [
       },
       {
         id: 'acknowledgements',
-        label: 'Acknowledgements',
+        label: 'Credits',
         description: 'Credits & licenses.',
         route: '/acknowledgements',
         accent: 'from-brand-purple via-brand-blue to-brand-green',
@@ -358,7 +358,7 @@ const DesktopIconGroup: React.FC<{
       >
         {group.title}
       </Typography>
-      <div className='grid grid-cols-3 sm:grid-cols-5 xl:grid-cols-7 gap-x-4 gap-y-5 justify-items-start place-items-start'>
+      <div className='grid grid-cols-5 sm:grid-cols-7 xl:grid-cols-9 gap-2 justify-items-center place-items-center max-w-4xl'>
         {group.programs.map((program) => (
           <DesktopIcon key={program.id} program={program} onOpen={onOpen} isDark={isDark} />
         ))}
@@ -413,11 +413,12 @@ const ShellHome: React.FC = () => {
           </Typography>
           <div
             data-testid='shell-status-line'
-            className='mt-1 flex items-center gap-2 text-[0.7rem] font-semibold uppercase tracking-[0.3em] text-brand-ink/50 dark:text-white/50'
+            className='mt-1 flex items-center gap-1 text-[0.7rem] font-semibold uppercase tracking-[0.3em] text-brand-ink/50 dark:text-white/50'
           >
-            <span>Hashgraph Online</span>
-            <span className='text-brand-blue'>•</span>
-            <span>Operating Shell</span>
+            <span>reinventing:</span>
+            <span className='text-brand-blue'>(</span>
+            <span>"the_internet"</span>
+            <span className='text-brand-blue'>)</span>
           </div>
         </motion.div>
       </div>
