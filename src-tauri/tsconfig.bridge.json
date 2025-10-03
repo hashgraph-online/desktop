@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "../tsconfig.node.json",
+  "compilerOptions": {
+    "outDir": "./resources",
+    "rootDir": "./bridge",
+    "module": "CommonJS",
+    "target": "ES2021",
+    "strict": true,
+    "esModuleInterop": true,
+    "moduleResolution": "Node",
+    "resolveJsonModule": false,
+    "declaration": false,
+    "emitDeclarationOnly": false,
+    "noEmit": false,
+    "noEmitOnError": true
+  },
+  "include": ["bridge/**/*.ts", "bridge/**/*.d.ts"],
+  "exclude": ["resources"]
+}

@@ -1,0 +1,174 @@
+{
+  "permission": [
+    {
+      "identifier": "mcp",
+      "description": "Allow renderer access to MCP server management commands.",
+      "commands": {
+        "allow": [
+          "mcp_load_servers",
+          "mcp_save_servers",
+          "mcp_test_connection",
+          "mcp_connect_server",
+          "mcp_disconnect_server",
+          "mcp_get_server_tools",
+          "mcp_refresh_server_tools",
+          "mcp_search_registry",
+          "mcp_get_registry_server_details",
+          "mcp_install_from_registry",
+          "mcp_clear_registry_cache",
+          "mcp_get_cache_stats",
+          "mcp_trigger_background_sync",
+          "mcp_enrich_metrics"
+        ]
+      }
+    },
+    {
+      "identifier": "config",
+      "description": "Allow renderer to manage application configuration.",
+      "commands": {
+        "allow": [
+          "load_config",
+          "save_config",
+          "set_theme",
+          "set_auto_start",
+          "set_log_level",
+          "get_environment_config"
+        ]
+      }
+    },
+    {
+      "identifier": "connections",
+      "description": "Allow renderer to execute connection tests.",
+      "commands": {
+        "allow": [
+          "connection_test_hedera",
+          "connection_test_openai",
+          "connection_test_anthropic"
+        ]
+      }
+    },
+    {
+      "identifier": "credentials",
+      "description": "Allow renderer to manage secure credentials.",
+      "commands": {
+        "allow": [
+          "credential_store",
+          "credential_get",
+          "credential_delete",
+          "credential_clear"
+        ]
+      }
+    },
+    {
+      "identifier": "agent",
+      "description": "Allow renderer to interact with the conversational agent backend.",
+      "commands": {
+        "allow": [
+          "agent_initialize",
+          "agent_status",
+          "agent_disconnect",
+          "agent_send_message",
+          "agent_update_session_context"
+        ]
+      }
+    },
+    {
+      "identifier": "chat",
+      "description": "Allow renderer to manage chat sessions and messages.",
+      "commands": {
+        "allow": [
+          "chat_create_session",
+          "chat_load_session",
+          "chat_save_session",
+          "chat_delete_session",
+          "chat_load_all_sessions",
+          "chat_save_message",
+          "chat_load_session_messages",
+          "chat_update_session_context",
+          "chat_update_form_state",
+          "chat_update_message_metadata"
+        ]
+      }
+    },
+    {
+      "identifier": "browser",
+      "description": "Allow renderer access to native browser view commands.",
+      "commands": {
+        "allow": [
+          "browser_attach",
+          "browser_detach",
+          "browser_navigate",
+          "browser_reload",
+          "browser_go_back",
+          "browser_go_forward",
+          "browser_set_bounds",
+          "browser_set_layout",
+          "browser_get_state",
+          "browser_capture_context",
+          "browser_execute_js",
+          "browser_open_devtools",
+          "browser_open_external"
+        ]
+      }
+    },
+    {
+      "identifier": "mirror-node",
+      "description": "Allow renderer access to mirror node bridge commands.",
+      "commands": {
+        "allow": [
+          "mirror_node_get_schedule_info",
+          "mirror_node_get_scheduled_transaction_status",
+          "mirror_node_get_transaction_by_timestamp",
+          "mirror_node_get_transaction"
+        ]
+      }
+    },
+    {
+      "identifier": "mirror-node-token",
+      "description": "Allow renderer to fetch mirror node token info.",
+      "commands": {
+        "allow": ["mirror_node_get_token_info"]
+      }
+    },
+    {
+      "identifier": "transaction-parser",
+      "description": "Allow renderer access to transaction parser commands.",
+      "commands": {
+        "allow": ["transaction_parser_validate", "transaction_parser_parse"]
+      }
+    },
+    {
+      "identifier": "wallet",
+      "description": "Allow renderer to manage wallet state.",
+      "commands": {
+        "allow": [
+          "wallet_set_current",
+          "wallet_hydrate_entity",
+          "wallet_status"
+        ]
+      }
+    },
+    {
+      "identifier": "entities",
+      "description": "Allow renderer to manage entity associations.",
+      "commands": {
+        "allow": [
+          "entity_get_all",
+          "entity_delete",
+          "entity_bulk_delete",
+          "entity_rename",
+          "entity_export",
+          "entity_get_by_id",
+          "entity_search"
+        ]
+      }
+    },
+    {
+      "identifier": "plugins",
+      "description": "Allow renderer to query desktop plugins.",
+      "commands": {
+        "allow": ["plugin_search"]
+      }
+    }
+  ]
+}

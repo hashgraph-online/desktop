@@ -1,0 +1,914 @@
+@import './fonts.css';
+@import './spacing.css';
+@import './animations.css';
+@import 'tailwindcss';
+@import "tw-animate-css";
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Base styles for dark mode support - HGO Design System */
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+  }
+
+  html.dark {
+    --background: 240 10% 3.9%;
+    /* Deep black/navy like HGO */
+    --foreground: 0 0% 98%;
+  }
+
+  html {
+    @apply antialiased;
+  }
+
+  body {
+    @apply bg-white text-gray-900;
+    background-image:
+      radial-gradient(at 20% 80%, rgb(120, 119, 198, 0.01) 0%, transparent 50%),
+      radial-gradient(at 80% 20%, rgb(85, 153, 254, 0.01) 0%, transparent 50%),
+      radial-gradient(at 40% 40%, rgb(72, 223, 123, 0.01) 0%, transparent 50%);
+    transition: background-color 0.5s ease-in-out, color 0.5s ease-in-out;
+  }
+
+  html.dark body {
+    @apply bg-[#0a0a0a] text-gray-100;
+    background-image:
+      radial-gradient(at 20% 80%, rgb(120, 119, 198, 0.03) 0%, transparent 50%),
+      radial-gradient(at 80% 20%, rgb(85, 153, 254, 0.03) 0%, transparent 50%),
+      radial-gradient(at 40% 40%, rgb(72, 223, 123, 0.03) 0%, transparent 50%);
+  }
+
+  /* Smooth transitions for all theme-affected elements */
+  * {
+    transition-property: background-color, border-color, color, fill, stroke, box-shadow, opacity;
+    transition-duration: 0.5s;
+    transition-timing-function: ease-in-out;
+  }
+
+  /* Block preview content area should inherit all Tailwind styles */
+  .block-preview-content {
+    @apply w-full h-full;
+  }
+  
+  /* Ensure block preview content can use all Tailwind utilities */
+  .block-preview-content * {
+    /* Allow Tailwind classes to work in dynamically rendered content */
+  }
+
+  /* Faster transitions for interactive elements */
+  button,
+  a,
+  input,
+  textarea,
+  select {
+    transition-duration: 0.3s;
+  }
+
+  /* Sleek minimal text selection */
+  ::selection {
+    background-color: rgba(85, 153, 254, 0.18);
+    color: inherit;
+  }
+
+  ::-moz-selection {
+    background-color: rgba(85, 153, 254, 0.18);
+    color: inherit;
+  }
+
+  /* Selection styles for blue message bubbles */
+  .bg-blue-500 ::selection,
+  .bg-blue-500::selection {
+    background-color: rgba(255, 255, 255, 0.4) !important;
+    color: #ffffff !important;
+  }
+
+  .bg-blue-500 ::-moz-selection,
+  .bg-blue-500::-moz-selection {
+    background-color: rgba(255, 255, 255, 0.4) !important;
+    color: #ffffff !important;
+  }
+
+  /* Special handling for backdrop filters and transforms */
+  .backdrop-blur-sm,
+  .backdrop-blur,
+  .backdrop-blur-md,
+  .backdrop-blur-lg,
+  .backdrop-blur-xl {
+    transition-property: backdrop-filter, background-color, border-color;
+    transition-duration: 0.5s;
+    transition-timing-function: ease-in-out;
+  }
+
+  /* Disable transitions for elements that shouldn't animate */
+  pre,
+  code,
+  .no-transition {
+    transition: none !important;
+  }
+
+  /* Prevent transition flash on page load */
+  .no-transition-on-load * {
+    transition: none !important;
+  }
+}
+
+/* HGO Design System Theme Configuration for Tailwind v4 */
+@theme {
+
+  /* Font families */
+  --font-family-sans: "Roboto", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-family-mono: "Roboto Mono", ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+  --font-family-display: "Roboto", ui-sans-serif, system-ui, sans-serif;
+
+  /* HGO Brand Colors - Updated to match hackathon.tsx */
+  --color-brand-white: #ffffff;
+  --color-brand-dark: #3f4174;
+  --color-brand-blue: #5599fe;
+  --color-brand-green: #48df7b;
+  --color-brand-purple: #a679f0;
+
+  /* Blue scale */
+  --color-blue-50: #eff6ff;
+  --color-blue-100: #dbeafe;
+  --color-blue-200: #bfdbfe;
+  --color-blue-300: #93c5fd;
+  --color-blue-400: #60a5fa;
+  --color-blue-500: #5599fe;
+  --color-blue-600: #2563eb;
+  --color-blue-700: #1d4ed8;
+  --color-blue-800: #1e40af;
+  --color-blue-900: #1e3a8a;
+
+  /* Hedera colors - Updated to match hackathon.tsx */
+  --color-hedera-purple: #b56cff;
+  --color-hedera-blue: #5599fe;
+  --color-hedera-green: #48df7b;
+  --color-hedera-charcoal: #464646;
+  --color-hedera-smoke: #8c8c8c;
+
+  /* Primary scale */
+  --color-primary: #5599fe;
+  --color-primary-50: #eff6ff;
+  --color-primary-100: #dbeafe;
+  --color-primary-200: #bfdbfe;
+  --color-primary-300: #93c5fd;
+  --color-primary-400: #60a5fa;
+  --color-primary-500: #5599fe;
+  --color-primary-600: #2563eb;
+  --color-primary-700: #1d4ed8;
+  --color-primary-800: #1e40af;
+  --color-primary-900: #1e3a8a;
+
+  /* Secondary scale */
+  --color-secondary: #b56cff;
+  --color-secondary-50: #F3E5F5;
+  --color-secondary-100: #E1BEE7;
+  --color-secondary-200: #CE93D8;
+  --color-secondary-300: #BA68C8;
+  --color-secondary-400: #AB47BC;
+  --color-secondary-500: #b56cff;
+  --color-secondary-600: #8E24AA;
+  --color-secondary-700: #7B1FA2;
+  --color-secondary-800: #6A1B9A;
+  --color-secondary-900: #4A148C;
+
+  /* Accent scale */
+  --color-accent: #48df7b;
+  --color-accent-50: #E8F5E9;
+  --color-accent-100: #C8E6C9;
+  --color-accent-200: #A5D6A7;
+  --color-accent-300: #81C784;
+  --color-accent-400: #66BB6A;
+  --color-accent-500: #48df7b;
+  --color-accent-600: #43A047;
+  --color-accent-700: #388E3C;
+  --color-accent-800: #2E7D32;
+  --color-accent-900: #1B5E20;
+
+  /* Danger scale */
+  --color-danger: #F44336;
+  --color-danger-50: #FFEBEE;
+  --color-danger-100: #FFCDD2;
+  --color-danger-200: #EF9A9A;
+  --color-danger-300: #E57373;
+  --color-danger-400: #EF5350;
+  --color-danger-500: #F44336;
+  --color-danger-600: #E53935;
+  --color-danger-700: #D32F2F;
+  --color-danger-800: #C62828;
+  --color-danger-900: #B71C1C;
+
+  /* HGO Spacing System (8px based) */
+  --spacing-0: 0px;
+  --spacing-1: 8px;
+  --spacing-2: 16px;
+  --spacing-3: 24px;
+  --spacing-4: 32px;
+  --spacing-5: 40px;
+  --spacing-6: 48px;
+  --spacing-7: 56px;
+  --spacing-8: 64px;
+  --spacing-9: 72px;
+  --spacing-10: 80px;
+
+  /* Font sizes */
+  --font-size-xs: 0.75rem;
+  --font-size-xs--line-height: 1rem;
+  --font-size-sm: 0.875rem;
+  --font-size-sm--line-height: 1.25rem;
+  --font-size-base: 1rem;
+  --font-size-base--line-height: 1.5rem;
+  --font-size-lg: 1.125rem;
+  --font-size-lg--line-height: 1.75rem;
+  --font-size-xl: 1.25rem;
+  --font-size-xl--line-height: 1.75rem;
+  --font-size-2xl: 1.5rem;
+  --font-size-2xl--line-height: 2rem;
+  --font-size-3xl: 1.875rem;
+  --font-size-3xl--line-height: 2.25rem;
+  --font-size-4xl: 2.25rem;
+  --font-size-4xl--line-height: 2.5rem;
+  --font-size-5xl: 3rem;
+  --font-size-5xl--line-height: 1;
+
+  /* Border radius */
+  --radius-sm: 4px;
+
+  /* Animations */
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-pulse-slow: pulse 4s ease-in-out infinite;
+  --animate-blink: blink 1s step-end infinite;
+  --animate-fade-in: fadeIn 0.5s ease-in forwards;
+  --animate-draw: draw 2s forwards;
+  --animate-data-flow: dataFlow 15s linear infinite;
+  --animate-blob: blob 7s infinite;
+  --animate-shine: shine 3s linear infinite;
+  --animate-shimmer: shimmer 2s linear infinite;
+
+  /* Register custom colors for Tailwind v4 utilities */
+  --color-background: hsl(0 0% 100%);
+  --color-foreground: hsl(0 0% 3.9%);
+  --color-card: hsl(0 0% 100%);
+  --color-card-foreground: hsl(0 0% 3.9%);
+  --color-popover: hsl(0 0% 100%);
+  --color-popover-foreground: hsl(0 0% 3.9%);
+  --color-muted: hsl(0 0% 96.1%);
+  --color-muted-foreground: hsl(0 0% 45.1%);
+  --color-destructive: hsl(0 84.2% 60.2%);
+  --color-destructive-foreground: hsl(0 0% 98%);
+  --color-border: hsl(0 0% 89.8%);
+  --color-input: hsl(0 0% 89.8%);
+  --color-ring: hsl(0 0% 3.9%);
+  --color-chart-1: hsl(12 76% 61%);
+  --color-chart-2: hsl(173 58% 39%);
+  --color-chart-3: hsl(197 37% 24%);
+  --color-chart-4: hsl(43 74% 66%);
+  --color-chart-5: hsl(27 87% 67%);
+
+  /* HGO colors for Tailwind utilities */
+  --color-hgo-blue: #5599fe;
+  --color-hgo-purple: #a679f0;
+  --color-hgo-green: #48df7b;
+  --color-hgo-dark: #3f4174;
+
+  /* Light mode colors */
+  --color-border: hsl(0 0% 89.8%);
+  --color-input: hsl(0 0% 89.8%);
+  --color-ring: hsl(0 0% 3.9%);
+  --color-secondary: hsl(0 0% 96.1%);
+  --color-secondary-foreground: hsl(0 0% 9%);
+  --color-accent: hsl(0 0% 96.1%);
+  --color-accent-foreground: hsl(0 0% 9%);
+}
+
+/* Keyframes */
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+@keyframes blink {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes draw {
+  0% {
+    stroke-dashoffset: 1000;
+  }
+
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes dataFlow {
+  0% {
+    transform: translateY(-50%);
+  }
+
+  100% {
+    transform: translateY(0%);
+  }
+}
+
+@keyframes blob {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+
+  33% {
+    transform: translate(30px, -50px) scale(1.1);
+  }
+
+  66% {
+    transform: translate(-20px, 20px) scale(0.9);
+  }
+
+  100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+}
+
+@keyframes shine {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -100% 0;
+  }
+
+  100% {
+    background-position: 100% 0;
+  }
+}
+
+/* Utility classes for gradients */
+@utility bg-gradient-radial {
+  background-image: radial-gradient(var(--tw-gradient-stops));
+}
+
+@utility bg-hedera-gradient {
+  background-image: linear-gradient(135deg, #a679f0 0%, #5599fe 100%);
+}
+
+@utility bg-hedera-green-gradient {
+  background-image: linear-gradient(135deg, #48df7b 0%, #5599fe 100%);
+}
+
+@utility bg-brand-gradient {
+  background-image: linear-gradient(90deg, #5599fe 0%, #b56cff 50%, #48df7b 100%);
+}
+
+/* CSS variables for shadcn/ui compatibility */
+:root {
+  --radius: 0.625rem;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.141 0.005 285.823);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.141 0.005 285.823);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.141 0.005 285.823);
+  --primary: oklch(0.21 0.006 285.885);
+  /* HGO brand blue #5599fe */
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.967 0.001 286.375);
+  --secondary-foreground: oklch(0.21 0.006 285.885);
+  --muted: oklch(0.967 0.001 286.375);
+  --muted-foreground: oklch(0.552 0.016 285.938);
+  --accent: oklch(0.967 0.001 286.375);
+  --accent-foreground: oklch(0.21 0.006 285.885);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: 0 0% 98%;
+  --border: oklch(0.92 0.004 286.32);
+  --input: oklch(0.92 0.004 286.32);
+  --ring: oklch(0.705 0.015 286.067);
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.141 0.005 285.823);
+  --sidebar-primary: oklch(0.21 0.006 285.885);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.967 0.001 286.375);
+  --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
+  --sidebar-border: oklch(0.92 0.004 286.32);
+  --sidebar-ring: oklch(0.705 0.015 286.067);
+}
+
+.dark {
+  --background: oklch(0.141 0.005 285.823);
+  /* HGO deep black */
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.21 0.006 285.885);
+  /* Slightly lighter for cards */
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.21 0.006 285.885);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.92 0.004 286.32);
+  /* Keep HGO brand blue */
+  --primary-foreground: oklch(0.21 0.006 285.885);
+  --secondary: oklch(0.274 0.006 286.033);
+  /* Adjusted for HGO aesthetic */
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.274 0.006 286.033);
+  --muted-foreground: oklch(0.705 0.015 286.067);
+  --accent: oklch(0.274 0.006 286.033);
+  /* HGO green accent */
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --destructive-foreground: 0 0% 98%;
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.552 0.016 285.938);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.21 0.006 285.885);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.274 0.006 286.033);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.552 0.016 285.938);
+}
+
+/* Global reset and base styles */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  margin: 0;
+  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--color-foreground);
+  background-color: var(--color-background);
+}
+
+/* Typography defaults */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: 'Roboto', sans-serif;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-top: 0;
+  margin-bottom: 0.5em;
+}
+
+p {
+  margin-top: 0;
+  margin-bottom: 1em;
+}
+
+/* Minimal focus styles (accessible but subtle) */
+:focus {
+  outline: none;
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(85, 153, 254, 0.35);
+  border-color: rgba(85, 153, 254, 0.35);
+}
+
+.dark :focus-visible {
+  box-shadow: 0 0 0 2px rgba(85, 153, 254, 0.45);
+  border-color: rgba(85, 153, 254, 0.45);
+}
+
+/* Selection */
+::selection {
+  background-color: var(--color-primary);
+  color: white;
+}
+
+#root {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+@layer utilities {
+  .bg-background {
+    background-color: hsl(var(--background));
+  }
+
+  .text-foreground {
+    color: hsl(var(--foreground));
+  }
+
+  .bg-card {
+    background-color: hsl(var(--card));
+  }
+
+  .text-card-foreground {
+    color: hsl(var(--card-foreground));
+  }
+
+  .bg-popover {
+    background-color: hsl(var(--popover));
+  }
+
+  .text-popover-foreground {
+    color: hsl(var(--popover-foreground));
+  }
+
+  .bg-primary {
+    background-color: hsl(var(--primary));
+  }
+
+  .text-primary {
+    color: hsl(var(--primary));
+  }
+
+  .text-primary-foreground {
+    color: hsl(var(--primary-foreground));
+  }
+
+  .bg-secondary {
+    background-color: hsl(var(--secondary));
+  }
+
+  .text-secondary {
+    color: hsl(var(--secondary));
+  }
+
+  .text-secondary-foreground {
+    color: hsl(var(--secondary-foreground));
+  }
+
+  .bg-muted {
+    background-color: hsl(var(--muted));
+  }
+
+  .text-muted {
+    color: hsl(var(--muted));
+  }
+
+  .text-muted-foreground {
+    color: hsl(var(--muted-foreground));
+  }
+
+  .bg-accent {
+    background-color: hsl(var(--accent));
+  }
+
+  .text-accent {
+    color: hsl(var(--accent));
+  }
+
+  .text-accent-foreground {
+    color: hsl(var(--accent-foreground));
+  }
+
+  .bg-destructive {
+    background-color: hsl(var(--destructive));
+  }
+
+  .text-destructive {
+    color: hsl(var(--destructive));
+  }
+
+  .text-destructive-foreground {
+    color: hsl(var(--destructive-foreground));
+  }
+
+  .border-border {
+    border-color: hsl(var(--border));
+  }
+
+  .border-input {
+    border-color: hsl(var(--input));
+  }
+
+  .ring-ring {
+    --tw-ring-color: hsl(var(--ring));
+  }
+
+  .ring-offset-background {
+    --tw-ring-offset-color: hsl(var(--background));
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    -webkit-tap-highlight-color: transparent;
+    /* Remove blue tap highlight */
+  }
+
+  /* Pointer cursor on interactive elements */
+  button:not(:disabled),
+  [role="button"],
+  a[href],
+  summary,
+  [role="tab"],
+  [role="switch"],
+  [role="checkbox"],
+  .clickable {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  [aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+
+  /* High contrast mode styles */
+  .high-contrast {
+    --color-background: 255 255 255;
+    --color-foreground: 0 0 0;
+    --color-primary: 0 85 153;
+    /* Darker blue for better contrast */
+    --color-border: 0 0 0;
+    --color-input: 255 255 255;
+    --color-ring: 0 85 153;
+
+    /* Ensure minimum contrast ratios */
+    button {
+      @apply border-2 border-black;
+    }
+
+    a {
+      @apply underline;
+    }
+
+    /* Remove subtle effects that reduce contrast */
+    * {
+      text-shadow: none !important;
+      box-shadow: none !important;
+    }
+
+    /* Ensure focus indicators are visible */
+    *:focus {
+      outline: 3px solid #0055cc !important;
+      outline-offset: 2px !important;
+    }
+  }
+
+  .high-contrast.dark {
+    --color-background: 0 0 0;
+    --color-foreground: 255 255 255;
+    --color-primary: 102 178 255;
+    /* Lighter blue for dark high contrast */
+    --color-border: 255 255 255;
+    --color-input: 0 0 0;
+    --color-ring: 102 178 255;
+  }
+
+  /* Reduced motion support */
+  @media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /* Large text support */
+  @media (min-resolution: 2dppx) {
+    body {
+      font-size: 16px;
+      line-height: 1.6;
+    }
+  }
+
+  /* Electron app draggable area */
+  .app-draggable {
+    -webkit-app-region: drag;
+  }
+
+  .app-no-drag {
+    -webkit-app-region: no-drag;
+  }
+
+  /* Touch manipulation for better mobile experience */
+  .touch-manipulation {
+    touch-action: manipulation;
+  }
+
+  /* Checkered background pattern for image viewers */
+  .bg-checkered {
+    background-color: #f8f9fa;
+    background-image:
+      linear-gradient(45deg, #e9ecef 25%, transparent 25%),
+      linear-gradient(-45deg, #e9ecef 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #e9ecef 75%),
+      linear-gradient(-45deg, transparent 75%, #e9ecef 75%);
+    background-size: 20px 20px;
+    background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+  }
+
+  .dark .bg-checkered {
+    background-color: #1a1a1a;
+    background-image:
+      linear-gradient(45deg, #2a2a2a 25%, transparent 25%),
+      linear-gradient(-45deg, #2a2a2a 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #2a2a2a 75%),
+      linear-gradient(-45deg, transparent 75%, #2a2a2a 75%);
+  }
+
+  /* Override undefined Shell Window backgrounds to be solid */
+  .bg-hol-surface {
+    background-color: white;
+  }
+
+  .bg-hol-surface-alt {
+    background-color: white;
+  }
+
+  .dark .bg-hol-surface {
+    background-color: #1f2937;
+  }
+
+  .dark .bg-hol-surface-alt {
+    background-color: #1f2937;
+  }
+
+  /* HOL Design System Window Controls */
+  .bg-hol-primary {
+    background-color: #3b82f6 !important;
+  }
+
+  .bg-hol-primary-light {
+    background-color: #60a5fa !important;
+  }
+
+  .text-hol-text-inverse {
+    color: white !important;
+  }
+
+  .border-hol-border {
+    border-color: #e5e7eb !important;
+  }
+
+  .border-hol-highlight {
+    border-color: #3b82f6 !important;
+  }
+
+  /* Ensure window title bar is visible */
+  .bg-gradient-to-r.from-hol-primary.to-hol-primary-light {
+    background: linear-gradient(to right, #3b82f6, #60a5fa) !important;
+  }
+
+  /* Animation utilities */
+  .animate-fade-in {
+    animation: fadeIn 0.2s ease-in forwards;
+  }
+
+  .animate-scale-in {
+    animation: scaleIn 0.2s ease-out forwards;
+  }
+
+  @keyframes scaleIn {
+    0% {
+      transform: scale(0.95);
+      opacity: 0;
+    }
+
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  /* Gradient text */
+  .bg-gradient-text {
+    background: linear-gradient(90deg, #5599fe 0%, #b56cff 50%, #48df7b 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Animated gradient background */
+  .bg-gradient-animated {
+    background: linear-gradient(135deg, #a679f0 0%, #5599fe 50%, #48df7b 100%);
+    background-size: 200% 200%;
+    animation: gradientShift 5s ease infinite;
+  }
+
+  @keyframes gradientShift {
+    0% {
+      background-position: 0% 50%;
+    }
+
+    50% {
+      background-position: 100% 50%;
+    }
+
+    100% {
+      background-position: 0% 50%;
+    }
+  }
+
+  /* Glass morphism effect */
+  .glass-effect {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .dark .glass-effect {
+    background: rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+}
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}

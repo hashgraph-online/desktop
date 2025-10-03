@@ -1,0 +1,41 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main-window",
+  "description": "Capabilities for the main window",
+  "windows": ["main"],
+  "local": true,
+  "remote": {
+    "urls": [
+      "http://localhost:5175/*",
+      "https://*",
+      "http://*"
+    ]
+  },
+  "permissions": [
+    "core:default",
+    "core:app:default",
+    "core:path:default",
+    "core:webview:default",
+    "core:image:default",
+    "core:resources:default",
+    "core:menu:default",
+    "core:tray:default",
+    "core:window:default",
+    "core:event:default",
+    "core:event:allow-listen",
+    "event-listen",
+    "mcp",
+    "config",
+    "connections",
+    "credentials",
+    "agent",
+    "chat",
+    "browser",
+    "mirror-node",
+    "mirror-node-token",
+    "transaction-parser",
+    "wallet",
+    "entities",
+    "plugins"
+  ]
+}

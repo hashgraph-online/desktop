@@ -1,0 +1,33 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "types": [
+      "vitest/globals",
+      "vite/client",
+      "react",
+      "react-dom",
+      "@testing-library/jest-dom",
+      "node"
+    ],
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "resolveJsonModule": true,
+    "target": "ES2022",
+    "strict": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@/components/*": ["src/renderer/components/*"],
+      "@/lib/*": ["src/renderer/lib/*"],
+      "@/hooks/*": ["src/renderer/hooks/*"],
+      "@/types/*": ["src/renderer/types/*"],
+      "@/utils/*": ["src/renderer/utils/*"],
+      "@/stores/*": ["src/renderer/stores/*"]
+    }
+  },
+  "include": ["src", "vite.config.ts"],
+  "exclude": ["node_modules", "dist", "src-tauri"]
+}
