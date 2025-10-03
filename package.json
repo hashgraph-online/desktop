@@ -10,7 +10,8 @@
   "scripts": {
     "setup:legal": "node -e \"(() => { const fs = require('node:fs'); const path = require('node:path'); const root = process.cwd(); const ensureDir = (file) => { const dir = path.dirname(file); if (!fs.existsSync(dir)) { fs.mkdirSync(dir, { recursive: true }); } }; const relativeTarget = (target) => { const rel = path.relative(root, target); return rel && rel.length > 0 ? rel : target; }; const writeContent = (target, content) => { ensureDir(target); fs.writeFileSync(target, content, 'utf8'); }; const writeFromEnv = (envName, target) => { const value = process.env[envName]; if (!value || value.trim().length === 0) { return false; } writeContent(target, value); console.log('✅ ' + envName + ' wrote to ' + relativeTarget(target)); return true; }; const copyFromPath = (envName, target) => { const value = process.env[envName]; if (!value || value.trim().length === 0) { return false; } const resolved = path.isAbsolute(value) ? value : path.join(root, value); if (!fs.existsSync(resolved)) { console.error('❌ ' + envName + ' source not found: ' + resolved); process.exitCode = 1; return true; } const content = fs.readFileSync(resolved, 'utf8'); writeContent(target, content); console.log('✅ ' + envName + ' copied to ' + relativeTarget(target)); return true; }; [ { raw: 'TERMS_MARKDOWN', pathEnv: 'TERMS_MARKDOWN_PATH', target: path.join(root, 'public', 'terms.md') }, { raw: 'PRIVACY_MARKDOWN', pathEnv: 'PRIVACY_MARKDOWN_PATH', target: path.join(root, 'public', 'privacy.md') } ].forEach((entry) => { if (writeFromEnv(entry.raw, entry.target)) { return; } if (copyFromPath(entry.pathEnv, entry.target)) { return; } console.log('ℹ️ ' + entry.raw + '/' + entry.pathEnv + ' not provided; keeping ' + relativeTarget(entry.target)); }); })();\"",
     "setup": "pnpm run setup:legal",
-    "dev": "pnpm run build:bridge && concurrently \"pnpm run bridge:watch\" \"tauri dev\"",
+    "dev": "pnpm run tauri:dev",
+    "dev:renderer": "pnpm run build:bridge && concurrently \"pnpm run bridge:watch\" \"vite dev\"",
     "start": "pnpm run dev",
     "build:bridge": "tsc -p src-tauri/tsconfig.bridge.json",
     "build": "tsx scripts/build-all.ts",
@@ -20,7 +21,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest",
     "test:watch": "vitest --watch",
-    "tauri:dev": "pnpm run build:bridge && concurrently \"pnpm run bridge:watch\" \"tauri dev\"",
+    "tauri:dev": "tauri dev",
     "tauri:build": "pnpm run build:bridge && tauri build",
     "tauri:test": "pnpm run build:bridge && pnpm test"
   },
