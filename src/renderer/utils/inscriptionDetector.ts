@@ -29,50 +29,65 @@ export function detectHRLs(content: string): string[] {
   const hrlPattern = /hcs:\/\/([1-6])\/([0-9.]+)/g;
   const matches: string[] = [];
   let match;
-  
+
   while ((match = hrlPattern.exec(content)) !== null) {
     matches.push(match[0]);
   }
-  
+
   return matches;
 }
 
 /**
  * Parses an HRL to extract its components
  */
-export function parseHRL(hrl: string): { topicId: string; fileStandard: string; standard: 'Static' | 'Dynamic' } | null {
+export function parseHRL(
+  hrl: string
+): {
+  topicId: string;
+  fileStandard: string;
+  standard: 'Static' | 'Dynamic';
+} | null {
   const hrlPattern = /^hcs:\/\/([1-6])\/([0-9.]+)$/;
   const match = hrl.match(hrlPattern);
-  
+
   if (!match) return null;
-  
+
   const fileStandard = match[1];
   const topicId = match[2];
   const standard = fileStandard === '6' ? 'Dynamic' : 'Static';
-  
+
   return { topicId, fileStandard, standard };
 }
 
 /**
  * Generates CDN URL for a given HRL and network
  */
-export function generateCDNUrl(hrl: string, network: 'mainnet' | 'testnet' = 'testnet'): string | null {
+export function generateCDNUrl(
+  hrl: string,
+  network: 'mainnet' | 'testnet' = 'testnet'
+): string | null {
   const parsed = parseHRL(hrl);
   if (!parsed) return null;
-  
+
   return `https://kiloscribe.com/api/inscription-cdn/${parsed.topicId}?network=${network}`;
 }
 
 /**
  * Detects inscription metadata in structured tool responses
  */
-export function detectInscriptionInMessage(messageContent: string): InscriptionData[] {
+export function detectInscriptionInMessage(
+  messageContent: string
+): InscriptionData[] {
   const inscriptions: InscriptionData[] = [];
-  
+
   try {
     const parsed = JSON.parse(messageContent);
-    
-    if (parsed.success && parsed.type === 'inscription' && parsed.inscription?.hrl) {
+
+    if (
+      parsed.success &&
+      parsed.type === 'inscription' &&
+      parsed.inscription?.hrl
+    ) {
       const hrlData = parseHRL(parsed.inscription.hrl);
       if (hrlData) {
         inscriptions.push({
@@ -80,14 +95,17 @@ export function detectInscriptionInMessage(messageContent: string): InscriptionD
           topicId: hrlData.topicId,
           fileStandard: hrlData.fileStandard,
           standard: hrlData.standard,
-          cdnUrl: parsed.inscription.cdnUrl || generateCDNUrl(parsed.inscription.hrl) || '',
+          cdnUrl:
+            parsed.inscription.cdnUrl ||
+            generateCDNUrl(parsed.inscription.hrl) ||
+            '',
           metadata: parsed.metadata,
         });
       }
     }
   } catch {
     const hrls = detectHRLs(messageContent);
-    
+
     for (const hrl of hrls) {
       const hrlData = parseHRL(hrl);
       if (hrlData) {
@@ -104,7 +122,7 @@ export function detectInscriptionInMessage(messageContent: string): InscriptionD
       }
     }
   }
-  
+
   return inscriptions;
 }
 
@@ -118,7 +136,9 @@ export function hasInscriptions(messageContent: string): boolean {
 /**
  * Extracts the first inscription from a message, if any
  */
-export function getFirstInscription(messageContent: string): InscriptionData | null {
+export function getFirstInscription(
+  messageContent: string
+): InscriptionData | null {
   const inscriptions = detectInscriptionInMessage(messageContent);
   return inscriptions.length > 0 ? inscriptions[0] : null;
 }

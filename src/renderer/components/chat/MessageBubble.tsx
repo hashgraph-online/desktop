@@ -1024,6 +1024,7 @@ function MessageBubbleImpl({
                         }
                       }
                       className='mx-0 max-w-none'
+                      metadata={message.metadata as Record<string, unknown>}
                     />
                   ))
                 : null}

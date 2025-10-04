@@ -4,8 +4,8 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-use tokio::process::{Child, ChildStdin, ChildStdout, Command};
+use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
+use tokio::process::{Child, ChildStderr, ChildStdin, ChildStdout, Command};
 use tokio::sync::Mutex;
 use uuid::Uuid;
 
@@ -13,8 +13,8 @@ use crate::AgentBackend;
 use crate::BackendError;
 use crate::agent::{AgentMessageData, AgentMessageRequest};
 use crate::wallet_bridge::{
-    WalletBridgeInfo, WalletBridgeState, wallet_execute_bytes, wallet_start_inscription,
-    wallet_status_json,
+    WalletBridgeInfo, WalletBridgeState, wallet_execute_bytes, wallet_fetch_inscription,
+    wallet_start_inscription, wallet_status_json,
 };
 
 pub struct NodeAgentBackend {
@@ -27,6 +27,7 @@ struct NodeProcess {
     child: Child,
     stdin: ChildStdin,
     stdout: BufReader<ChildStdout>,
+    stderr: BufReader<ChildStderr>,
     next_id: u64,
 }
 
@@ -41,7 +42,7 @@ impl NodeAgentBackend {
             .arg(&script_path)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            .stderr(Stdio::inherit());
+            .stderr(Stdio::piped());
 
         if let Some(parent) = script_path.parent() {
             command.current_dir(parent);
@@ -59,12 +60,17 @@ impl NodeAgentBackend {
             .stdout
             .take()
             .ok_or_else(|| "Failed to access bridge stdout".to_string())?;
+        let stderr = child
+            .stderr
+            .take()
+            .ok_or_else(|| "Failed to access bridge stderr".to_string())?;
 
         Ok(Self {
             process: Mutex::new(NodeProcess {
                 child,
                 stdin,
                 stdout: BufReader::new(stdout),
+                stderr: BufReader::new(stderr),
                 next_id: 0,
             }),
             wallet_bridge,
@@ -116,7 +122,17 @@ impl NodeAgentBackend {
             .map_err(|error| format!("Failed to read agent bridge response: {error}"))?;
 
             if read_bytes == 0 {
-                return Err("Agent bridge closed the stream unexpectedly".to_string());
+                let mut stderr_output = String::new();
+                let _ = guard.stderr.read_to_string(&mut stderr_output).await;
+
+                let error_msg = if stderr_output.is_empty() {
+                    "Agent bridge closed the stream unexpectedly (no stderr output)".to_string()
+                } else {
+                    format!("Agent bridge closed unexpectedly. Error output:\n{}", stderr_output.trim())
+                };
+
+                log::error!("{}", error_msg);
+                return Err(error_msg);
             }
 
             let trimmed = response_line.trim();
@@ -275,6 +291,23 @@ impl NodeAgentBackend {
                         .map_err(|err| format!("Invalid wallet inscription payload: {err}"))?;
                 wallet_start_inscription(&self.wallet_bridge, payload.request, payload.network)
                     .await
+            }
+            "wallet_inscribe_fetch" => {
+                #[derive(Deserialize)]
+                struct FetchPayload {
+                    transaction_id: String,
+                    network: String,
+                }
+
+                let payload: FetchPayload = serde_json::from_value(request.payload.clone())
+                    .map_err(|err| format!("Invalid wallet fetch payload: {err}"))?;
+
+                wallet_fetch_inscription(
+                    &self.wallet_bridge,
+                    payload.transaction_id,
+                    payload.network,
+                )
+                .await
             }
             other => Err(format!("Unsupported bridge action: {other}")),
         }

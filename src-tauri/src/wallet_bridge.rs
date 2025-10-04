@@ -24,6 +24,7 @@ pub struct WalletBridgeState {
     app_handle: Arc<RwLock<Option<AppHandle<Wry>>>>,
     pending_inscriptions: PendingMap,
     pending_executions: PendingMap,
+    pending_retrievals: PendingMap,
 }
 
 impl WalletBridgeState {
@@ -208,6 +209,50 @@ impl WalletBridgeState {
         result
     }
 
+    pub async fn fetch_inscription(
+        &self,
+        transaction_id: String,
+        network: String,
+    ) -> Result<Value, String> {
+        let app = self.app_handle()?;
+        let request_id = Uuid::new_v4().to_string();
+        let reply_event = format!("wallet_inscribe_fetch_reply_{request_id}");
+        let handler_slot = self.register_reply_listener(
+            reply_event,
+            request_id.clone(),
+            self.pending_retrievals.clone(),
+        )?;
+
+        app.emit(
+            "wallet_inscribe_fetch_request",
+            json!({
+                "requestId": request_id.clone(),
+                "transactionId": transaction_id,
+                "network": network,
+            }),
+        )
+        .map_err(|error: tauri::Error| error.to_string())?;
+
+        let result = self
+            .await_response(
+                self.pending_retrievals.clone(),
+                request_id.clone(),
+                Duration::from_secs(2 * 60),
+            )
+            .await;
+
+        if let Ok(Some(handler)) = handler_slot
+            .lock()
+            .map(|mut slot: std::sync::MutexGuard<Option<EventId>>| slot.take())
+        {
+            if let Ok(app) = self.app_handle() {
+                app.unlisten(handler);
+            }
+        }
+
+        result
+    }
+
     pub async fn wallet_status(&self, info: &Arc<Mutex<Option<WalletBridgeInfo>>>) -> Value {
         let guard = info.lock().await;
         match guard.as_ref() {
@@ -265,6 +310,14 @@ pub async fn wallet_start_inscription(
     network: String,
 ) -> Result<Value, String> {
     bridge.start_inscription(request, network).await
+}
+
+pub async fn wallet_fetch_inscription(
+    bridge: &WalletBridgeState,
+    transaction_id: String,
+    network: String,
+) -> Result<Value, String> {
+    bridge.fetch_inscription(transaction_id, network).await
 }
 
 #[cfg(test)]
