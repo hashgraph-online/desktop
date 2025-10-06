@@ -11,6 +11,8 @@ import {
 import Typography from '../ui/Typography';
 import { motion } from 'framer-motion';
 import { useConfigStore } from '../../stores/configStore';
+import { walletService } from '../../services/walletService';
+import { getInscriptionSDK } from '../../services/inscriptionSdkProvider';
 
 const logger = new Logger({ module: 'HashLinkBlockRenderer' });
 
@@ -37,12 +39,9 @@ interface HashLinkBlock {
 interface HashLinkBlockRendererProps {
   hashLinkBlock: HashLinkBlock;
   className?: string;
-  // Rendering strategy for template execution
-  // - 'host': inject into DOM (not recommended for templates with scripts)
-  // - 'sandbox': render inside sandboxed iframe
   renderMode?: 'host' | 'sandbox';
-  // When sandboxed, copy host styles (Tailwind, global CSS) into the iframe head
   inheritStyles?: boolean;
+  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -55,6 +54,7 @@ const HashLinkBlockRenderer: React.FC<HashLinkBlockRendererProps> = ({
   className,
   renderMode = 'sandbox',
   inheritStyles = true,
+  metadata: metadataProp,
 }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [renderError, setRenderError] = useState<string | null>(null);
@@ -63,6 +63,8 @@ const HashLinkBlockRenderer: React.FC<HashLinkBlockRendererProps> = ({
   const [isFromCache, setIsFromCache] = useState(false);
   const [imagesLoaded, setImagesLoaded] = useState(0);
   const [totalImages, setTotalImages] = useState(0);
+  const [resolvedBlock, setResolvedBlock] =
+    useState<HashLinkBlock>(hashLinkBlock);
   const { config } = useConfigStore();
   const contentRef = useRef<HTMLDivElement>(null);
   const hasRenderedRef = useRef(false);
@@ -71,20 +73,27 @@ const HashLinkBlockRenderer: React.FC<HashLinkBlockRendererProps> = ({
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [iframeHeight, setIframeHeight] = useState<number>(420);
 
-  const blockId = hashLinkBlock.blockId;
-  const template = hashLinkBlock.template;
+  const metadata = useMemo(
+    () => (metadataProp ?? {}) as Record<string, unknown>,
+    [metadataProp]
+  );
+
+  const blockId = resolvedBlock.blockId;
+  const template = resolvedBlock.template;
   const network = config?.hedera?.network === 'mainnet' ? 'mainnet' : 'testnet';
   const baseHref = typeof document !== 'undefined' ? document.baseURI : '/';
 
+  console.log('hashlink block for', hashLinkBlock);
+
   const attributesKey = useMemo(() => {
-    return JSON.stringify(hashLinkBlock.attributes);
-  }, [hashLinkBlock.attributes]);
+    return JSON.stringify(resolvedBlock.attributes);
+  }, [resolvedBlock.attributes]);
 
   const copyHRL = async () => {
     try {
-      await navigator.clipboard.writeText(hashLinkBlock.hashLink);
+      await navigator.clipboard.writeText(resolvedBlock.hashLink);
 
-      logger.info('HRL copied to clipboard', { hrl: hashLinkBlock.hashLink });
+      logger.info('HRL copied to clipboard', { hrl: resolvedBlock.hashLink });
     } catch (error) {
       logger.error('Failed to copy HRL to clipboard', error);
     }
@@ -96,7 +105,7 @@ const HashLinkBlockRenderer: React.FC<HashLinkBlockRendererProps> = ({
       const baseUrl = isMainnet
         ? 'https://hashscan.io'
         : 'https://hashscan.io/testnet';
-      const explorerUrl = `${baseUrl}/topic/${hashLinkBlock.blockId}`;
+      const explorerUrl = `${baseUrl}/topic/${resolvedBlock.blockId}`;
       window.open(explorerUrl, '_blank', 'noopener,noreferrer');
       logger.info('Opened HashLink in explorer', { url: explorerUrl });
     } catch (error) {
@@ -114,6 +123,7 @@ const HashLinkBlockRenderer: React.FC<HashLinkBlockRendererProps> = ({
     setImagesLoaded(0);
     setTotalImages(0);
     loadStartTime.current = null;
+    setResolvedBlock(hashLinkBlock);
   };
 
   const handleKeyDown = (event: React.KeyboardEvent, action: () => void) => {
@@ -123,10 +133,136 @@ const HashLinkBlockRenderer: React.FC<HashLinkBlockRendererProps> = ({
     }
   };
 
-const shouldSandbox = useMemo(() => {
+  const shouldSandbox = useMemo(() => {
     // Always sandbox unless explicitly requested to use host
     return renderMode !== 'host';
   }, [renderMode]);
+
+  useEffect(() => {
+    setResolvedBlock(hashLinkBlock);
+  }, [hashLinkBlock]);
+
+  useEffect(() => {
+    const attributes = resolvedBlock.attributes || {};
+    const inscriptionMeta = (metadata.inscription ?? {}) as {
+      transactionId?: string;
+      topicId?: string;
+      jsonTopicId?: string;
+    };
+    const resultMeta = (metadata.result ?? {}) as {
+      transactionId?: string;
+      topicId?: string;
+      jsonTopicId?: string;
+    };
+
+    const resolvedJsonTopic =
+      (attributes.jsonTopicId as string | undefined) ??
+      inscriptionMeta.jsonTopicId ??
+      resultMeta.jsonTopicId;
+
+    const resolvedTransactionId =
+      (attributes.transactionId as string | undefined) ??
+      inscriptionMeta.transactionId ??
+      resultMeta.transactionId;
+
+    const resolvedImageTopic =
+      (attributes.imageTopicId as string | undefined) ??
+      inscriptionMeta.topicId ??
+      resultMeta.topicId;
+
+    const updates: Record<string, unknown> = {};
+
+    if (!attributes.jsonTopicId && resolvedJsonTopic) {
+      updates.jsonTopicId = resolvedJsonTopic;
+      updates.hrl = `hcs://1/${resolvedJsonTopic}`;
+    }
+
+    if (!attributes.transactionId && resolvedTransactionId) {
+      updates.transactionId = resolvedTransactionId;
+    }
+
+    if (!attributes.imageTopicId && resolvedImageTopic) {
+      updates.imageTopicId = resolvedImageTopic;
+    }
+
+    if (Object.keys(updates).length > 0) {
+      setResolvedBlock((prev) => ({
+        ...prev,
+        attributes: {
+          ...(prev.attributes || {}),
+          ...updates,
+        },
+      }));
+      return;
+    }
+
+    const transactionId =
+      resolvedBlock.attributes?.transactionId as string | undefined;
+
+    const jsonTopicId =
+      resolvedBlock.attributes?.jsonTopicId as string | undefined;
+
+    if (jsonTopicId || !transactionId) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const resolveMetadataTopic = async () => {
+      try {
+        const signer = await walletService.getSigner();
+        if (!signer) {
+          logger.warn(
+            'Wallet signer unavailable; cannot resolve metadata topic'
+          );
+          return;
+        }
+
+        const sdk = await getInscriptionSDK(signer, network);
+        const inscription = await sdk.retrieveInscription(transactionId);
+
+        if (cancelled) {
+          return;
+        }
+
+        const inscriptionRecord = inscription as {
+          jsonTopicId?: string;
+          topicId?: string;
+        };
+
+        const fetchedJsonTopic = inscriptionRecord.jsonTopicId;
+
+        if (!fetchedJsonTopic) {
+          return;
+        }
+
+        const fetchedImageTopic = inscriptionRecord.topicId;
+
+        setResolvedBlock((prev) => ({
+          ...prev,
+          attributes: {
+            ...(prev.attributes || {}),
+            jsonTopicId: fetchedJsonTopic,
+            hrl: `hcs://1/${fetchedJsonTopic}`,
+            ...(fetchedImageTopic
+              ? { imageTopicId: fetchedImageTopic }
+              : {}),
+          },
+        }));
+      } catch (error) {
+        logger.warn(
+          'Failed to resolve metadata topic with inscription SDK',
+          error
+        );
+      }
+    };
+
+    resolveMetadataTopic();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [resolvedBlock, network, metadata]);
 
   useEffect(() => {
     if (hasRenderedRef.current && renderedContent) {
@@ -167,7 +303,9 @@ const shouldSandbox = useMemo(() => {
           } catch (loadError) {
             logger.error('Failed to load template from blockchain:', loadError);
             setRenderError(
-              `Failed to load template: ${loadError instanceof Error ? loadError.message : 'Unknown error'}`
+              `Failed to load template: ${
+                loadError instanceof Error ? loadError.message : 'Unknown error'
+              }`
             );
             return;
           }
@@ -178,7 +316,7 @@ const shouldSandbox = useMemo(() => {
 
         let finalHtml = templateContent;
         if (finalHtml && finalHtml.includes('{{')) {
-          Object.entries(hashLinkBlock.attributes).forEach(([key, value]) => {
+          Object.entries(resolvedBlock.attributes).forEach(([key, value]) => {
             const regex = new RegExp(`{{${key}}}`, 'g');
             finalHtml = finalHtml?.replace(regex, String(value || ''));
           });
@@ -186,7 +324,7 @@ const shouldSandbox = useMemo(() => {
 
         logger.info('Template rendered successfully', {
           templateLength: finalHtml?.length,
-          attributeCount: Object.keys(hashLinkBlock.attributes).length,
+          attributeCount: Object.keys(resolvedBlock.attributes).length,
         });
 
         setRenderedContent(finalHtml);
@@ -215,7 +353,6 @@ const shouldSandbox = useMemo(() => {
 
     renderHashLinkBlock();
   }, [blockId, template, network, attributesKey]);
-
 
   useEffect(() => {
     // Skip host-DOM image observation if sandboxing
@@ -272,9 +409,7 @@ const shouldSandbox = useMemo(() => {
     };
   }, [renderedContent, shouldSandbox]);
 
-
-
-// Resize handling for sandboxed iframe without injecting scripts
+  // Resize handling for sandboxed iframe without injecting scripts
   useEffect(() => {
     if (!shouldSandbox) return;
     const iframe = iframeRef.current;
@@ -365,7 +500,9 @@ const shouldSandbox = useMemo(() => {
         if (head.querySelector('[data-hol-injected="1"]')) return;
 
         // Clone link[rel="stylesheet"] from host
-        const hostLinks = Array.from(document.querySelectorAll('link[rel="stylesheet"]')) as HTMLLinkElement[];
+        const hostLinks = Array.from(
+          document.querySelectorAll('link[rel="stylesheet"]')
+        ) as HTMLLinkElement[];
         hostLinks.forEach((lnk) => {
           try {
             const newLink = doc.createElement('link');
@@ -380,7 +517,9 @@ const shouldSandbox = useMemo(() => {
         });
 
         // Clone inline <style> tags (Tailwind often emits these in dev/bundled environments)
-        const hostStyles = Array.from(document.querySelectorAll('style')) as HTMLStyleElement[];
+        const hostStyles = Array.from(
+          document.querySelectorAll('style')
+        ) as HTMLStyleElement[];
         hostStyles.forEach((st) => {
           try {
             const cssText = st.textContent || '';
@@ -599,7 +738,7 @@ const shouldSandbox = useMemo(() => {
                 variant='caption'
                 className='text-xs font-mono text-blue-700 dark:text-blue-300'
               >
-                {hashLinkBlock.blockId}
+                {resolvedBlock.blockId}
               </Typography>
             </div>
 
@@ -624,8 +763,8 @@ const shouldSandbox = useMemo(() => {
                       loadTime < 500
                         ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
                         : loadTime < 2000
-                          ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300'
-                          : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
+                        ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300'
+                        : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
                     }`}
                     title={`Load time: ${loadTime}ms`}
                   >
@@ -689,12 +828,12 @@ const shouldSandbox = useMemo(() => {
         </div>
       </div>
 
-{shouldSandbox ? (
+      {shouldSandbox ? (
         <iframe
           ref={iframeRef}
           className='hashlink-content w-full border-0'
           sandbox='allow-scripts allow-same-origin allow-popups allow-forms allow-downloads'
-srcDoc={`<!doctype html><html><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><base href=\"${baseHref}\" target=\"_blank\" /><style>html,body{margin:0;padding:0;background:transparent;}</style></head><body><div id=\"hlb-root\" class=\"hlb-root\" style=\"display:block; width:100%;\">${renderedContent}</div></body></html>`}
+          srcDoc={`<!doctype html><html><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><base href=\"${baseHref}\" target=\"_blank\" /><style>html,body{margin:0;padding:0;background:transparent;}</style></head><body><div id=\"hlb-root\" class=\"hlb-root\" style=\"display:block; width:100%;\">${renderedContent}</div></body></html>`}
           style={{ width: '100%', height: iframeHeight }}
           title={`hashlink-block-${blockId}`}
         />

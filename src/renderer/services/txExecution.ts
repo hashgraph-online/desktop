@@ -1,3 +1,9 @@
+import {
+  HederaMirrorNode,
+  Logger,
+  NetworkType,
+} from '@hashgraphonline/standards-sdk';
+import type { EntityContext } from './hydrationScheduler';
 import { useAgentStore } from '../stores/agentStore';
 
 export function isLikelyPayerOnly(txType: string): boolean {
@@ -34,24 +40,35 @@ export async function waitForMirrorConfirmation(
     };
 
     const formattedId = toHyphenId(txId);
-    const ledger: 'mainnet' | 'testnet' = (net || 'testnet') === 'mainnet' ? 'mainnet' : 'testnet';
-    const deadline = Date.now() + Math.max(1000, timeoutMs);
 
+    const deadline = Date.now() + Math.max(1000, timeoutMs);
+    const logger = new Logger({
+      module: 'txExecution',
+    });
+    const mirrorNode = new HederaMirrorNode(net as NetworkType, logger);
     let lastStatus: string | undefined;
+
     while (Date.now() < deadline) {
       try {
-        const resp = await (window as any).electron?.mirrorNode?.getTransaction?.(formattedId, ledger);
-        if (resp && typeof resp === 'object' && resp.success && resp.data) {
-          const tx = resp.data as any;
-          const status = String(tx?.result || tx?.status || '').toUpperCase();
-          if (status === 'SUCCESS') return { ok: true, status };
-          if (status) return { ok: false, status };
+        const tx = await mirrorNode.getTransaction(formattedId);
+
+        const status = String(tx?.result).toUpperCase();
+        if (status === 'SUCCESS') {
+          return { ok: true, status };
         }
-      } catch {
+        if (status) {
+          return { ok: false, status };
+        }
+      } catch (e) {
+        logger.error(e);
       }
       await new Promise((r) => setTimeout(r, 1200));
     }
-    return { ok: false, status: lastStatus, error: 'Mirror confirmation timed out' };
+    return {
+      ok: false,
+      status: lastStatus,
+      error: 'Mirror confirmation timed out',
+    };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     return { ok: false, error: msg };
@@ -60,13 +77,14 @@ export async function waitForMirrorConfirmation(
 
 export async function persistExecuted(
   messageId: string | undefined,
-  transactionId: string | undefined
+  transactionId: string | undefined,
+  entityContext?: EntityContext
 ): Promise<void> {
   try {
     if (!messageId) return;
     const sessId = useAgentStore.getState().currentSession?.id || undefined;
-    await useAgentStore.getState().markTransactionExecuted(messageId, transactionId, sessId);
-  } catch {
-  }
+    await useAgentStore
+      .getState()
+      .markTransactionExecuted(messageId, transactionId, sessId, entityContext);
+  } catch {}
 }
-

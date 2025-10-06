@@ -13,7 +13,11 @@ export type UseChatSessionsParams = {
     topicId?: string
   ) => Promise<ChatSession>;
   deleteSession: (id: string) => Promise<void>;
-  setChatContext: (ctx: { mode: ChatMode; topicId?: string; agentName?: string }) => void;
+  setChatContext: (ctx: {
+    mode: ChatMode;
+    topicId?: string;
+    agentName?: string;
+  }) => void;
   currentSession: ChatSession | null;
 };
 
@@ -32,13 +36,18 @@ export type UseChatSessionsResult = {
 /**
  * Encapsulates session selection, creation and deletion flows for Chat.
  */
-export function useChatSessions(params: UseChatSessionsParams): UseChatSessionsResult {
-  const { loadSession, createSession, deleteSession, setChatContext, currentSession } = params;
+export function useChatSessions(
+  params: UseChatSessionsParams
+): UseChatSessionsResult {
+  const { loadSession, deleteSession, setChatContext, currentSession } = params;
   const navigate = useNavigate();
 
   const [isLoadingSessions, setIsLoadingSessions] = useState(false);
-  const [showSessionCreationModal, setShowSessionCreationModal] = useState(false);
-  const [sessionDeleteConfirm, setSessionDeleteConfirm] = useState<string | null>(null);
+  const [showSessionCreationModal, setShowSessionCreationModal] =
+    useState(false);
+  const [sessionDeleteConfirm, setSessionDeleteConfirm] = useState<
+    string | null
+  >(null);
 
   const openCreateSession = useCallback(() => {
     setShowSessionCreationModal(true);
@@ -58,14 +67,21 @@ export function useChatSessions(params: UseChatSessionsParams): UseChatSessionsR
           setChatContext({ mode: 'personal', agentName: session.name });
           navigate('/chat');
         } else if (session.mode === 'hcs10' && session.topicId) {
-          setChatContext({ mode: 'hcs10', topicId: session.topicId, agentName: session.name });
+          setChatContext({
+            mode: 'hcs10',
+            topicId: session.topicId,
+            agentName: session.name,
+          });
           navigate(`/chat/${session.topicId}`);
         }
 
-        toast.success('Session Loaded', { description: `Switched to "${session.name}"` });
+        toast.success('Session Loaded', {
+          description: `Switched to "${session.name}"`,
+        });
       } catch (error) {
         toast.error('Failed to Load Session', {
-          description: error instanceof Error ? error.message : 'Could not load session',
+          description:
+            error instanceof Error ? error.message : 'Could not load session',
         });
       } finally {
         setIsLoadingSessions(false);
@@ -79,9 +95,13 @@ export function useChatSessions(params: UseChatSessionsParams): UseChatSessionsR
       setShowSessionCreationModal(false);
       try {
         setIsLoadingSessions(true);
-        
-        setChatContext({ mode: session.mode as ChatMode, topicId: session.topicId, agentName: session.name });
-        
+
+        setChatContext({
+          mode: session.mode as ChatMode,
+          topicId: session.topicId,
+          agentName: session.name,
+        });
+
         await loadSession(session.id);
 
         if (session.mode === 'hcs10' && session.topicId) {
@@ -90,10 +110,15 @@ export function useChatSessions(params: UseChatSessionsParams): UseChatSessionsR
           navigate('/chat');
         }
 
-        toast.success('Session Created', { description: `Created and activated session "${session.name}"` });
+        toast.success('Session Created', {
+          description: `Created and activated session "${session.name}"`,
+        });
       } catch (error) {
         toast.error('Session Creation Error', {
-          description: error instanceof Error ? error.message : 'Could not activate session',
+          description:
+            error instanceof Error
+              ? error.message
+              : 'Could not activate session',
         });
       } finally {
         setIsLoadingSessions(false);
@@ -106,11 +131,13 @@ export function useChatSessions(params: UseChatSessionsParams): UseChatSessionsR
     async (sessionId: string) => {
       try {
         const wasCurrentSession = currentSession?.id === sessionId;
-        
+
         await deleteSession(sessionId);
         setSessionDeleteConfirm(null);
 
-        toast.success('Session Deleted', { description: 'Session has been permanently deleted' });
+        toast.success('Session Deleted', {
+          description: 'Session has been permanently deleted',
+        });
 
         if (wasCurrentSession) {
           setChatContext({ mode: 'personal', agentName: 'Personal Assistant' });
@@ -118,7 +145,8 @@ export function useChatSessions(params: UseChatSessionsParams): UseChatSessionsR
         }
       } catch (error) {
         toast.error('Failed to Delete Session', {
-          description: error instanceof Error ? error.message : 'Could not delete session',
+          description:
+            error instanceof Error ? error.message : 'Could not delete session',
         });
       }
     },

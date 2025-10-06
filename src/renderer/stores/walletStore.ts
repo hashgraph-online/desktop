@@ -8,7 +8,6 @@ import { telemetry } from '../services/telemetryService';
 
 const DEFAULT_WC_PROJECT_ID = '610b20415692c366e3bf97b8208cada5';
 
-
 export interface WalletState {
   isConnected: boolean;
   isInitializing: boolean;
@@ -58,7 +57,7 @@ const DEFAULT_METADATA = {
 
 async function resolveProjectId(): Promise<string> {
   try {
-    const env = await window.electron.getEnvironmentConfig?.();
+    const env = await window?.desktop?.getEnvironmentConfig?.();
     const maybe = String(env?.walletConnect?.projectId || '').trim();
     return maybe || DEFAULT_WC_PROJECT_ID;
   } catch {
@@ -74,7 +73,7 @@ async function buildMetadata(): Promise<SignClientTypes.Metadata> {
     icons: [DEFAULT_METADATA.icons[0]],
   };
   try {
-    const envConfig = await window.electron.getEnvironmentConfig?.();
+    const envConfig = await window?.desktop?.getEnvironmentConfig?.();
     const wc = envConfig?.walletConnect;
     if (wc) {
       _meta = {
@@ -84,8 +83,7 @@ async function buildMetadata(): Promise<SignClientTypes.Metadata> {
         icons: [wc.appIcon || DEFAULT_METADATA.icons[0]],
       };
     }
-  } catch {
-  }
+  } catch {}
   return _meta;
 }
 
@@ -99,22 +97,26 @@ async function applyInfoToState(
   set: (state: Partial<WalletState>) => void,
   info: { accountId: string; network: LedgerId }
 ): Promise<void> {
+  const resolvedNetwork =
+    info.network.toString() === 'mainnet' ? 'mainnet' : 'testnet';
   set({
     isConnected: true,
     accountId: info.accountId,
-    network: info.network.toString() === 'mainnet' ? 'mainnet' : 'testnet',
+    network: resolvedNetwork,
   });
+  useConfigStore
+    .getState()
+    .updateFromWallet({ accountId: info.accountId, network: resolvedNetwork });
   try {
     const balance = await walletService.getBalance();
     set({ balance });
   } catch {}
   try {
-    await window.electron.setCurrentWallet({
+    await window?.desktop?.setCurrentWallet({
       accountId: info.accountId,
       network: info.network.toString() === 'mainnet' ? 'mainnet' : 'testnet',
     });
-  } catch {
-  }
+  } catch {}
 }
 
 export const useWalletStore = create<WalletState>((set, get) => ({
@@ -131,11 +133,10 @@ export const useWalletStore = create<WalletState>((set, get) => ({
     try {
       let pid = DEFAULT_WC_PROJECT_ID;
       try {
-        const env = await window.electron.getEnvironmentConfig?.();
+        const env = await window?.desktop?.getEnvironmentConfig?.();
         const maybe = String(env?.walletConnect?.projectId || '').trim();
         if (maybe) pid = maybe;
-      } catch {
-      }
+      } catch {}
       set({ projectId: pid });
 
       await get().initAccount();
@@ -159,8 +160,7 @@ export const useWalletStore = create<WalletState>((set, get) => ({
 
       try {
         await walletService.getSDK().init(projectId, _meta, _ledgerId);
-      } catch {
-      }
+      } catch {}
 
       const info = walletService.getAccountInfo();
       if (info?.accountId) {
@@ -225,11 +225,11 @@ export const useWalletStore = create<WalletState>((set, get) => ({
     try {
       await walletService.disconnect();
       set({ isConnected: false, accountId: null, balance: null });
+      useConfigStore.getState().updateFromWallet(null);
       telemetry.emit('wallet_disconnect', {});
       try {
-        await window.electron.setCurrentWallet(null);
-      } catch {
-      }
+        await window?.desktop?.setCurrentWallet(null);
+      } catch {}
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       set({ error: msg });
@@ -240,8 +240,7 @@ export const useWalletStore = create<WalletState>((set, get) => ({
     try {
       const bal = await walletService.getBalance();
       set({ balance: bal });
-    } catch (_e) {
-    }
+    } catch (_e) {}
   },
 
   executeFromBytes: async (base64: string) => {

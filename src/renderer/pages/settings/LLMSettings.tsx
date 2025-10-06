@@ -6,6 +6,8 @@ import {
   FiAlertCircle,
   FiHelpCircle,
   FiExternalLink,
+  FiEye,
+  FiEyeOff,
 } from 'react-icons/fi';
 import { z } from 'zod';
 import { useConfigStore } from '../../stores/configStore';
@@ -39,6 +41,7 @@ export const LLMSettings: React.FC<LLMSettingsProps> = () => {
     testOpenAIConnection,
     testAnthropicConnection,
     isLLMConfigValid,
+    hasLoadedInitialConfig,
   } = useConfigStore();
 
   const [testResult, setTestResult] = useState<{
@@ -48,6 +51,8 @@ export const LLMSettings: React.FC<LLMSettingsProps> = () => {
   const [isTesting, setIsTesting] = useState(false);
   const [showApiKeyGuide, setShowApiKeyGuide] = useState(false);
   const [isFirstTime, setIsFirstTime] = useState(false);
+  const [showOpenAIApiKey, setShowOpenAIApiKey] = useState(false);
+  const [showAnthropicApiKey, setShowAnthropicApiKey] = useState(false);
 
   const {
     register,
@@ -61,7 +66,7 @@ export const LLMSettings: React.FC<LLMSettingsProps> = () => {
     defaultValues: {
       provider: config?.llmProvider || 'openai',
       openaiApiKey: config?.openai?.apiKey || '',
-      openaiModel: config?.openai?.model || 'gpt-4o',
+      openaiModel: config?.openai?.model || 'gpt-5',
       anthropicApiKey: config?.anthropic?.apiKey || '',
       anthropicModel: config?.anthropic?.model || 'claude-3-7-sonnet-latest',
     },
@@ -72,7 +77,7 @@ export const LLMSettings: React.FC<LLMSettingsProps> = () => {
       reset({
         provider: config.llmProvider || 'openai',
         openaiApiKey: config.openai?.apiKey || '',
-        openaiModel: config.openai?.model || 'gpt-4o',
+        openaiModel: config.openai?.model || 'gpt-5',
         anthropicApiKey: config.anthropic?.apiKey || '',
         anthropicModel: config.anthropic?.model || 'claude-3-7-sonnet-latest',
       });
@@ -91,34 +96,49 @@ export const LLMSettings: React.FC<LLMSettingsProps> = () => {
   }, [config]);
 
   useEffect(() => {
+    if (!hasLoadedInitialConfig) {
+      return;
+    }
     if (config?.llmProvider !== watchProvider) {
       setLLMProvider(watchProvider);
     }
-  }, [watchProvider, setLLMProvider, config?.llmProvider]);
+  }, [watchProvider, setLLMProvider, config?.llmProvider, hasLoadedInitialConfig]);
 
   useEffect(() => {
+    if (!hasLoadedInitialConfig) {
+      return;
+    }
     if (watchOpenAIApiKey !== undefined && config?.openai?.apiKey !== watchOpenAIApiKey) {
       setOpenAIApiKey(watchOpenAIApiKey);
     }
-  }, [watchOpenAIApiKey, setOpenAIApiKey, config?.openai?.apiKey]);
+  }, [watchOpenAIApiKey, setOpenAIApiKey, config?.openai?.apiKey, hasLoadedInitialConfig]);
 
   useEffect(() => {
+    if (!hasLoadedInitialConfig) {
+      return;
+    }
     if (watchOpenAIModel && config?.openai?.model !== watchOpenAIModel) {
       setOpenAIModel(watchOpenAIModel as string);
     }
-  }, [watchOpenAIModel, setOpenAIModel, config?.openai?.model]);
+  }, [watchOpenAIModel, setOpenAIModel, config?.openai?.model, hasLoadedInitialConfig]);
 
   useEffect(() => {
+    if (!hasLoadedInitialConfig) {
+      return;
+    }
     if (watchAnthropicApiKey !== undefined && config?.anthropic?.apiKey !== watchAnthropicApiKey) {
       setAnthropicApiKey(watchAnthropicApiKey);
     }
-  }, [watchAnthropicApiKey, setAnthropicApiKey, config?.anthropic?.apiKey]);
+  }, [watchAnthropicApiKey, setAnthropicApiKey, config?.anthropic?.apiKey, hasLoadedInitialConfig]);
 
   useEffect(() => {
+    if (!hasLoadedInitialConfig) {
+      return;
+    }
     if (watchAnthropicModel && config?.anthropic?.model !== watchAnthropicModel) {
       setAnthropicModel(watchAnthropicModel as string);
     }
-  }, [watchAnthropicModel, setAnthropicModel, config?.anthropic?.model]);
+  }, [watchAnthropicModel, setAnthropicModel, config?.anthropic?.model, hasLoadedInitialConfig]);
 
   const handleTestConnection = async () => {
     setIsTesting(true);
@@ -151,6 +171,28 @@ export const LLMSettings: React.FC<LLMSettingsProps> = () => {
   const currentModel =
     watchProvider === 'openai' ? watchOpenAIModel : watchAnthropicModel;
   const selectedModelInfo = getModelInfo(currentModel || '');
+  const showApiKey =
+    watchProvider === 'openai' ? showOpenAIApiKey : showAnthropicApiKey;
+
+  const toggleApiKeyVisibility = () => {
+    if (watchProvider === 'openai') {
+      setShowOpenAIApiKey((prev) => !prev);
+    } else {
+      setShowAnthropicApiKey((prev) => !prev);
+    }
+  };
+
+  const apiKeyFieldName = `${watchProvider}ApiKey` as keyof LLMSettingsForm;
+  const apiKeyRegister = register(apiKeyFieldName, {
+    onChange: (event: React.ChangeEvent<HTMLInputElement>) => {
+      const value = event.target.value;
+      if (watchProvider === 'openai') {
+        setOpenAIApiKey(value);
+      } else {
+        setAnthropicApiKey(value);
+      }
+    },
+  });
 
   if (showApiKeyGuide) {
     return (
@@ -298,27 +340,40 @@ export const LLMSettings: React.FC<LLMSettingsProps> = () => {
                 API Key
               </Typography>
               <div className='space-y-2'>
-                <Input
-                  id={`${watchProvider}ApiKey`}
-                  type='password'
-                  placeholder={
-                    watchProvider === 'openai' ? 'sk-...' : 'sk-ant-...'
-                  }
-                  {...register(
-                    `${watchProvider}ApiKey` as keyof LLMSettingsForm
-                  )}
-                  className={
-                    errors[`${watchProvider}ApiKey` as keyof LLMSettingsForm]
-                      ? 'border-red-500'
-                      : ''
-                  }
-                />
-                {errors[`${watchProvider}ApiKey` as keyof LLMSettingsForm] && (
-                  <Typography variant='caption' className='text-red-600'>
-                    {
-                      errors[`${watchProvider}ApiKey` as keyof LLMSettingsForm]
-                        ?.message
+                <div className='relative'>
+                  <Input
+                    id={`${watchProvider}ApiKey`}
+                    type={showApiKey ? 'text' : 'password'}
+                    placeholder={
+                      watchProvider === 'openai' ? 'sk-...' : 'sk-ant-...'
                     }
+                    {...apiKeyRegister}
+                    className={`pr-24 ${
+                      errors[apiKeyFieldName] ? 'border-red-500' : ''
+                    }`}
+                  />
+                <Button
+                  type='button'
+                  variant='outline'
+                    onClick={toggleApiKeyVisibility}
+                    className='absolute right-2 top-1/2 -translate-y-1/2 h-8 px-3 text-xs'
+                  >
+                    {showApiKey ? (
+                      <>
+                        <FiEyeOff className='w-4 h-4 mr-1' />
+                        Hide
+                      </>
+                    ) : (
+                      <>
+                        <FiEye className='w-4 h-4 mr-1' />
+                        Show
+                      </>
+                    )}
+                  </Button>
+                </div>
+                {errors[apiKeyFieldName] && (
+                  <Typography variant='caption' className='text-red-600'>
+                    {errors[apiKeyFieldName]?.message}
                   </Typography>
                 )}
                 <div className='flex items-start space-x-2'>

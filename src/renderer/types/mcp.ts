@@ -39,6 +39,17 @@ export interface MCPServerConfig {
   connectionHealth?: MCPConnectionHealth
   createdAt: Date
   updatedAt: Date
+  source?: string
+  metrics?: Record<string, MCPRegistryMetricsEntry>
+  metricFreshness?: Record<string, string>
+}
+
+export interface MCPRegistryMetricsEntry {
+  status?: string
+  value?: number
+  lastUpdated?: string
+  errorCode?: string
+  errorMessage?: string
 }
 
 export interface MCPFilesystemConfig {

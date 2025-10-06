@@ -31,8 +31,8 @@ class BlockTesterErrorBoundary extends Component<ErrorBoundaryProps, ErrorBounda
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     logger.error('Block Tester Error Boundary caught an error', { error: error.message, errorInfo });
     
-    if (typeof window !== 'undefined' && (window as any).electronAPI?.logError) {
-      (window as any).electronAPI.logError('BlockTester', {
+    if (typeof window !== 'undefined' && (window as any).desktopAPI?.logError) {
+      (window as any).desktopAPI.logError('BlockTester', {
         error: error.message,
         stack: error.stack,
         componentStack: errorInfo.componentStack

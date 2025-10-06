@@ -19,6 +19,7 @@ import {
   FiX,
 } from 'react-icons/fi';
 import { cn } from '../../lib/utils';
+import { invokeCommand } from '../../tauri/ipc';
 
 export interface NewChatModalProps {
   isOpen: boolean;
@@ -211,26 +212,84 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
   const loadAvailableAgents = useCallback(async () => {
     setLoadingAgents(true);
     try {
-      const result = await window.electron.invoke('hcs10:discover-agents', {
-        filters: {},
-        pagination: { page: 1, limit: 50 },
-      });
+      const result = await invokeCommand<{ agents?: unknown[] }>(
+        'hcs10_discover_agents',
+        {
+          filters: {},
+          pagination: { page: 1, limit: 50 },
+        }
+      );
 
-      if (result.success && result.data?.agents) {
-        const transformedAgents: Agent[] = result.data.agents.map((agent: any, index: number) => ({
-          id: agent.accountId || `agent-${index}`,
-          accountId: agent.accountId,
-          name: agent.profile?.display_name || agent.metadata?.display_name || agent.profile?.alias || agent.metadata?.alias || agent.accountId,
-          profile: {
-            display_name: agent.profile?.display_name || agent.metadata?.display_name,
-            bio: agent.profile?.bio || agent.metadata?.bio,
-            profileImage: agent.profile?.profileImage || agent.metadata?.profileImage,
-            alias: agent.profile?.alias || agent.metadata?.alias,
-            isAI: agent.profile?.type === 'AI_AGENT' || agent.metadata?.type === 'AI_AGENT',
-          },
-          inboundTopicId: agent.profile?.inboundTopicId || agent.metadata?.inboundTopicId,
-        }));
-        
+      if (result.success) {
+        const sourceAgents = Array.isArray(result.data?.agents)
+          ? result.data?.agents
+          : [];
+
+        const toAgent = (candidate: unknown, index: number): Agent | null => {
+          if (!candidate || typeof candidate !== 'object') {
+            return null;
+          }
+
+          const record = candidate as Record<string, unknown>;
+          const profileRecord =
+            typeof record.profile === 'object' && record.profile !== null
+              ? (record.profile as Record<string, unknown>)
+              : {};
+          const metadataRecord =
+            typeof record.metadata === 'object' && record.metadata !== null
+              ? (record.metadata as Record<string, unknown>)
+              : {};
+
+          const asString = (value: unknown): string | undefined =>
+            typeof value === 'string' && value.trim().length > 0
+              ? value
+              : undefined;
+
+          const accountId = asString(record.accountId);
+          const displayName =
+            asString(profileRecord.display_name) ||
+            asString(metadataRecord.display_name) ||
+            asString(profileRecord.alias) ||
+            asString(metadataRecord.alias) ||
+            accountId;
+
+          if (!accountId) {
+            return null;
+          }
+
+          const profileType = asString(profileRecord.type) || asString(metadataRecord.type);
+          const inboundTopicId =
+            asString(profileRecord.inboundTopicId) ||
+            asString(metadataRecord.inboundTopicId);
+
+          return {
+            id: accountId ?? `agent-${index}`,
+            accountId,
+            name: displayName ?? accountId,
+            profile: {
+              display_name: displayName,
+              bio: asString(profileRecord.bio) || asString(metadataRecord.bio),
+              profileImage:
+                asString(profileRecord.profileImage) ||
+                asString(metadataRecord.profileImage),
+              alias: asString(profileRecord.alias) || asString(metadataRecord.alias),
+              isAI:
+                profileType !== undefined
+                  ? profileType.toUpperCase() === 'AI_AGENT'
+                  : undefined,
+              isRegistryBroker:
+                profileType !== undefined
+                  ? profileType.toUpperCase() === 'REGISTRY_BROKER'
+                  : undefined,
+            },
+            inboundTopicId,
+          };
+        };
+
+        const transformedAgents = sourceAgents
+          .map((candidate, index) => toAgent(candidate, index))
+          .filter((agent): agent is Agent => agent !== null);
+
         setAvailableAgents(transformedAgents);
       } else {
         setAvailableAgents([]);
@@ -293,7 +352,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
     }
 
     try {
-      const result = await window.electron.invoke('hcs10:send-connection-request', {
+      const result = await invokeCommand('hcs10_send_connection_request', {
         targetAccountId,
         message: memo || "Hello! I'd like to connect with you.",
       });

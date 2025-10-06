@@ -473,7 +473,7 @@ const AgentDiscoveryPage: React.FC = () => {
       setIsLoading(true);
       const offset = (pagination.currentPage - 1) * pagination.pageSize;
       
-      const result = await window.electron.invoke('hcs10:discover-agents', {
+      const result = await window?.desktop?.invoke('hcs10_discover_agents', {
         filters: {
           ...activeFilters,
           capabilities: activeFilters.tags.length > 0 ? activeFilters.tags : undefined,
@@ -619,7 +619,7 @@ const AgentDiscoveryPage: React.FC = () => {
       setIsConnecting(true);
       setShowConfirmDialog(false);
       
-      const result = await window.electron.invoke('hcs10:send-connection-request', {
+      const result = await window?.desktop?.invoke('hcs10_send_connection_request', {
         targetAccountId: selectedAgentToConnect.accountId,
       });
 

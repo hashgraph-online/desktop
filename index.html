@@ -1,41 +1,12 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>HOL Desktop</title>
-    <!-- Development CSP - allows Vite HMR -->
-    <meta
-      http-equiv="Content-Security-Policy"
-      content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com ws://localhost:* data:; img-src 'self' data: https: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' ws://localhost:* http://localhost:* https:;"
-    />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@300;400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
+    <title>Hashgraph Online Desktop (Tauri)</title>
   </head>
-
-  <body class="no-transition-on-load">
+  <body>
     <div id="root"></div>
-    <script>
-      (function () {
-        try {
-          const savedConfig = localStorage.getItem('app-config');
-          if (savedConfig) {
-            const config = JSON.parse(savedConfig);
-            if (config?.advanced?.theme === 'dark') {
-              document.documentElement.classList.add('dark');
-            }
-          }
-        } catch (e) {}
-
-        setTimeout(function () {
-          document.body.classList.remove('no-transition-on-load');
-        }, 100);
-      })();
-    </script>
-    <script type="module" src="/src/renderer/main.tsx"></script>
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

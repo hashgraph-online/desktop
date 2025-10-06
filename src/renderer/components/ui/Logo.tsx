@@ -1,7 +1,7 @@
 import React from 'react';
 import { cn } from '../../lib/utils';
-import logo from '../../../../assets/Desktop.png';
-import iconLogo from '../../../../assets/HOL-Icon.png';
+import logo from '../../assets/images/Desktop.png';
+import iconLogo from '../../assets/images/HOL-Icon.png';
 
 interface LogoProps {
   className?: string;

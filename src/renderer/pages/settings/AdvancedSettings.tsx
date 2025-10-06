@@ -14,20 +14,22 @@ import { useLegalStore } from '../../stores/legalStore'
 interface AdvancedSettingsProps { }
 
 export const AdvancedSettings: React.FC<AdvancedSettingsProps> = () => {
-  const { config, setTheme, setAutoStart, setLogLevel } = useConfigStore()
+  const { config, setTheme, setAutoStart, setLogLevel, setWebBrowserPluginEnabled } = useConfigStore()
   const { reset: resetLegal, legalAcceptance } = useLegalStore()
   const [showResetConfirm, setShowResetConfirm] = useState(false)
 
   const {
     register,
     watch,
-    reset
+    reset,
+    setValue
   } = useForm<AdvancedConfigForm>({
     resolver: zodResolver(advancedConfigSchema),
     defaultValues: {
       theme: config?.advanced?.theme || 'light',
       autoStart: config?.advanced?.autoStart || false,
-      logLevel: config?.advanced?.logLevel || 'info'
+      logLevel: config?.advanced?.logLevel || 'info',
+      webBrowserPluginEnabled: config?.advanced?.webBrowserPluginEnabled ?? true
     }
   })
 
@@ -36,7 +38,8 @@ export const AdvancedSettings: React.FC<AdvancedSettingsProps> = () => {
       reset({
         theme: config.advanced.theme || 'light',
         autoStart: config.advanced.autoStart || false,
-        logLevel: config.advanced.logLevel || 'info'
+        logLevel: config.advanced.logLevel || 'info',
+        webBrowserPluginEnabled: config.advanced.webBrowserPluginEnabled ?? true
       })
     }
   }, [config, reset])
@@ -44,6 +47,7 @@ export const AdvancedSettings: React.FC<AdvancedSettingsProps> = () => {
   const watchTheme = watch('theme')
   const watchAutoStart = watch('autoStart')
   const watchLogLevel = watch('logLevel')
+  const watchWebBrowserPluginEnabled = watch('webBrowserPluginEnabled')
 
   useEffect(() => {
     const next = watchTheme || 'light'
@@ -68,6 +72,14 @@ export const AdvancedSettings: React.FC<AdvancedSettingsProps> = () => {
       setLogLevel(next)
     }
   }, [watchLogLevel, setLogLevel, config?.advanced?.logLevel])
+
+  useEffect(() => {
+    const next = watchWebBrowserPluginEnabled ?? true
+    const current = config?.advanced?.webBrowserPluginEnabled ?? true
+    if (current !== next) {
+      setWebBrowserPluginEnabled(next)
+    }
+  }, [watchWebBrowserPluginEnabled, setWebBrowserPluginEnabled, config?.advanced?.webBrowserPluginEnabled])
 
   return (
     <div className="space-y-6">
@@ -123,11 +135,14 @@ export const AdvancedSettings: React.FC<AdvancedSettingsProps> = () => {
                 Automatically launch the application when your computer starts
               </Typography>
             </div>
-            <Switch
+          <Switch
               id="autoStart"
               checked={watchAutoStart}
               onCheckedChange={(checked) => {
-                reset({ ...watch(), autoStart: checked })
+                setValue('autoStart', checked, {
+                  shouldDirty: true,
+                  shouldTouch: true
+                })
               }}
             />
           </div>
@@ -139,7 +154,10 @@ export const AdvancedSettings: React.FC<AdvancedSettingsProps> = () => {
             <Select
               value={watchLogLevel}
               onValueChange={(value) => {
-                reset({ ...watch(), logLevel: value as any })
+                setValue('logLevel', value as AdvancedConfigForm['logLevel'], {
+                  shouldDirty: true,
+                  shouldTouch: true
+                })
               }}
             >
               <SelectTrigger id="logLevel" className="w-full">
@@ -153,6 +171,27 @@ export const AdvancedSettings: React.FC<AdvancedSettingsProps> = () => {
               </SelectContent>
             </Select>
             <Typography variant="caption" color="muted">Controls the verbosity of logs.</Typography>
+          </div>
+        </div>
+
+        <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <Label htmlFor="webBrowserPlugin" className="text-base font-medium">Web Browser Plugin</Label>
+              <Typography variant="caption" color="muted">
+                Enable the built-in web page snapshot tool for the Moonscape assistant.
+              </Typography>
+            </div>
+            <Switch
+              id="webBrowserPlugin"
+              checked={watchWebBrowserPluginEnabled ?? true}
+              onCheckedChange={(checked) => {
+                setValue('webBrowserPluginEnabled', checked, {
+                  shouldDirty: true,
+                  shouldTouch: true
+                })
+              }}
+            />
           </div>
         </div>
 

@@ -20,7 +20,7 @@ interface ToolCard {
 const toolCards: ToolCard[] = [
   {
     id: 'entity-manager',
-    path: '/entity-manager',
+    path: '/builder/entity-manager',
     label: 'Entity Manager',
     icon: HiDatabase,
     description:
@@ -31,7 +31,7 @@ const toolCards: ToolCard[] = [
   },
   {
     id: 'block-tester',
-    path: '/block-tester',
+    path: '/builder/block-tester',
     label: 'Block Tester',
     icon: HiWrenchScrewdriver,
     description:

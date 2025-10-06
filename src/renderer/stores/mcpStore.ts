@@ -5,19 +5,21 @@ import {
   MCPConnectionTest,
   MCPServerType,
   MCPServerTool,
+  MCPRegistryMetricsEntry,
 } from '../types/mcp';
+import { toCommandResponse } from '../tauri/ipc';
 
 /**
- * Helper to wait for electron bridge to be available
- */
-const waitForElectronBridge = async (
+ * Helper to wait for desktop bridge to be available
+*/
+const waitForDesktopBridge = async (
   maxRetries = 30,
   retryDelay = 1000
 ): Promise<boolean> => {
   for (let i = 0; i < maxRetries; i++) {
     if (
-      window.electron &&
-      typeof window.electron.loadMCPServers === 'function'
+      window.desktop &&
+      typeof window?.desktop?.loadMCPServers === 'function'
     ) {
       return true;
     }
@@ -25,6 +27,208 @@ const waitForElectronBridge = async (
   }
   return false;
 };
+
+const isLocalPermissionError = (message: string) =>
+  message.includes('not allowed on window') && message.includes('URL: local');
+
+const waitForRemoteOrigin = async (timeoutMs = 15000) => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  if (window.location.origin.startsWith('http')) {
+    return;
+  }
+
+  const metadata = (window as { __TAURI_METADATA__?: { config?: { build?: { devUrl?: string } } } }).__TAURI_METADATA__;
+  const devUrl = metadata?.config?.build?.devUrl ?? import.meta.env.VITE_DEV_SERVER_URL ?? 'http://localhost:5175';
+  if (typeof devUrl === 'string' && devUrl.length > 0) {
+    window.location.replace(devUrl);
+    return;
+  }
+
+  const start = Date.now();
+
+  await new Promise<void>((resolve, reject) => {
+    const poll = () => {
+      if (window.location.origin.startsWith('http')) {
+        resolve();
+        return;
+      }
+
+      if (Date.now() - start >= timeoutMs) {
+        reject(new Error('waitForRemoteOrigin timeout'));
+        return;
+      }
+
+      requestAnimationFrame(poll);
+    };
+
+    poll();
+  }).catch(() => undefined);
+};
+
+type MCPMetricsMap = Record<string, MCPRegistryMetricsEntry>;
+
+const normalizeMetricsMap = (value: unknown): MCPMetricsMap | undefined => {
+  if (!value || typeof value !== 'object') {
+    return undefined;
+  }
+  const entries = value as Record<string, unknown>;
+  const normalized: MCPMetricsMap = {};
+  let hasData = false;
+
+  for (const [key, entry] of Object.entries(entries)) {
+    if (!entry || typeof entry !== 'object') {
+      continue;
+    }
+    const record = entry as Record<string, unknown>;
+    const metric: MCPRegistryMetricsEntry = {};
+    if (typeof record.status === 'string') {
+      metric.status = record.status;
+    }
+    if (typeof record.value === 'number' && Number.isFinite(record.value)) {
+      metric.value = record.value;
+    }
+    if (typeof record.lastUpdated === 'string') {
+      metric.lastUpdated = record.lastUpdated;
+    }
+    if (typeof record.errorCode === 'string') {
+      metric.errorCode = record.errorCode;
+    }
+    if (typeof record.errorMessage === 'string') {
+      metric.errorMessage = record.errorMessage;
+    }
+    if (Object.keys(metric).length > 0) {
+      normalized[key] = metric;
+      hasData = true;
+    }
+  }
+
+  return hasData ? normalized : undefined;
+};
+
+const normalizeFreshnessMap = (value: unknown): Record<string, string> | undefined => {
+  if (!value || typeof value !== 'object') {
+    return undefined;
+  }
+  const entries = value as Record<string, unknown>;
+  const normalized: Record<string, string> = {};
+  let hasData = false;
+
+  for (const [key, entry] of Object.entries(entries)) {
+    if (typeof entry === 'string' && entry.length > 0) {
+      normalized[key] = entry;
+      hasData = true;
+    }
+  }
+
+  return hasData ? normalized : undefined;
+};
+
+const mergeMetrics = (
+  current: MCPMetricsMap | undefined,
+  incoming: MCPMetricsMap | undefined
+): MCPMetricsMap | undefined => {
+  if (!incoming) {
+    return current;
+  }
+  const base: MCPMetricsMap = current ? { ...current } : {};
+  let mutated = false;
+
+  for (const [key, entry] of Object.entries(incoming)) {
+    const previous = base[key];
+    if (
+      !previous ||
+      previous.status !== entry.status ||
+      previous.value !== entry.value ||
+      previous.lastUpdated !== entry.lastUpdated
+    ) {
+      base[key] = entry;
+      mutated = true;
+    }
+  }
+
+  if (!mutated && current) {
+    return current;
+  }
+
+  return base;
+};
+
+const mergeFreshness = (
+  current: Record<string, string> | undefined,
+  incoming: Record<string, string> | undefined
+): Record<string, string> | undefined => {
+  if (!incoming) {
+    return current;
+  }
+  const base = current ? { ...current } : {};
+  let mutated = false;
+
+  for (const [key, entry] of Object.entries(incoming)) {
+    if (base[key] !== entry) {
+      base[key] = entry;
+      mutated = true;
+    }
+  }
+
+  if (!mutated && current) {
+    return current;
+  }
+
+  return base;
+};
+
+interface MetricsUpdatePayload {
+  serverId: string;
+  metrics?: MCPMetricsMap;
+  metricFreshness?: Record<string, string>;
+}
+
+const normalizeMetricsUpdates = (payload: unknown): MetricsUpdatePayload[] => {
+  if (!payload) {
+    return [];
+  }
+
+  const candidates: unknown[] = [];
+  if (Array.isArray(payload)) {
+    candidates.push(...payload);
+  } else if (typeof payload === 'object') {
+    const record = payload as Record<string, unknown>;
+    if (Array.isArray(record.updates)) {
+      candidates.push(...record.updates);
+    } else {
+      candidates.push(record);
+    }
+  }
+
+  const updates: MetricsUpdatePayload[] = [];
+  for (const candidate of candidates) {
+    if (!candidate || typeof candidate !== 'object') {
+      continue;
+    }
+    const record = candidate as Record<string, unknown>;
+    const serverId = record.serverId;
+    if (typeof serverId !== 'string' || serverId.length === 0) {
+      continue;
+    }
+    const metrics = normalizeMetricsMap(record.metrics);
+    const metricFreshness = normalizeFreshnessMap(record.metricFreshness);
+    if (!metrics && !metricFreshness) {
+      continue;
+    }
+    updates.push({
+      serverId,
+      metrics,
+      metricFreshness,
+    });
+  }
+
+  return updates;
+};
+
+let metricsListenerCleanup: (() => void) | undefined;
 
 export type MCPInitializationState =
   | 'pending'
@@ -103,11 +307,13 @@ export const useMCPStore = create<MCPStore>((set, get) => ({
 
       set({ servers: updatedServers, isLoading: false });
 
-      const saveResult = await window.electron.saveMCPServers(
-        updatedServers as unknown as Record<string, unknown>[]
-      );
-      if (!saveResult.success) {
-        throw new Error(saveResult.error || 'Failed to save server');
+      if (window?.desktop?.saveMCPServers) {
+        const saveResult = toCommandResponse(
+          await window.desktop.saveMCPServers(updatedServers)
+        );
+        if (!saveResult.success) {
+          throw new Error(saveResult.error || 'Failed to save server');
+        }
       }
     } catch (error) {
       set({
@@ -125,11 +331,13 @@ export const useMCPStore = create<MCPStore>((set, get) => ({
     try {
       const { servers } = get();
 
-      const diskResult = await window.electron.loadMCPServers();
-      let diskTools: MCPServerTool[] | undefined = undefined;
-      if (diskResult.success) {
-        const diskServer = diskResult.data?.find((s: MCPServerConfig) => s.id === serverId);
-        if (diskServer && diskServer.tools && diskServer.tools.length > 0) {
+      const diskResult = window?.desktop?.loadMCPServers
+        ? toCommandResponse(await window.desktop.loadMCPServers())
+        : { success: true, data: undefined };
+      let diskTools: MCPServerTool[] | undefined;
+      if (diskResult.success && Array.isArray(diskResult.data)) {
+        const diskServer = diskResult.data.find((s) => s.id === serverId);
+        if (diskServer?.tools?.length) {
           diskTools = diskServer.tools;
         }
       }
@@ -174,7 +382,7 @@ export const useMCPStore = create<MCPStore>((set, get) => ({
 
       const server = servers.find((s) => s.id === serverId);
       if (server && server.status === 'connected') {
-        const disconnectResult = await window.electron.disconnectMCPServer(
+        const disconnectResult = await window?.desktop?.disconnectMCPServer(
           serverId
         );
         if (!disconnectResult.success) {
@@ -184,11 +392,13 @@ export const useMCPStore = create<MCPStore>((set, get) => ({
       const updatedServers = servers.filter((server) => server.id !== serverId);
       set({ servers: updatedServers, isLoading: false });
 
-      const saveResult = await window.electron.saveMCPServers(
-        updatedServers as unknown as Record<string, unknown>[]
-      );
-      if (!saveResult.success) {
-        throw new Error(saveResult.error || 'Failed to delete server');
+      if (window?.desktop?.saveMCPServers) {
+        const saveResult = toCommandResponse(
+          await window.desktop.saveMCPServers(updatedServers)
+        );
+        if (!saveResult.success) {
+          throw new Error(saveResult.error || 'Failed to delete server');
+        }
       }
     } catch (error) {
       set({
@@ -232,16 +442,21 @@ export const useMCPStore = create<MCPStore>((set, get) => ({
 
     const startTime = Date.now();
     try {
-      const ipcResult = await window.electron.testMCPConnection(
-        server as unknown as Record<string, unknown>
-      );
+      const bridge = window?.desktop;
+      if (!bridge?.testMCPConnection) {
+        throw new Error('MCP connection testing is unavailable');
+      }
+
+      const ipcResult = toCommandResponse<
+        { success: boolean; tools?: MCPServerTool[]; error?: string }
+      >(await bridge.testMCPConnection(server));
       const latency = Date.now() - startTime;
 
-      if (!ipcResult.success) {
+      if (!ipcResult.success || !ipcResult.data) {
         throw new Error(ipcResult.error || 'Connection test failed');
       }
 
-      const result = ipcResult.data!;
+      const result = ipcResult.data;
 
       const testResult: MCPConnectionTest = {
         id: `test-${serverId}-${Date.now()}`,
@@ -294,7 +509,7 @@ export const useMCPStore = create<MCPStore>((set, get) => ({
     await get().updateServer(serverId, { status: 'connecting' });
 
     try {
-      const ipcResult = await window.electron.connectMCPServer(serverId);
+      const ipcResult = await window?.desktop?.connectMCPServer(serverId);
 
       if (!ipcResult.success) {
         throw new Error(ipcResult.error || 'Connection failed');
@@ -305,7 +520,7 @@ export const useMCPStore = create<MCPStore>((set, get) => ({
       if (result.success) {
         await get().updateServer(serverId, {
           status: 'connected',
-          tools: result.tools,
+          tools: result.tools ?? [],
           lastConnected: new Date(),
           errorMessage: undefined,
         });
@@ -328,7 +543,7 @@ export const useMCPStore = create<MCPStore>((set, get) => ({
 
   disconnectServer: async (serverId: string) => {
     try {
-      const disconnectResult = await window.electron.disconnectMCPServer(
+      const disconnectResult = await window?.desktop?.disconnectMCPServer(
         serverId
       );
       if (!disconnectResult.success) {
@@ -362,13 +577,25 @@ export const useMCPStore = create<MCPStore>((set, get) => ({
     }
 
     try {
-      const toolsResult = await window.electron.refreshMCPServerTools(serverId);
+      const bridge = window?.desktop;
+      if (!bridge?.refreshMCPServerTools) {
+        return;
+      }
+
+      const toolsResult = toCommandResponse<
+        { success?: boolean; tools?: MCPServerTool[]; error?: string }
+      >(await bridge.refreshMCPServerTools(serverId));
       if (!toolsResult.success) {
         throw new Error(toolsResult.error || 'Failed to refresh tools');
       }
 
+      const toolPayload = toolsResult.data?.tools;
+      const tools: MCPServerTool[] = Array.isArray(toolPayload)
+        ? toolPayload
+        : [];
+
       await get().updateServer(serverId, {
-        tools: toolsResult.data,
+        tools,
         status: 'ready',
       });
 
@@ -389,7 +616,7 @@ export const useMCPStore = create<MCPStore>((set, get) => ({
     set({ isLoading: true, error: null, initializationState: 'initializing' });
 
     try {
-      const isAvailable = await waitForElectronBridge();
+      const isAvailable = await waitForDesktopBridge();
 
       if (!isAvailable) {
         set({
@@ -401,8 +628,144 @@ export const useMCPStore = create<MCPStore>((set, get) => ({
         return;
       }
 
-      const result = await window.electron.loadMCPServers();
+      const bridge = window?.desktop;
+      await waitForRemoteOrigin();
+      if (typeof window !== 'undefined' && !window.location.origin.startsWith('http')) {
+        set({
+          servers: [],
+          isLoading: false,
+          error: 'MCP services not available while running from local origin',
+          initializationState: 'partial',
+        });
+        return;
+      }
+      
+      if (bridge?.on) {
+        metricsListenerCleanup?.();
+        metricsListenerCleanup = bridge.on(
+          'mcp_metrics_updated',
+          (rawPayload: unknown) => {
+            const updates = normalizeMetricsUpdates(rawPayload);
+            if (updates.length === 0) {
+              return;
+            }
+
+            const updateMap = new Map<string, MetricsUpdatePayload>();
+            for (const update of updates) {
+              updateMap.set(update.serverId, update);
+            }
+
+            set((state) => {
+              let mutated = false;
+              const nextServers = state.servers.map((server) => {
+                const update = updateMap.get(server.id);
+                if (!update) {
+                  return server;
+                }
+
+                const nextMetrics = mergeMetrics(
+                  server.metrics as MCPMetricsMap | undefined,
+                  update.metrics
+                );
+                const nextFreshness = mergeFreshness(
+                  server.metricFreshness,
+                  update.metricFreshness
+                );
+
+                if (
+                  nextMetrics === server.metrics &&
+                  nextFreshness === server.metricFreshness
+                ) {
+                  return server;
+                }
+
+                mutated = true;
+                return {
+                  ...server,
+                  metrics: nextMetrics,
+                  metricFreshness: nextFreshness,
+                };
+              });
+
+              if (!mutated) {
+                return state;
+              }
+
+              return { ...state, servers: nextServers };
+            });
+          }
+        );
+      }
+
+      let result;
+      try {
+        result = window?.desktop?.loadMCPServers
+          ? toCommandResponse(await window.desktop.loadMCPServers())
+          : { success: false, error: 'MCP services not available' };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        if (message.includes('Command mcp_load_servers not found')) {
+          set({
+            servers: [],
+            isLoading: false,
+            error: null,
+            initializationState: 'partial',
+          });
+          return;
+        }
+
+        if (isLocalPermissionError(message)) {
+          await waitForRemoteOrigin();
+          try {
+            result = window?.desktop?.loadMCPServers
+              ? toCommandResponse(await window.desktop.loadMCPServers())
+              : { success: false, error: 'MCP services not available' };
+          } catch (retryError) {
+            const retryMessage =
+              retryError instanceof Error
+                ? retryError.message
+                : String(retryError);
+
+            if (retryMessage.includes('Command mcp_load_servers not found')) {
+              set({
+                servers: [],
+                isLoading: false,
+                error: null,
+                initializationState: 'partial',
+              });
+              return;
+            }
+
+            set({
+              servers: [],
+              isLoading: false,
+              error: `Failed to load MCP servers: ${retryMessage}`,
+              initializationState: 'failed',
+            });
+            return;
+          }
+        } else {
+          set({
+            servers: [],
+            isLoading: false,
+            error: `Failed to load MCP servers: ${message}`,
+            initializationState: 'failed',
+          });
+          return;
+        }
+      }
       if (!result.success) {
+        const fallbackError = result.error ?? '';
+        if (fallbackError.includes('Command mcp_get_cache_stats not found')) {
+          set({
+            servers: [],
+            isLoading: false,
+            error: null,
+            initializationState: 'partial',
+          });
+          return;
+        }
+
         set({
           servers: [],
           isLoading: false,
@@ -414,7 +777,7 @@ export const useMCPStore = create<MCPStore>((set, get) => ({
         return;
       }
 
-      const loadedServers = result.data || [];
+      const loadedServers = Array.isArray(result.data) ? result.data : [];
 
       const { servers: currentServers } = get();
       const mergedServers = loadedServers.map(
@@ -422,14 +785,32 @@ export const useMCPStore = create<MCPStore>((set, get) => ({
           const currentServer = currentServers.find(
             (s) => s.id === loadedServer.id
           );
+          const metrics = normalizeMetricsMap(
+            (loadedServer as { metrics?: unknown }).metrics
+          );
+          const metricFreshness = normalizeFreshnessMap(
+            (loadedServer as { metricFreshness?: unknown }).metricFreshness
+          );
           if (currentServer) {
             return {
               ...loadedServer,
               status: currentServer.status,
               tools: loadedServer.tools || [],
+              metrics: mergeMetrics(
+                currentServer.metrics as MCPMetricsMap | undefined,
+                metrics
+              ),
+              metricFreshness: mergeFreshness(
+                currentServer.metricFreshness,
+                metricFreshness
+              ),
             };
           }
-          return loadedServer;
+          return {
+            ...loadedServer,
+            metrics,
+            metricFreshness,
+          };
         }
       );
 
@@ -521,7 +902,9 @@ export const useMCPStore = create<MCPStore>((set, get) => ({
 
   reloadServers: async () => {
     try {
-      const result = await window.electron.loadMCPServers();
+      const result = window?.desktop?.loadMCPServers
+        ? toCommandResponse(await window.desktop.loadMCPServers())
+        : { success: false, error: 'MCP services not available' };
       if (!result.success) {
         set({
           error: `Failed to reload servers: ${result.error || 'Unknown error'}`,
@@ -529,7 +912,7 @@ export const useMCPStore = create<MCPStore>((set, get) => ({
         return;
       }
 
-      const loadedServers = result.data || [];
+      const loadedServers = Array.isArray(result.data) ? result.data : [];
 
       const { servers: currentServers } = get();
       const mergedServers = loadedServers.map(
@@ -537,14 +920,32 @@ export const useMCPStore = create<MCPStore>((set, get) => ({
           const currentServer = currentServers.find(
             (s) => s.id === loadedServer.id
           );
+          const metrics = normalizeMetricsMap(
+            (loadedServer as { metrics?: unknown }).metrics
+          );
+          const metricFreshness = normalizeFreshnessMap(
+            (loadedServer as { metricFreshness?: unknown }).metricFreshness
+          );
           if (currentServer) {
             return {
               ...loadedServer,
               status: currentServer.status,
               tools: loadedServer.tools || [],
+              metrics: mergeMetrics(
+                currentServer.metrics as MCPMetricsMap | undefined,
+                metrics
+              ),
+              metricFreshness: mergeFreshness(
+                currentServer.metricFreshness,
+                metricFreshness
+              ),
             };
           }
-          return loadedServer;
+          return {
+            ...loadedServer,
+            metrics,
+            metricFreshness,
+          };
         }
       );
 
@@ -562,45 +963,34 @@ export const useMCPStore = create<MCPStore>((set, get) => ({
 
 
     try {
-      const currentResult = await window.electron.loadMCPServers();
-      if (currentResult.success) {
-        const currentServers = currentResult.data || [];
+      const bridge = window?.desktop;
+      if (!bridge?.saveMCPServers) {
+        return;
+      }
 
-        const mergedServers = servers.map((frontendServer) => {
-          const backendServer = currentServers.find(
-            (s: MCPServerConfig) => s.id === frontendServer.id
-          );
-          if (
-            backendServer &&
-            backendServer.tools &&
-            backendServer.tools.length > 0
-          ) {
-            const merged = {
-              ...frontendServer,
-              tools: backendServer.tools,
-            };
-            return merged;
-          } else if (frontendServer.tools && frontendServer.tools.length > 0) {
-            return frontendServer;
-          } else {
-            return frontendServer;
-          }
-        });
+      const currentResult = bridge.loadMCPServers
+        ? toCommandResponse(await bridge.loadMCPServers())
+        : { success: true, data: undefined };
+      const currentServers = Array.isArray(currentResult.data)
+        ? currentResult.data
+        : [];
 
-
-        const result = await window.electron.saveMCPServers(
-          mergedServers as unknown as Record<string, unknown>[]
+      const mergedServers = servers.map((frontendServer) => {
+        const backendServer = currentServers.find(
+          (s) => s.id === frontendServer.id
         );
-        if (!result.success) {
-          throw new Error(result.error || 'Failed to save servers');
+        if (backendServer?.tools && backendServer.tools.length > 0) {
+          return {
+            ...frontendServer,
+            tools: backendServer.tools,
+          };
         }
-      } else {
-        const result = await window.electron.saveMCPServers(
-          servers as unknown as Record<string, unknown>[]
-        );
-        if (!result.success) {
-          throw new Error(result.error || 'Failed to save servers');
-        }
+        return frontendServer;
+      });
+
+      const result = toCommandResponse(await bridge.saveMCPServers(mergedServers));
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to save servers');
       }
     } catch (error) {
       set({

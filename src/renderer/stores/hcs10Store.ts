@@ -74,9 +74,9 @@ export const useHCS10Store = create<HCS10State>()(
         set({ isLoading: true, error: null });
         
         try {
-          const result = await window.api.invoke('hcs10:getProfiles');
+          const result = await window.api.invoke('hcs10_get_profiles');
           
-          if (result.success && result.data) {
+          if (result.success && Array.isArray(result.data)) {
             const profiles = result.data.map((profile: StoredHCS10Profile) => ({
               ...profile,
               registeredAt: new Date(profile.registeredAt),

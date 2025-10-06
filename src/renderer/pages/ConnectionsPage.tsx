@@ -49,7 +49,7 @@ const ConnectionsPage: React.FC = () => {
     try {
       setIsLoading(true);
       
-      const result = await window.api.invoke('hcs10:get-connections');
+      const result = await window.api.invoke('hcs10_get_connections');
 
       if (result.success) {
         setConnections(result.data || []);
@@ -72,7 +72,7 @@ const ConnectionsPage: React.FC = () => {
    */
   const handleAccept = useCallback(async (connectionId: string) => {
     try {
-      const result = await window.api.invoke('hcs10:accept-connection', {
+      const result = await window.api.invoke('hcs10_accept_connection', {
         connectionId,
       });
 
@@ -98,7 +98,7 @@ const ConnectionsPage: React.FC = () => {
    */
   const handleReject = useCallback(async (connectionId: string) => {
     try {
-      const result = await window.api.invoke('hcs10:reject-connection', {
+      const result = await window.api.invoke('hcs10_reject_connection', {
         connectionId,
       });
 

@@ -1,18 +1,5 @@
 import React from 'react';
-import { HashRouter as Router, Routes, Route } from 'react-router-dom';
-import Layout from './components/Layout';
-import ChatPage from './pages/ChatPage';
-import MCPPage from './pages/MCPPage';
-import SettingsPage from './pages/SettingsPage';
-import PluginsPage from './pages/PluginsPage';
-import BlockTesterPage from './pages/BlockTesterPage';
-import ToolsPage from './pages/ToolsPage';
-import { EntityManagerPage } from './pages/entity-manager-page';
-import { HCS10ProfileRegistration } from './pages/HCS10ProfileRegistration';
-import AcknowledgementsPage from './pages/AcknowledgementsPage';
-import DashboardPage from './pages/DashboardPage';
-import AgentDiscoveryPage from './pages/AgentDiscoveryPage';
-import ConnectionsPage from './pages/ConnectionsPage';
+import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { StoreProvider } from './providers/StoreProvider';
 import { ConfigInitProvider } from './providers/ConfigInitProvider';
 import { SessionInitProvider } from './providers/SessionInitProvider';
@@ -24,71 +11,41 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { LegalGuard } from './components/ui/LegalGuard';
 import { Toaster } from './components/ui/sonner';
 import { HCS10Provider } from './contexts/HCS10Context';
+import DesktopShellRouter from './components/shell/DesktopShellRouter';
+import BuilderStudioRoutes from './components/shell/BuilderStudioRouter';
 
-interface AppProps {}
-
-const App: React.FC<AppProps> = () => {
+const App: React.FC = () => {
   return (
     <ErrorBoundary>
-      <ConfigInitProvider>
-        <SessionInitProvider>
-          <WalletInitProvider>
-            <LegalGuard>
-              <Router>
-                <MCPInitProvider>
-                  <HCS10Provider>
-                    <KeyboardShortcutsProvider>
-                      <Layout>
+      <StoreProvider>
+        <ConfigInitProvider>
+          <SessionInitProvider>
+            <WalletInitProvider>
+              <LegalGuard>
+                <Router>
+                  <MCPInitProvider>
+                    <HCS10Provider>
+                      <KeyboardShortcutsProvider>
                         <Routes>
-                          <Route path='/' element={<DashboardPage />} />
-                          <Route
-                            path='/dashboard'
-                            element={<DashboardPage />}
-                          />
-                          <Route
-                            path='/chat/:agentId?'
-                            element={<ChatPage />}
-                          />
-                          <Route
-                            path='/discover'
-                            element={<AgentDiscoveryPage />}
-                          />
-                          <Route
-                            path='/connections'
-                            element={<ConnectionsPage />}
-                          />
-                          <Route path='/mcp' element={<MCPPage />} />
-                          <Route path='/plugins' element={<PluginsPage />} />
-                          <Route path='/tools' element={<ToolsPage />} />
-                          <Route
-                            path='/entity-manager'
-                            element={<EntityManagerPage />}
-                          />
-                          <Route
-                            path='/block-tester'
-                            element={<BlockTesterPage />}
-                          />
-                          <Route
-                            path='/hcs10-profile'
-                            element={<HCS10ProfileRegistration />}
-                          />
-                          <Route path='/settings' element={<SettingsPage />} />
-                          <Route
-                            path='/acknowledgements'
-                            element={<AcknowledgementsPage />}
-                          />
+                          <Route path='/*' element={<DesktopShellRouter />} />
+                          <Route path='/studio/*' element={<BuilderStudioRoutes />} />
+                          <Route path='/dashboard' element={<Navigate to='/builder/dashboard' replace />} />
+                          <Route path='/entity-manager' element={<Navigate to='/builder/entity-manager' replace />} />
+                          <Route path='/block-tester' element={<Navigate to='/builder/block-tester' replace />} />
+                          <Route path='/acknowledgements' element={<Navigate to='/builder/acknowledgements' replace />} />
+                          <Route path='*' element={<Navigate to='/' replace />} />
                         </Routes>
-                      </Layout>
-                      <NotificationContainer />
-                      <Toaster />
-                    </KeyboardShortcutsProvider>
-                  </HCS10Provider>
-                </MCPInitProvider>
-              </Router>
-            </LegalGuard>
-          </WalletInitProvider>
-        </SessionInitProvider>
-      </ConfigInitProvider>
+                        <NotificationContainer />
+                        <Toaster />
+                      </KeyboardShortcutsProvider>
+                    </HCS10Provider>
+                  </MCPInitProvider>
+                </Router>
+              </LegalGuard>
+            </WalletInitProvider>
+          </SessionInitProvider>
+        </ConfigInitProvider>
+      </StoreProvider>
     </ErrorBoundary>
   );
 };

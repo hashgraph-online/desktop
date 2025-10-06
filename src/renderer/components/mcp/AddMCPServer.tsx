@@ -36,6 +36,17 @@ import {
 import { MCPServerFormValidator, FieldError } from '../../lib/mcp-validation';
 import { FiAlertCircle } from 'react-icons/fi';
 
+const toConfigRecord = (config?: MCPServerConfigType): Record<string, unknown> => {
+  if (!config) {
+    return {};
+  }
+
+  return Object.entries(config).reduce<Record<string, unknown>>((acc, [key, value]) => {
+    acc[key] = value;
+    return acc;
+  }, {});
+};
+
 interface FormData {
   name: string;
   type: MCPServerType;
@@ -123,7 +134,7 @@ export interface AddMCPServerPropsExtended extends AddMCPServerProps {
   template?: {
     name: string;
     type: MCPServerType;
-    config: Record<string, any>;
+    config: MCPServerConfigType;
     requirements?: string[];
   };
 }
@@ -175,47 +186,73 @@ export const AddMCPServer: React.FC<AddMCPServerPropsExtended> = ({
 
   useEffect(() => {
     if (editingServer) {
-      const formData: any = {
+      const configRecord = toConfigRecord(editingServer.config);
+      const { type: rawConfigType, ...configRest } = configRecord;
+      const configType = typeof rawConfigType === 'string' ? rawConfigType : undefined;
+
+      const formData: Record<string, unknown> = {
         name: editingServer.name,
         type: editingServer.type,
-        ...editingServer.config,
+        ...configRest,
       };
 
       if (
         editingServer.type === 'custom' &&
-        editingServer.config.type === 'custom' &&
-        editingServer.config.env
+        configType === 'custom' &&
+        configRecord.env &&
+        typeof configRecord.env === 'object'
       ) {
-        formData.env = Object.entries(editingServer.config.env)
+        formData.env = Object.entries(
+          configRecord.env as Record<string, string | number | boolean>
+        )
           .map(([key, value]) => `${key}=${value}`)
           .join('\n');
       }
 
       if (
         editingServer.type === 'custom' &&
-        editingServer.config.type === 'custom' &&
-        editingServer.config.args
+        configType === 'custom' &&
+        Array.isArray(configRecord.args)
       ) {
-        formData.args = editingServer.config.args.join(' ');
+        formData.args = (configRecord.args as unknown[])
+          .map((value) => String(value))
+          .join(' ');
       }
 
       reset(formData);
       setSelectedType(editingServer.type);
     } else if (template) {
-      const templateData: any = {
+      const configRecord = toConfigRecord(template.config);
+      const { type: rawConfigType, ...configRest } = configRecord;
+      const configType = typeof rawConfigType === 'string' ? rawConfigType : undefined;
+
+      const templateData: Record<string, unknown> = {
         name: template.name,
         type: template.type,
-        ...template.config,
+        ...configRest,
       };
 
-      if (template.type === 'custom' && template.config?.env) {
-        templateData.env = Object.entries(template.config.env)
+      if (
+        template.type === 'custom' &&
+        configType === 'custom' &&
+        configRecord.env &&
+        typeof configRecord.env === 'object'
+      ) {
+        templateData.env = Object.entries(
+          configRecord.env as Record<string, string | number | boolean>
+        )
           .map(([key, value]) => `${key}=${value}`)
           .join('\n');
       }
 
-      if (template.type === 'custom' && template.config?.args) {
-        templateData.args = template.config.args.join(' ');
+      if (
+        template.type === 'custom' &&
+        configType === 'custom' &&
+        Array.isArray(configRecord.args)
+      ) {
+        templateData.args = (configRecord.args as unknown[])
+          .map((value) => String(value))
+          .join(' ');
       }
 
       if (templateData.rootPath === '$HOME') {
@@ -290,70 +327,102 @@ export const AddMCPServer: React.FC<AddMCPServerPropsExtended> = ({
         setIsSubmitting(false);
         return;
       }
-      const config: Record<string, any> = { type: data.type };
+      let config: MCPServerConfigType;
 
       switch (data.type) {
-        case 'filesystem':
-          config.rootPath = data.rootPath;
-          if (data.allowedPaths) {
-            config.allowedPaths = data.allowedPaths
-              .split(',')
-              .map((p) => p.trim());
-          }
-          if (data.excludePaths) {
-            config.excludePaths = data.excludePaths
-              .split(',')
-              .map((p) => p.trim());
-          }
-          config.readOnly = data.readOnly;
-          break;
+        case 'filesystem': {
+          const allowedPaths = data.allowedPaths
+            ?.split(',')
+            .map((p) => p.trim())
+            .filter((p) => p.length > 0);
+          const excludePaths = data.excludePaths
+            ?.split(',')
+            .map((p) => p.trim())
+            .filter((p) => p.length > 0);
 
-        case 'github':
-          config.token = data.token;
-          config.owner = data.owner;
-          config.repo = data.repo;
-          config.branch = data.branch || 'main';
+          config = {
+            type: 'filesystem',
+            rootPath: data.rootPath ?? '',
+            ...(allowedPaths && allowedPaths.length > 0
+              ? { allowedPaths }
+              : {}),
+            ...(excludePaths && excludePaths.length > 0
+              ? { excludePaths }
+              : {}),
+            ...(typeof data.readOnly === 'boolean' ? { readOnly: data.readOnly } : {}),
+          };
           break;
+        }
 
-        case 'postgres':
-          config.host = data.host;
-          config.port = data.port || 5432;
-          config.database = data.database;
-          config.username = data.username;
-          config.password = data.password;
-          config.ssl = data.ssl;
+        case 'github': {
+          config = {
+            type: 'github',
+            token: data.token ?? '',
+            owner: data.owner ?? '',
+            repo: data.repo ?? '',
+            branch: data.branch || 'main',
+          };
           break;
+        }
 
-        case 'sqlite':
-          config.path = data.path;
-          config.readOnly = data.readOnly;
+        case 'postgres': {
+          config = {
+            type: 'postgres',
+            host: data.host ?? '',
+            port: data.port ?? 5432,
+            database: data.database ?? '',
+            username: data.username ?? '',
+            password: data.password ?? '',
+            ...(typeof data.ssl === 'boolean' ? { ssl: data.ssl } : {}),
+          };
           break;
+        }
 
-        case 'custom':
-          config.command = data.command;
-          if (data.args) {
-            config.args = data.args.split(' ').filter((arg) => arg.trim());
-          }
-          if (data.env) {
-            config.env = data.env.split('\n').reduce(
-              (acc, line) => {
-                const [key, value] = line.split('=', 2);
-                if (key && value) {
-                  acc[key.trim()] = value.trim();
-                }
-                return acc;
-              },
-              {} as Record<string, string>
-            );
-          }
-          config.cwd = data.cwd;
+        case 'sqlite': {
+          config = {
+            type: 'sqlite',
+            path: data.path ?? '',
+            ...(typeof data.readOnly === 'boolean' ? { readOnly: data.readOnly } : {}),
+          };
           break;
+        }
+
+        case 'custom': {
+          const args = data.args
+            ?.split(' ')
+            .map((arg) => arg.trim())
+            .filter((arg) => arg.length > 0);
+
+          const env = data.env
+            ?.split('\n')
+            .reduce<Record<string, string>>((acc, line) => {
+              const [key, value] = line.split('=', 2);
+              if (key && value) {
+                acc[key.trim()] = value.trim();
+              }
+              return acc;
+            }, {});
+
+          config = {
+            type: 'custom',
+            command: data.command ?? '',
+            ...(args && args.length > 0 ? { args } : {}),
+            ...(env && Object.keys(env).length > 0 ? { env } : {}),
+            ...(data.cwd ? { cwd: data.cwd } : {}),
+          };
+          break;
+        }
+
+        default: {
+          config = { type: 'filesystem', rootPath: data.rootPath ?? '' };
+          break;
+        }
       }
 
       const formData: MCPServerFormData = {
-        name: data.name,
+        name: data.name.trim(),
         type: data.type,
-        config: config as MCPServerConfigType,
+        config,
       };
 
       await onSubmit(formData);

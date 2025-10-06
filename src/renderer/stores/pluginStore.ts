@@ -1,7 +1,6 @@
 import { create } from 'zustand'
 import {
   PluginConfig,
-  NPMPluginConfig,
   PluginSearchResult,
   PluginInstallProgress,
   PluginUpdateInfo,
@@ -11,18 +10,70 @@ import {
   PluginInstallOptions,
   PluginPermissions
 } from '../../shared/types/plugin'
+import { useConfigStore } from './configStore'
 
-/**
- * Helper to wait for electron bridge to be available
- */
-const waitForElectronBridge = async (maxRetries = 30, retryDelay = 1000): Promise<boolean> => {
-  for (let i = 0; i < maxRetries; i++) {
-    if (window.electron && typeof window.electron.searchPlugins === 'function') {
-      return true
-    }
-    await new Promise(resolve => setTimeout(resolve, retryDelay))
+type BuiltinPluginDefinition = {
+  id: string
+  name: string
+  version: string
+  description: string
+  keywords: string[]
+  author: string
+  homepage?: string
+}
+
+export const builtinPluginDefinitions: ReadonlyArray<BuiltinPluginDefinition> = [
+  {
+    id: 'web-browser',
+    name: 'Web Browser Plugin',
+    version: '0.1.0',
+    description:
+      'Allows the Moonscape assistant to capture active tab context and invoke a LangChain-powered web snapshot tool for richer answers.',
+    keywords: ['browser', 'assistant', 'context'],
+    author: 'Hashgraph Online',
+    homepage: 'https://hashgraph.online/'
   }
-  return false
+]
+
+const buildBuiltinPluginConfig = (
+  definition: BuiltinPluginDefinition,
+  enabled: boolean
+): PluginConfig => {
+  const now = new Date()
+  return {
+    id: definition.id,
+    name: definition.name,
+    type: 'custom',
+    status: enabled ? 'enabled' : 'disabled',
+    enabled,
+    version: definition.version,
+    metadata: {
+      name: definition.name,
+      version: definition.version,
+      description: definition.description,
+      author: definition.author,
+      homepage: definition.homepage,
+      keywords: definition.keywords,
+      lastPublished: now
+    },
+    createdAt: now,
+    updatedAt: now
+  }
+}
+
+const computeBuiltinPlugins = (enabledMap: Record<string, boolean>): Record<string, PluginConfig> => {
+  return builtinPluginDefinitions.reduce<Record<string, PluginConfig>>((acc, definition) => {
+    const enabled = enabledMap[definition.id] ?? true
+    acc[definition.id] = buildBuiltinPluginConfig(definition, enabled)
+    return acc
+  }, {})
+}
+
+const getBuiltinEnabledState = () => {
+  const { config } = useConfigStore.getState()
+  return {
+    'web-browser': config?.advanced?.webBrowserPluginEnabled ?? true
+  }
 }
 
 export type PluginInitializationState = 'pending' | 'initializing' | 'ready' | 'partial' | 'failed'
@@ -33,42 +84,41 @@ export interface PluginStore {
   installProgress: Record<string, PluginInstallProgress>
   updateInfo: Record<string, PluginUpdateInfo>
   runtimeContexts: Record<string, PluginRuntimeContext>
-  
+
   isSearching: boolean
   isInstalling: boolean
   isLoading: boolean
-  
+
   searchQuery?: string
-  
   searchError?: string
   installError?: string
   error: string | null
-  
+
   initializationState: PluginInitializationState
   pluginInitStates: Record<string, { state: 'pending' | 'loading' | 'loaded' | 'failed'; error?: string }>
-  
+
   searchPlugins: (query: string) => Promise<void>
   clearSearchResults: () => void
-  
+
   installPlugin: (name: string, options?: PluginInstallOptions) => Promise<void>
   uninstallPlugin: (pluginId: string) => Promise<void>
   updatePlugin: (pluginId: string) => Promise<void>
-  
+
   enablePlugin: (pluginId: string) => Promise<void>
   disablePlugin: (pluginId: string) => Promise<void>
   configurePlugin: (pluginId: string, config: Record<string, unknown>) => Promise<void>
-  
+
   grantPermissions: (pluginId: string, permissions: PluginPermissions) => Promise<void>
   revokePermissions: (pluginId: string, permissions: PluginPermissions) => Promise<void>
-  
+
   loadLocalPlugin: (path: string) => Promise<void>
   reloadLocalPlugin: (pluginId: string) => Promise<void>
-  
+
   setRegistry: (registry: string, auth?: { token?: string; username?: string; password?: string }) => Promise<void>
-  
+
   loadInstalledPlugins: () => Promise<void>
   checkForUpdates: () => Promise<void>
-  
+
   getPluginById: (pluginId: string) => PluginConfig | undefined
   getEnabledPlugins: () => PluginConfig[]
   getPluginsByType: (type: PluginType) => PluginConfig[]
@@ -77,620 +127,278 @@ export interface PluginStore {
   isInitialized: () => boolean
 }
 
-export const usePluginStore = create<PluginStore>((set, get) => ({
-  plugins: {},
-  searchResults: [],
-  installProgress: {},
-  updateInfo: {},
-  runtimeContexts: {},
-  isSearching: false,
-  isInstalling: false,
-  isLoading: false,
-  searchQuery: undefined,
-  searchError: undefined,
-  installError: undefined,
-  error: null,
-  initializationState: 'pending',
-  pluginInitStates: {},
-  
-  searchPlugins: async (query: string) => {
-    set({ isSearching: true, searchError: undefined, searchQuery: query })
-    
-    try {
-      const result = await window.electron.searchPlugins(query)
-      
-      if (!result.success) {
-        throw new Error(result.error || 'Search failed')
+let configSubscriptionAttached = false
+
+export const usePluginStore = create<PluginStore>((set, get) => {
+  if (!configSubscriptionAttached) {
+    configSubscriptionAttached = true
+    useConfigStore.subscribe(
+      state => state.config?.advanced?.webBrowserPluginEnabled ?? true,
+      (enabled) => {
+        set(current => {
+          const definition = builtinPluginDefinitions.find(def => def.id === 'web-browser')!
+          const existing = current.plugins['web-browser'] ?? buildBuiltinPluginConfig(definition, enabled)
+          return {
+            plugins: {
+              ...current.plugins,
+              'web-browser': {
+                ...existing,
+                status: enabled ? 'enabled' : 'disabled',
+                enabled,
+                updatedAt: new Date()
+              }
+            }
+          }
+        })
       }
-      
-      set({ 
-        searchResults: result.data || [], 
+    )
+  }
+
+  const initialPlugins = computeBuiltinPlugins(getBuiltinEnabledState())
+  const initialInitStates = Object.fromEntries(
+    Object.keys(initialPlugins).map(id => [id, { state: 'loaded' as const }])
+  )
+
+  return {
+    plugins: initialPlugins,
+    searchResults: [],
+    installProgress: {},
+    updateInfo: {},
+    runtimeContexts: {},
+    isSearching: false,
+    isInstalling: false,
+    isLoading: false,
+    searchQuery: undefined,
+    searchError: undefined,
+    installError: undefined,
+    error: null,
+    initializationState: 'ready',
+    pluginInitStates: initialInitStates,
+
+    searchPlugins: async (query: string) => {
+      const normalized = query.trim().toLowerCase()
+      const results: PluginSearchResult[] = builtinPluginDefinitions
+        .filter(def =>
+          !normalized ||
+          def.name.toLowerCase().includes(normalized) ||
+          def.keywords.some(keyword => keyword.toLowerCase().includes(normalized)) ||
+          def.description.toLowerCase().includes(normalized)
+        )
+        .map(def => ({
+          name: def.name,
+          version: def.version,
+          description: def.description,
+          keywords: def.keywords,
+          date: new Date().toISOString(),
+          links: def.homepage ? { homepage: def.homepage } : undefined,
+          author: { name: def.author }
+        }))
+
+      set({
+        searchQuery: query,
+        searchResults: results,
         isSearching: false,
         searchError: undefined
       })
-      
-    } catch (error) {
-      set({
-        isSearching: false,
-        searchError: error instanceof Error ? error.message : 'Failed to search plugins',
-        searchResults: []
-      })
-      throw error
-    }
-  },
-  
-  clearSearchResults: () => {
-    set({ searchResults: [], searchQuery: undefined, searchError: undefined })
-  },
-  
-  installPlugin: async (name: string, options?: PluginInstallOptions) => {
-    const pluginId = `plugin_${name}_${Date.now()}`
-    set({ 
-      isInstalling: true, 
-      installError: undefined,
-      installProgress: {
-        ...get().installProgress,
-        [pluginId]: {
-          pluginId,
-          phase: 'downloading',
-          progress: 0
-        }
-      }
-    })
-    
-    try {
-      const result = await window.electron.installPlugin(name, options as unknown as Record<string, unknown> | undefined)
-      
-      if (!result.success) {
-        throw new Error(result.error || 'Installation failed')
-      }
-      
-      const newPlugin = result.data as NPMPluginConfig
-      
-      set(state => ({
-        plugins: {
-          ...state.plugins,
-          [newPlugin.id]: newPlugin
-        },
-        isInstalling: false,
-        installError: undefined,
-        installProgress: {
-          ...state.installProgress,
-          [pluginId]: {
-            pluginId,
-            phase: 'completed',
-            progress: 100
-          }
-        }
-      }))
-      
-      setTimeout(() => {
-        set(state => {
-          const { [pluginId]: _, ...rest } = state.installProgress
-          return { installProgress: rest }
-        })
-      }, 5000)
-      
-    } catch (error) {
-      set(state => ({
-        isInstalling: false,
-        installError: error instanceof Error ? error.message : 'Failed to install plugin',
-        installProgress: {
-          ...state.installProgress,
-          [pluginId]: {
-            pluginId,
-            phase: 'failed',
-            error: error instanceof Error ? error.message : 'Installation failed'
-          }
-        }
-      }))
-      throw error
-    }
-  },
-  
-  uninstallPlugin: async (pluginId: string) => {
-    set({ isLoading: true, error: null })
-    
-    try {
-      const plugin = get().plugins[pluginId]
-      if (!plugin) {
-        throw new Error('Plugin not found')
-      }
-      
-      if (plugin.enabled) {
-        await get().disablePlugin(pluginId)
-      }
-      
-      const result = await window.electron.uninstallPlugin(pluginId)
-      
-      if (!result.success) {
-        throw new Error(result.error || 'Uninstallation failed')
-      }
-      
-      set(state => {
-        const { [pluginId]: _, ...rest } = state.plugins
-        const { [pluginId]: _2, ...restRuntime } = state.runtimeContexts
-        const { [pluginId]: _3, ...restUpdate } = state.updateInfo
-        
-        return {
-          plugins: rest,
-          runtimeContexts: restRuntime,
-          updateInfo: restUpdate,
-          isLoading: false,
-          error: null
-        }
-      })
-      
-    } catch (error) {
-      set({
-        isLoading: false,
-        error: error instanceof Error ? error.message : 'Failed to uninstall plugin'
-      })
-      throw error
-    }
-  },
-  
-  updatePlugin: async (pluginId: string) => {
-    set({ 
-      isInstalling: true, 
-      installError: undefined,
-      installProgress: {
-        ...get().installProgress,
-        [pluginId]: {
-          pluginId,
-          phase: 'downloading',
-          progress: 0,
-          message: 'Updating plugin...'
-        }
-      }
-    })
-    
-    try {
-      const result = await window.electron.updatePlugin(pluginId)
-      
-      if (!result.success) {
-        throw new Error(result.error || 'Update failed')
-      }
-      
-      const updatedPlugin = result.data as PluginConfig
-      
-      set(state => ({
-        plugins: {
-          ...state.plugins,
-          [pluginId]: updatedPlugin
-        },
-        isInstalling: false,
-        installError: undefined,
-        installProgress: {
-          ...state.installProgress,
-          [pluginId]: {
-            pluginId,
-            phase: 'completed',
-            progress: 100,
-            message: 'Update completed'
-          }
-        },
-        updateInfo: {
-          ...state.updateInfo,
-          [pluginId]: {
-            ...state.updateInfo[pluginId],
-            currentVersion: updatedPlugin.version
-          }
-        }
-      }))
-      
-      setTimeout(() => {
-        set(state => {
-          const { [pluginId]: _, ...rest } = state.installProgress
-          return { installProgress: rest }
-        })
-      }, 5000)
-      
-    } catch (error) {
-      set(state => ({
-        isInstalling: false,
-        installError: error instanceof Error ? error.message : 'Failed to update plugin',
-        installProgress: {
-          ...state.installProgress,
-          [pluginId]: {
-            pluginId,
-            phase: 'failed',
-            error: error instanceof Error ? error.message : 'Update failed'
-          }
-        }
-      }))
-      throw error
-    }
-  },
-  
-  enablePlugin: async (pluginId: string) => {
-    try {
+    },
+
+    clearSearchResults: () => {
+      set({ searchResults: [], searchQuery: undefined, searchError: undefined })
+    },
+
+    installPlugin: async () => {
+      throw new Error('Plugin installation is not available in this build of desktop-tauri.')
+    },
+
+    uninstallPlugin: async () => {
+      throw new Error('Plugin uninstallation is not available in this build of desktop-tauri.')
+    },
+
+    updatePlugin: async () => {
+      throw new Error('Plugin updates are not available in this build of desktop-tauri.')
+    },
+
+    enablePlugin: async (pluginId: string) => {
       const plugin = get().plugins[pluginId]
       if (!plugin || plugin.enabled) {
         return
       }
-      
-      set(state => ({
-        plugins: {
-          ...state.plugins,
-          [pluginId]: { ...plugin, status: 'enabled' as PluginStatus, enabled: true }
-        }
-      }))
-      
-      const result = await window.electron.enablePlugin(pluginId)
-      
-      if (!result.success) {
-        set(state => ({
-          plugins: {
-            ...state.plugins,
-            [pluginId]: { ...plugin, status: 'disabled' as PluginStatus, enabled: false }
-          }
-        }))
-        throw new Error(result.error || 'Failed to enable plugin')
-      }
-      
-      if (result.data) {
-        set(state => ({
-          runtimeContexts: {
-            ...state.runtimeContexts,
-            [pluginId]: result.data as PluginRuntimeContext
-          }
-        }))
-      }
-      
-    } catch (error) {
-      set({
-        error: error instanceof Error ? error.message : 'Failed to enable plugin'
-      })
-      throw error
-    }
-  },
-  
-  disablePlugin: async (pluginId: string) => {
-    try {
-      const plugin = get().plugins[pluginId]
-      if (!plugin || !plugin.enabled) {
-        return
-      }
-      
-      set(state => ({
-        plugins: {
-          ...state.plugins,
-          [pluginId]: { ...plugin, status: 'disabled' as PluginStatus, enabled: false }
-        }
-      }))
-      
-      const result = await window.electron.disablePlugin(pluginId)
-      
-      if (!result.success) {
-        set(state => ({
-          plugins: {
-            ...state.plugins,
-            [pluginId]: { ...plugin, status: 'enabled' as PluginStatus, enabled: true }
-          }
-        }))
-        throw new Error(result.error || 'Failed to disable plugin')
-      }
-      
-      set(state => ({
-        runtimeContexts: {
-          ...state.runtimeContexts,
-          [pluginId]: {
-            ...state.runtimeContexts[pluginId],
-            isEnabled: false,
-            isLoaded: false
-          }
-        }
-      }))
-      
-    } catch (error) {
-      set({
-        error: error instanceof Error ? error.message : 'Failed to disable plugin'
-      })
-      throw error
-    }
-  },
-  
-  configurePlugin: async (pluginId: string, config: Record<string, unknown>) => {
-    set({ isLoading: true, error: null })
-    
-    try {
-      const plugin = get().plugins[pluginId]
-      if (!plugin) {
-        throw new Error('Plugin not found')
-      }
-      
-      const result = await window.electron.configurePlugin(pluginId, config as unknown as Record<string, unknown>)
-      
-      if (!result.success) {
-        throw new Error(result.error || 'Configuration failed')
-      }
-      
+
+      const original = plugin
       set(state => ({
         plugins: {
           ...state.plugins,
           [pluginId]: {
             ...plugin,
-            config,
+            status: 'enabled' as PluginStatus,
+            enabled: true,
             updatedAt: new Date()
           }
-        },
-        isLoading: false,
-        error: null
+        }
       }))
-      
-    } catch (error) {
-      set({
-        isLoading: false,
-        error: error instanceof Error ? error.message : 'Failed to configure plugin'
-      })
-      throw error
-    }
-  },
-  
-  grantPermissions: async (pluginId: string, permissions: PluginPermissions) => {
-    set({ isLoading: true, error: null })
-    
-    try {
-      const result = await window.electron.grantPluginPermissions(pluginId, permissions as unknown as Record<string, unknown>)
-      
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to grant permissions')
-      }
-      
-      const plugin = get().plugins[pluginId]
-      if (plugin) {
+
+      try {
+        const result = await window?.desktop?.enablePlugin(pluginId)
+        if (!result?.success) {
+          throw new Error(result?.error || 'Failed to enable plugin')
+        }
+
+        if (pluginId === 'web-browser') {
+          const configStore = useConfigStore.getState()
+          configStore.setWebBrowserPluginEnabled(true)
+        }
+
+        if (result?.data) {
+          set(state => ({
+            runtimeContexts: {
+              ...state.runtimeContexts,
+              [pluginId]: result.data as PluginRuntimeContext
+            }
+          }))
+        }
+      } catch (error) {
         set(state => ({
           plugins: {
             ...state.plugins,
             [pluginId]: {
-              ...plugin,
-              grantedPermissions: permissions,
+              ...original,
+              status: 'disabled',
+              enabled: false,
               updatedAt: new Date()
             }
           },
-          isLoading: false,
-          error: null
+          error: error instanceof Error ? error.message : 'Failed to enable plugin'
         }))
+        throw error
       }
-      
-    } catch (error) {
-      set({
-        isLoading: false,
-        error: error instanceof Error ? error.message : 'Failed to grant permissions'
-      })
-      throw error
-    }
-  },
-  
-  revokePermissions: async (pluginId: string, permissions: PluginPermissions) => {
-    set({ isLoading: true, error: null })
-    
-    try {
-      const result = await window.electron.revokePluginPermissions(pluginId, permissions as unknown as Record<string, unknown>)
-      
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to revoke permissions')
-      }
-      
+    },
+
+    disablePlugin: async (pluginId: string) => {
       const plugin = get().plugins[pluginId]
-      if (plugin) {
+      if (!plugin || !plugin.enabled) {
+        return
+      }
+
+      const original = plugin
+      set(state => ({
+        plugins: {
+          ...state.plugins,
+          [pluginId]: {
+            ...plugin,
+            status: 'disabled' as PluginStatus,
+            enabled: false,
+            updatedAt: new Date()
+          }
+        }
+      }))
+
+      try {
+        const result = await window?.desktop?.disablePlugin(pluginId)
+        if (!result?.success) {
+          throw new Error(result?.error || 'Failed to disable plugin')
+        }
+
+        if (pluginId === 'web-browser') {
+          const configStore = useConfigStore.getState()
+          configStore.setWebBrowserPluginEnabled(false)
+        }
+
+        set(state => ({
+          runtimeContexts: {
+            ...state.runtimeContexts,
+            [pluginId]: {
+              ...state.runtimeContexts[pluginId],
+              isEnabled: false,
+              isLoaded: false
+            }
+          }
+        }))
+      } catch (error) {
         set(state => ({
           plugins: {
             ...state.plugins,
             [pluginId]: {
-              ...plugin,
-              grantedPermissions: result.data as PluginPermissions,
+              ...original,
+              status: 'enabled',
+              enabled: true,
               updatedAt: new Date()
             }
           },
-          isLoading: false,
-          error: null
+          error: error instanceof Error ? error.message : 'Failed to disable plugin'
         }))
+        throw error
       }
-      
-    } catch (error) {
+    },
+
+    configurePlugin: async () => {
+      throw new Error('Plugin configuration is not available in this build of desktop-tauri.')
+    },
+
+    grantPermissions: async () => {
+      throw new Error('Granting plugin permissions is not available in this build of desktop-tauri.')
+    },
+
+    revokePermissions: async () => {
+      throw new Error('Revoking plugin permissions is not available in this build of desktop-tauri.')
+    },
+
+    loadLocalPlugin: async () => {
+      throw new Error('Local plugins are not supported in this build of desktop-tauri.')
+    },
+
+    reloadLocalPlugin: async () => {
+      throw new Error('Local plugins are not supported in this build of desktop-tauri.')
+    },
+
+    setRegistry: async () => {
+      throw new Error('Custom plugin registries are not supported in this build of desktop-tauri.')
+    },
+
+    loadInstalledPlugins: async () => {
+      set({ isLoading: true, error: null, initializationState: 'initializing' })
+      const enabledState = getBuiltinEnabledState()
+      const plugins = computeBuiltinPlugins(enabledState)
+      const pluginInitStates = Object.fromEntries(
+        Object.keys(plugins).map(id => [id, { state: 'loaded' as const }])
+      )
       set({
+        plugins,
+        pluginInitStates,
         isLoading: false,
-        error: error instanceof Error ? error.message : 'Failed to revoke permissions'
+        initializationState: 'ready',
+        error: null
       })
-      throw error
-    }
-  },
-  
-  loadLocalPlugin: async (_path: string) => {
-    throw new Error('Local plugin loading is not yet implemented')
-  },
-  
-  reloadLocalPlugin: async (_pluginId: string) => {
-    throw new Error('Local plugin reloading is not yet implemented')
-  },
-  
-  setRegistry: async (_registry: string, _auth?: { token?: string; username?: string; password?: string }) => {
-    throw new Error('Custom plugin registry is not yet implemented')
-  },
-  
-  loadInstalledPlugins: async () => {
-    set({ isLoading: true, error: null, initializationState: 'initializing' })
-    
-    try {
-      const isAvailable = await waitForElectronBridge()
-      
-      if (!isAvailable) {
-        set({ 
-          plugins: {}, 
-          isLoading: false,
-          error: 'Plugin services not available - running in degraded mode',
-          initializationState: 'failed'
-        })
-        return
+    },
+
+    checkForUpdates: async () => {
+      set({ updateInfo: {} })
+    },
+
+    getPluginById: (pluginId: string) => get().plugins[pluginId],
+
+    getEnabledPlugins: () => {
+      return Object.values(get().plugins).filter(plugin => plugin.enabled)
+    },
+
+    getPluginsByType: (type: PluginType) => {
+      return Object.values(get().plugins).filter(plugin => plugin.type === type)
+    },
+
+    clearError: () => {
+      set({ error: null, installError: undefined, searchError: undefined })
+    },
+
+    getInitializationProgress: () => {
+      const total = Object.keys(get().plugins).length
+      const loaded = total
+      return {
+        total,
+        loaded,
+        failed: 0,
+        pending: 0
       }
-      
-      
-      const result = await window.electron.getInstalledPlugins()
-      if (!result.success) {
-        set({ 
-          plugins: {}, 
-          isLoading: false,
-          error: `Failed to load plugins: ${result.error || 'Unknown error'}`,
-          initializationState: 'failed'
-        })
-        return
-      }
-      
-      const plugins = result.data || []
-      const pluginsMap: Record<string, PluginConfig> = {}
-      const pluginInitStates: Record<string, { state: 'pending' | 'loading' | 'loaded' | 'failed'; error?: string }> = {}
-      
-      plugins.forEach((plugin: PluginConfig) => {
-        pluginsMap[plugin.id] = plugin
-        pluginInitStates[plugin.id] = { state: 'pending' }
-      })
-      
-      set({ plugins: pluginsMap, pluginInitStates, isLoading: false, error: null })
-      
-      const enabledPlugins = plugins.filter((p: PluginConfig) => p.enabled)
-      let loadedCount = 0
-      let failedCount = 0
-      
-      for (const plugin of enabledPlugins) {
-        try {
-          set(state => ({
-            pluginInitStates: {
-              ...state.pluginInitStates,
-              [plugin.id]: { state: 'loading' }
-            }
-          }))
-          
-          await get().enablePlugin(plugin.id)
-          loadedCount++
-          
-          set(state => ({
-            pluginInitStates: {
-              ...state.pluginInitStates,
-              [plugin.id]: { state: 'loaded' }
-            }
-          }))
-        } catch (loadError) {
-          failedCount++
-          
-          set(state => ({
-            pluginInitStates: {
-              ...state.pluginInitStates,
-              [plugin.id]: { 
-                state: 'failed', 
-                error: loadError instanceof Error ? loadError.message : 'Loading failed' 
-              }
-            }
-          }))
-        }
-      }
-      
-      let finalState: PluginInitializationState = 'ready'
-      if (enabledPlugins.length === 0) {
-        finalState = 'ready'
-      } else if (loadedCount === 0 && failedCount > 0) {
-        finalState = 'failed'
-      } else if (loadedCount > 0 && failedCount > 0) {
-        finalState = 'partial'
-      } else if (loadedCount > 0 && failedCount === 0) {
-        finalState = 'ready'
-      }
-      
-      set({ initializationState: finalState, error: null })
-      
-    } catch (error) {
-      set({
-        isLoading: false,
-        error: error instanceof Error ? error.message : 'Failed to load installed plugins',
-        initializationState: 'failed'
-      })
-    }
-  },
-  
-  checkForUpdates: async () => {
-    set({ isLoading: true, error: null })
-    
-    try {
-      const result = await window.electron.checkPluginUpdates()
-      
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to check for updates')
-      }
-      
-      const updates = result.data || []
-      const updateInfoMap: Record<string, PluginUpdateInfo> = {}
-      
-      updates.forEach((update: PluginUpdateInfo) => {
-        updateInfoMap[update.pluginId] = update
-      })
-      
-      set({ updateInfo: updateInfoMap, isLoading: false, error: null })
-      
-    } catch (error) {
-      set({
-        isLoading: false,
-        error: error instanceof Error ? error.message : 'Failed to check for updates'
-      })
-      throw error
-    }
-  },
-  
-  getPluginById: (pluginId: string) => {
-    const { plugins } = get()
-    return plugins[pluginId]
-  },
-  
-  getEnabledPlugins: () => {
-    const { plugins } = get()
-    return Object.values(plugins).filter(plugin => plugin.enabled)
-  },
-  
-  getPluginsByType: (type: PluginType) => {
-    const { plugins } = get()
-    return Object.values(plugins).filter(plugin => plugin.type === type)
-  },
-  
-  clearError: () => set({ error: null, searchError: undefined, installError: undefined }),
-  
-  getInitializationProgress: () => {
-    const { pluginInitStates, plugins } = get()
-    const enabledPlugins = Object.values(plugins).filter(p => p.enabled)
-    
-    let loaded = 0
-    let failed = 0
-    let pending = 0
-    
-    enabledPlugins.forEach(plugin => {
-      const state = pluginInitStates[plugin.id]
-      if (!state) {
-        pending++
-      } else {
-        switch (state.state) {
-          case 'loaded':
-            loaded++
-            break
-          case 'failed':
-            failed++
-            break
-          case 'pending':
-          case 'loading':
-            pending++
-            break
-        }
-      }
-    })
-    
-    return {
-      total: enabledPlugins.length,
-      loaded,
-      failed,
-      pending
-    }
-  },
-  
-  isInitialized: () => {
-    const { initializationState } = get()
-    return initializationState === 'ready' || initializationState === 'partial' || initializationState === 'failed'
+    },
+
+    isInitialized: () => get().initializationState === 'ready'
   }
-}))
+})

@@ -144,8 +144,8 @@ export function HCS10ProfileRegistration() {
       }
     };
 
-    const unsubscribe = window.electron.on(
-      'hcs10:registrationProgress',
+    const unsubscribe = window?.desktop?.on(
+      'hcs10_registration_progress',
       handleProgressUpdate
     );
 
@@ -178,14 +178,14 @@ export function HCS10ProfileRegistration() {
     const checkInProgressRegistration = async () => {
       if (existingProfile?.name) {
         try {
-          const result = await window.electron.invoke(
-            'hcs10:isRegistrationInProgress',
-            existingProfile.name
+          const result = await window?.desktop?.invoke(
+            'hcs10_is_registration_in_progress',
+            { profileName: existingProfile.name }
           );
           if (result.success && result.data?.inProgress) {
-            const progressResult = await window.electron.invoke(
-              'hcs10:getRegistrationProgress',
-              existingProfile.name
+            const progressResult = await window?.desktop?.invoke(
+              'hcs10_get_registration_progress',
+              { profileName: existingProfile.name }
             );
             if (progressResult.success && progressResult.data) {
               const state = progressResult.data;
@@ -440,10 +440,9 @@ export function HCS10ProfileRegistration() {
           };
         }
       } else {
-        result = await window.electron.invoke(
-          'hcs10:registerProfile',
-          registrationData
-        );
+        result = await window?.desktop?.invoke('hcs10_register_profile', {
+          profileData: registrationData,
+        });
       }
 
       if (result.success && result.data) {
@@ -502,7 +501,7 @@ export function HCS10ProfileRegistration() {
     if (isRegistering) {
       (async () => {
         try {
-          await window.electron.invoke('hcs10:cancelRegistration');
+          await window?.desktop?.invoke('hcs10_cancel_registration');
 
           clearAgentCreationState();
 
@@ -580,7 +579,7 @@ export function HCS10ProfileRegistration() {
                   size='sm'
                   onClick={async () => {
                     try {
-                      await window.electron.invoke('hcs10:clearAllStates');
+                      await window?.desktop?.invoke('hcs10_clear_all_states');
 
                       clearAgentCreationState();
                       setRegistrationProgress({

@@ -82,7 +82,7 @@ export function useEntityManagement() {
     setError(null);
     
     try {
-      const result = await window.electron.entity.getAll();
+      const result = await window?.desktop?.entity.getAll();
       
       if (result.success && result.data) {
         setEntities(result.data);
@@ -149,7 +149,7 @@ export function useEntityManagement() {
     });
 
     try {
-      const result = await window.electron.entity.delete(entityId);
+      const result = await window?.desktop?.entity.delete(entityId);
       
       if (!result.success) {
         setEntities(prev => [...prev, entities.find(e => e.entityId === entityId)!]);
@@ -172,7 +172,7 @@ export function useEntityManagement() {
     setSelectedEntities(new Set());
 
     try {
-      const result = await window.electron.entity.bulkDelete(entityIds);
+      const result = await window?.desktop?.entity.bulkDelete(entityIds);
       
       if (!result.success) {
         const entitiesToRestore = entities.filter(e => entityIds.includes(e.entityId));
@@ -208,7 +208,7 @@ export function useEntityManagement() {
     ));
 
     try {
-      const result = await window.electron.entity.rename(entityId, newName);
+      const result = await window?.desktop?.entity.rename(entityId, newName);
       
       if (!result.success) {
         setEntities(prev => prev.map(entity => 
@@ -239,7 +239,7 @@ export function useEntityManagement() {
 
   const exportEntities = useCallback(async (format: 'json' | 'csv'): Promise<EntityExportResult | null> => {
     try {
-      const result = await window.electron.entity.export(filters, format);
+      const result = await window?.desktop?.entity.export(filters, format);
       
       if (!result.success) {
         setError(result.error || 'Failed to export entities');
@@ -286,9 +286,9 @@ export function useEntityManagement() {
       ));
     };
 
-    const removeCreatedListener = window.electron.on('entity:created', handleEntityCreated);
-    const removeDeletedListener = window.electron.on('entity:deleted', handleEntityDeleted);
-    const removeUpdatedListener = window.electron.on('entity:updated', handleEntityUpdated);
+    const removeCreatedListener = window?.desktop?.on('entity_created', handleEntityCreated);
+    const removeDeletedListener = window?.desktop?.on('entity_deleted', handleEntityDeleted);
+    const removeUpdatedListener = window?.desktop?.on('entity_updated', handleEntityUpdated);
 
     return () => {
       removeCreatedListener();

@@ -22,6 +22,24 @@ export interface ModelInfo {
 
 export const OPENAI_MODELS: ModelInfo[] = [
   {
+    id: 'gpt-5',
+    name: 'GPT-5',
+    description:
+      'Next-generation flagship model offering state-of-the-art reasoning, multimodal understanding, and extended long-context performance.',
+    provider: 'openai',
+    category: 'flagship',
+    contextWindow: '2M tokens',
+    inputCost: '$12/1M tokens',
+    outputCost: '$36/1M tokens',
+    strengths: ['Advanced reasoning', 'Long-context workflows', 'Multimodal analysis', 'Enterprise automation'],
+    bestFor: ['Mission-critical agents', 'Complex automations', 'Large knowledge bases', 'Strategic planning'],
+    knowledgeCutoff: 'January 2025',
+    supportsVision: true,
+    supportsFunctionCalling: true,
+    isRecommended: true,
+    isNew: true
+  },
+  {
     id: 'gpt-4.1',
     name: 'GPT-4.1',
     description: 'Latest flagship model with major improvements in coding, instruction following, and long-context understanding. Supports up to 1M context tokens.',

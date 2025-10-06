@@ -412,7 +412,7 @@ export interface BlockTesterActions {
   updateBlockTemplate: (blockId: string, template: string) => void;
   updateBlockAttributes: (
     blockId: string,
-    attributes: Record<string, unknown>
+    attributes: Record<string, AttributeSchema>
   ) => void;
   updateBlockActions: (
     blockId: string,
@@ -424,11 +424,11 @@ export interface BlockTesterActions {
 
   getCurrentBlock: () => WorkingBlock | null;
   getCurrentTemplate: () => string;
-  getCurrentAttributes: () => Record<string, unknown>;
+  getCurrentAttributes: () => Record<string, AttributeSchema>;
   getCurrentActions: () => Record<string, ActionBinding>;
   getActiveBlockState: () => {
     template: string;
-    attributes: Record<string, unknown>;
+    attributes: Record<string, AttributeSchema>;
     actions: Record<string, ActionBinding>;
     isDirty: boolean;
     lastSaved: Date | null;
@@ -436,7 +436,7 @@ export interface BlockTesterActions {
 
   setBlock: (block: WorkingBlock) => void;
   updateTemplate: (template: string) => void;
-  updateAttributes: (attributes: Record<string, unknown>) => void;
+  updateAttributes: (attributes: Record<string, AttributeSchema>) => void;
   updateActions: (actions: Record<string, ActionBinding>) => void;
   saveBlock: () => void;
   resetBlock: () => void;

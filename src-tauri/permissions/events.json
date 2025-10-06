@@ -1,0 +1,14 @@
+{
+  "permission": [
+    {
+      "identifier": "event-listen",
+      "description": "Allow renderer to subscribe to browser and MCP events.",
+      "events": {
+        "allow": [
+          "browser_state",
+          "mcp_metrics_updated"
+        ]
+      }
+    }
+  ]
+}

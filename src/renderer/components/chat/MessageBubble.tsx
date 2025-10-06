@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { motion } from 'framer-motion';
 import Typography from '../ui/Typography';
 import type { Message } from '../../stores/agentStore';
@@ -115,17 +115,28 @@ function TransactionButtonRenderer({
     !message.metadata?.scheduleId &&
     !isUser;
 
+  const metadata = message.metadata ?? {};
+  const messageMetadata = metadata;
+  const scheduleId =
+    typeof metadata.scheduleId === 'string'
+      ? metadata.scheduleId
+      : metadata.scheduleId !== undefined
+        ? String(metadata.scheduleId)
+        : '';
+  const transactionDescription = (() => {
+    if (typeof metadata.data === 'string' && metadata.data.trim().length > 0) {
+      return metadata.data;
+    }
+    return message.content || 'Transaction requires approval';
+  })();
+
   if (shouldShowTransactionButton) {
     try {
       return (
         <div className='mt-3'>
           <TransactionApprovalButton
-            scheduleId={String(message.metadata.scheduleId || '')}
-            description={
-              String(message.metadata.data || '') ||
-              message.content ||
-              'Transaction requires approval'
-            }
+            scheduleId={scheduleId}
+            description={transactionDescription}
             network={config?.hedera?.network}
             className='!mt-0'
           />
@@ -139,7 +150,7 @@ function TransactionButtonRenderer({
             {error instanceof Error ? error.message : 'Unknown error'}
           </div>
           <div className='text-xs text-red-600 dark:text-red-400 mt-1'>
-            Schedule ID: {String(message.metadata.scheduleId || '')}
+            Schedule ID: {scheduleId}
           </div>
         </div>
       );
@@ -165,7 +176,7 @@ function TransactionButtonRenderer({
           variant='caption'
           className='text-amber-600 dark:text-amber-400 mt-1'
         >
-          Content: {String(message.metadata.data || '') || message.content}
+          Content: {transactionDescription}
         </Typography>
       </div>
     );
@@ -344,6 +355,7 @@ function MessageBubbleImpl({
     imageName: string;
   } | null>(null);
   const operationalMode = config?.advanced?.operationalMode || 'autonomous';
+  const messageMetadata = message.metadata ?? {};
 
   const approveTransaction = useAgentStore((s) => s.approveTransaction);
   const rejectTransaction = useAgentStore((s) => s.rejectTransaction);
@@ -584,6 +596,18 @@ function MessageBubbleImpl({
     );
   }
 
+  const bubbleStyle = useMemo(() => {
+    const base: CSSProperties = {
+      maxWidth: isUser ? '85%' : '90%',
+      width: 'fit-content',
+    };
+    if (!isUser) {
+      base.WebkitUserSelect = 'text';
+      base.userSelect = 'text';
+    }
+    return base;
+  }, [isUser]);
+
   return (
     <>
       {/* Fullscreen Modal */}
@@ -642,7 +666,7 @@ function MessageBubbleImpl({
                   return (
                     <div
                       key={part.key}
-                      className='text-sm text-gray-900 dark:text-gray-100 select-text [&_.inline-code-style]:bg-gray-200 [&_.inline-code-style]:dark:bg-gray-700 [&_.inline-code-style]:px-1.5 [&_.inline-code-style]:py-0.5 [&_.inline-code-style]:rounded [&_.inline-code-style]:font-mono [&_.inline-code-style]:text-xs'
+                      className='text-sm text-gray-900 dark:text-gray-100 select-text [&_.inline-code-style]:bg-gray-200 [&_.inline-code-style]:dark:bg-gray-700 [&_.inline-code-style]:px-1.5 [&_.inline-code-style]:py-0.5 [&_.inline-code-style]:rounded [&_.inline-code-style]:font-mono [&_.inline-code-style]:text-xs [&_.inline-code-style]:text-brand-ink [&_.inline-code-style]:dark:text-white [&_.inline-code]:text-brand-ink [&_.inline-code]:dark:text-white [&_.inline-code]:bg-gray-100 [&_.inline-code]:dark:bg-gray-800 [&_.inline-code]:px-1.5 [&_.inline-code]:py-0.5 [&_.inline-code]:rounded'
                       dangerouslySetInnerHTML={{
                         __html: part.html,
                       }}
@@ -701,8 +725,8 @@ function MessageBubbleImpl({
       >
         <div
           className={cn(
-            'flex max-w-[min(85%,600px)] md:max-w-[min(75%,700px)] lg:max-w-[min(70%,800px)] space-x-2',
-            isUser ? 'flex-row-reverse space-x-reverse' : 'flex-row'
+            'flex w-full items-start gap-2',
+            isUser ? 'flex-row-reverse' : 'flex-row'
           )}
         >
           <div className='flex-shrink-0'>
@@ -734,25 +758,18 @@ function MessageBubbleImpl({
 
           <div
             className={cn(
-              'flex flex-col space-y-1 max-w-full',
+              'flex flex-col space-y-1 flex-1',
               isUser ? 'items-end' : 'items-start'
             )}
           >
             <div
               className={cn(
-                'px-4 py-3 rounded-2xl shadow-xs select-text relative group break-words overflow-wrap-anywhere max-w-full',
+                'px-4 py-3 rounded-2xl shadow-xs select-text relative group break-words overflow-wrap-anywhere',
                 isUser
                   ? 'bg-white dark:bg-gray-800 border border-gray-200/50 dark:border-gray-700/50 text-gray-900 dark:text-white rounded-tr-md'
                   : 'bg-gradient-to-br from-blue-500 to-blue-500/90 dark:from-[#a679f0] dark:to-[#9568df] text-white rounded-tl-md shadow-blue-500/10'
               )}
-              style={
-                !isUser
-                  ? {
-                      WebkitUserSelect: 'text',
-                      userSelect: 'text',
-                    }
-                  : undefined
-              }
+              style={bubbleStyle}
             >
               {/* Action buttons */}
               <div
@@ -827,7 +844,7 @@ function MessageBubbleImpl({
                             '',
                             `${index}-${part.content.slice(0, 16)}`
                           )}
-                          className='whitespace-pre-line break-words text-gray-900 dark:text-white select-text cursor-text text-sm'
+                          className='break-words text-gray-900 dark:text-white select-text cursor-text text-sm'
                         >
                           {part.content}
                         </span>
@@ -848,7 +865,7 @@ function MessageBubbleImpl({
                       return (
                         <div
                           key={part.key}
-                          className='prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-li:my-0 select-text cursor-text text-sm break-words overflow-wrap-anywhere whitespace-pre-line [&_.inline-code-style]:bg-gray-200 [&_.inline-code-style]:dark:bg-gray-700 [&_.inline-code-style]:px-1.5 [&_.inline-code-style]:py-0.5 [&_.inline-code-style]:rounded [&_.inline-code-style]:font-mono [&_.inline-code-style]:text-xs'
+                          className='prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-li:my-0 select-text cursor-text text-sm break-words overflow-wrap-anywhere whitespace-pre-line [&_.inline-code-style]:bg-gray-200 [&_.inline-code-style]:dark:bg-gray-700 [&_.inline-code-style]:px-1.5 [&_.inline-code-style]:py-0.5 [&_.inline-code-style]:rounded [&_.inline-code-style]:font-mono [&_.inline-code-style]:text-xs [&_.inline-code-style]:text-brand-ink [&_.inline-code-style]:dark:text-white [&_.inline-code]:text-brand-ink [&_.inline-code]:dark:text-white [&_.inline-code]:bg-gray-100 [&_.inline-code]:dark:bg-gray-800 [&_.inline-code]:px-1.5 [&_.inline-code]:py-0.5 [&_.inline-code]:rounded'
                           dangerouslySetInnerHTML={{ __html: part.html }}
                         />
                       );
@@ -876,32 +893,29 @@ function MessageBubbleImpl({
               {(() => {
                 if (operationalMode === 'provideBytes' && !isUser) {
                   const hasTx = Boolean(
-                    message.metadata?.scheduleId ||
-                      message.metadata?.transactionBytes
+                    messageMetadata.scheduleId || messageMetadata.transactionBytes
                   );
                   if (hasTx) {
                     return (
                       <div className='mt-3'>
                         <TransactionApprovalButton
-                          scheduleId={String(message.metadata.scheduleId || '')}
+                          scheduleId={String(messageMetadata.scheduleId || '')}
                           transactionBytes={String(
-                            message.metadata.transactionBytes || ''
+                            messageMetadata.transactionBytes || ''
                           )}
-                          description={String(
-                            message.metadata.description || ''
-                          )}
+                          description={String(messageMetadata.description || '')}
                           className='!mt-0'
                           notes={
-                            Array.isArray(message.metadata?.notes)
-                              ? (message.metadata.notes as string[])
+                            Array.isArray(messageMetadata.notes)
+                              ? (messageMetadata.notes as string[])
                               : []
                           }
                           messageId={message.id}
-                          initialApproved={Boolean(message.metadata?.approved)}
-                          initialExecuted={Boolean(message.metadata?.approved)}
+                          initialApproved={Boolean(messageMetadata.approved)}
+                          initialExecuted={Boolean(messageMetadata.approved)}
                           initialTransactionId={
-                            message.metadata?.transactionId
-                              ? String(message.metadata.transactionId)
+                            messageMetadata.transactionId
+                              ? String(messageMetadata.transactionId)
                               : undefined
                           }
                           onExecuted={async ({ messageId, transactionId }) => {
@@ -1010,6 +1024,7 @@ function MessageBubbleImpl({
                         }
                       }
                       className='mx-0 max-w-none'
+                      metadata={message.metadata as Record<string, unknown>}
                     />
                   ))
                 : null}

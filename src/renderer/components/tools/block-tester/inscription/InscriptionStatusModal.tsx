@@ -50,7 +50,7 @@ interface SuccessStateProps {
   inscriptionResult: {
     topicId: string;
     hashLink: string;
-    transactionId?: string;
+    transactionId?: string | undefined;
   } | null;
   onOpenExplorer: () => void;
 }
@@ -73,15 +73,9 @@ const SuccessState: React.FC<SuccessStateProps> = ({
 
     {inscriptionResult && (
       <div className='space-y-4'>
-        <CopyField
-          label='Topic ID'
-          value={inscriptionResult.topicId}
-        />
+        <CopyField label='Topic ID' value={inscriptionResult.topicId} />
 
-        <CopyField
-          label='HashLink'
-          value={inscriptionResult.hashLink}
-        />
+        <CopyField label='HashLink' value={inscriptionResult.hashLink} />
 
         {inscriptionResult.transactionId && (
           <CopyField
@@ -185,8 +179,8 @@ const InscriptionStatusModal: React.FC = () => {
             {isSuccess
               ? 'Inscription Complete'
               : isProcessing
-                ? 'Inscribing Block'
-                : 'Inscription Failed'}
+              ? 'Inscribing Block'
+              : 'Inscription Failed'}
           </DialogTitle>
           {!isSuccess && (
             <DialogDescription className='text-center text-muted-foreground'>
@@ -206,7 +200,7 @@ const InscriptionStatusModal: React.FC = () => {
             <LoadingState message='Inscribing to Hedera' />
           )}
 
-          {inscriptionStatus === 'success' && (
+          {inscriptionStatus === 'success' && inscriptionResult && (
             <SuccessState
               inscriptionResult={inscriptionResult}
               onOpenExplorer={handleOpenHashExplorer}

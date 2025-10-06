@@ -108,13 +108,13 @@ export const HCS10Provider: React.FC<HCS10ProviderProps> = ({ children }) => {
     setIsLoadingAgents(true);
     try {
       if (hasOperatorCreds && !canPollViaWallet) {
-        const agentsResult = await window.electron.invoke('hcs10:get-active-agents');
+        const agentsResult = await window?.desktop?.invoke('hcs10_get_active_agents');
         if (agentsResult.success) {
           const newAgents = agentsResult.agents || [];
           setAgents((prevAgents) => (isEqual(prevAgents, newAgents) ? prevAgents : newAgents));
         }
 
-        const requestsResult = await window.electron.invoke('hcs10:get-connection-requests');
+        const requestsResult = await window?.desktop?.invoke('hcs10_get_connection_requests');
         if (requestsResult.success) {
           const newRequests = requestsResult.requests || [];
           setConnectionRequests((prevRequests) => (isEqual(prevRequests, newRequests) ? prevRequests : newRequests));
@@ -198,11 +198,13 @@ export const HCS10Provider: React.FC<HCS10ProviderProps> = ({ children }) => {
           agent.profile?.display_name ||
           agent.name ||
           `HCS-10 Chat - ${agent.id}`;
-        await window.electron.invoke('chat:create-session', {
-          name: sessionName,
-          mode: 'hcs10',
-          topicId: agent.id,
-          isActive: true,
+        await window?.desktop?.invoke('chat_create_session', {
+          payload: {
+            name: sessionName,
+            mode: 'hcs10',
+            topicId: agent.id,
+            isActive: true,
+          },
         });
       } catch {}
       setActiveTopicId(agent.id);
@@ -214,7 +216,7 @@ export const HCS10Provider: React.FC<HCS10ProviderProps> = ({ children }) => {
   const onAcceptRequest = useCallback(
     async (request: ConnectionRequest) => {
       try {
-        const result = await window.electron.invoke('hcs10:accept-connection', {
+        const result = await window?.desktop?.invoke('hcs10_accept_connection', {
           connectionId: request.id,
         });
 
@@ -233,7 +235,7 @@ export const HCS10Provider: React.FC<HCS10ProviderProps> = ({ children }) => {
   const onRejectRequest = useCallback(
     async (request: ConnectionRequest) => {
       try {
-        const result = await window.electron.invoke('hcs10:reject-connection', {
+        const result = await window?.desktop?.invoke('hcs10_reject_connection', {
           connectionId: request.id,
         });
 

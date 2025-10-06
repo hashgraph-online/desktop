@@ -2,6 +2,8 @@
  * Import all DAO member logos as static assets for proper bundling
  */
 
+import { getAssetUrl } from '../utils/assets';
+
 import BonzoDark from './images/logos/dao/Bonzo_Dark.png';
 import BuidlerLabs from './images/logos/dao/Buidler Labs.png';
 import Hashpack from './images/logos/dao/Hashpack.png';
@@ -14,14 +16,14 @@ import KiloscribeDark from './images/logos/dao/Kiloscribe_Dark.png';
 import Turtlemoon from './images/logos/dao/Turtlemoon.png';
 
 export const daoLogos: Record<string, string> = {
-  'Bonzo_Dark.png': BonzoDark,
-  'Buidler Labs.png': BuidlerLabs,
-  'Hashpack.png': Hashpack,
-  'Hashgate.png': Hashgate,
-  'HGRAPH.png': HGRAPH,
-  'Launchbadge.png': Launchbadge,
-  'Neuron.png': Neuron,
-  'SentX.png': SentX,
-  'Kiloscribe_Dark.png': KiloscribeDark,
-  'Turtlemoon.png': Turtlemoon,
+  'Bonzo_Dark.png': getAssetUrl(BonzoDark),
+  'Buidler Labs.png': getAssetUrl(BuidlerLabs),
+  'Hashpack.png': getAssetUrl(Hashpack),
+  'Hashgate.png': getAssetUrl(Hashgate),
+  'HGRAPH.png': getAssetUrl(HGRAPH),
+  'Launchbadge.png': getAssetUrl(Launchbadge),
+  'Neuron.png': getAssetUrl(Neuron),
+  'SentX.png': getAssetUrl(SentX),
+  'Kiloscribe_Dark.png': getAssetUrl(KiloscribeDark),
+  'Turtlemoon.png': getAssetUrl(Turtlemoon),
 };

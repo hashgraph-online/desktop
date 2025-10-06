@@ -86,7 +86,7 @@ export function RegistrationStatusDialog({
     if (result?.transactionId) {
       const selectedNetwork = walletNetwork || 'testnet';
       const explorerUrl = `https://hashscan.io/${selectedNetwork === 'testnet' ? 'testnet/' : ''}transaction/${result.transactionId}`;
-      window.electron.openExternal(explorerUrl);
+      window?.desktop?.openExternal(explorerUrl);
     }
   };
 

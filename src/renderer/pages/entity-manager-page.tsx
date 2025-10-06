@@ -121,53 +121,35 @@ export const EntityManagerPage: React.FC = () => {
   return (
     <div className='flex-1 overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100/50 dark:from-gray-900 dark:to-black/50'>
       <div className='max-w-7xl mx-auto h-full flex flex-col'>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className='p-6 space-y-4 flex-shrink-0'
-        >
-          <div className='flex items-center justify-between'>
-            <div className='flex items-center space-x-4'>
-              <div className='flex items-center justify-center w-12 h-12 bg-gradient-to-r from-hgo-blue to-hgo-purple rounded-xl shadow-lg flex-shrink-0'>
-                <HiDatabase className='w-6 h-6 text-white' />
-              </div>
-              <div className='space-y-1'>
-                <Typography
-                  variant='h1'
-                  className='text-3xl font-bold bg-gradient-to-r from-hgo-blue to-hgo-purple bg-clip-text text-transparent'
-                  noMargin
-                >
-                  Entity Manager
-                </Typography>
-                <Typography
-                  variant='body2'
-                  className='text-gray-600 dark:text-gray-300'
-                  noMargin
-                >
-                  View and manage on-chain entities created by tools
-                </Typography>
-              </div>
+        <div className='flex flex-col gap-4 p-6 pb-4 sm:flex-row sm:items-center sm:justify-between'>
+          <div className='flex items-center gap-3'>
+            <div className='flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-hgo-blue to-hgo-purple text-white shadow-lg'>
+              <HiDatabase className='h-5 w-5' aria-hidden='true' />
             </div>
-
-            <div className='flex items-center space-x-4 flex-shrink-0'>
-              <Typography
-                variant='body2'
-                className='text-gray-500 dark:text-gray-400'
-                noMargin
-              >
-                Showing {filteredEntities.length} of {entities.length} entities
+            <div>
+              <Typography variant='body1' className='font-semibold text-gray-800 dark:text-gray-100' noMargin>
+                Entity Manager
               </Typography>
-
-              <button
-                onClick={() => handleExport('json')}
-                className='px-4 py-2 text-sm bg-white/10 backdrop-blur-sm border border-gray-200/20 dark:border-gray-700/20 rounded-lg hover:bg-white/20 transition-all duration-200'
-              >
-                Export
-              </button>
+              <Typography variant='body2' className='text-gray-500 dark:text-gray-400' noMargin>
+                Manage on-chain entities created by tools
+              </Typography>
             </div>
           </div>
 
+          <div className='flex items-center gap-3 sm:flex-row'>
+            <div className='rounded-lg bg-white/70 px-3 py-1 text-xs font-medium text-gray-700 shadow-sm dark:bg-white/10 dark:text-gray-200'>
+              Showing {filteredEntities.length} of {entities.length} entities
+            </div>
+            <button
+              onClick={() => handleExport('json')}
+              className='inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-[#5599fe] to-[#a679f0] px-4 py-2 text-sm font-medium text-white shadow-lg transition-all duration-200 hover:shadow-xl'
+            >
+              Export
+            </button>
+          </div>
+        </div>
+
+        <div className='px-6'>
           <EntityFilters
             filters={filters}
             onFiltersChange={updateFilters}
@@ -182,6 +164,7 @@ export const EntityManagerPage: React.FC = () => {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               transition={{ duration: 0.3 }}
+              className='mt-4'
             >
               <BulkActions
                 selectedCount={selectedEntities.size}
@@ -192,7 +175,7 @@ export const EntityManagerPage: React.FC = () => {
               />
             </motion.div>
           )}
-        </motion.div>
+        </div>
 
         <motion.div
           initial={{ opacity: 0 }}

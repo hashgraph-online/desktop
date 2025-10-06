@@ -34,6 +34,19 @@ export const EntityList: React.FC<EntityListProps> = ({
   const [sortOrder, setSortOrder] = React.useState<'asc' | 'desc'>('desc');
 
   const sortedEntities = React.useMemo(() => {
+    const parseTimestamp = (value: unknown): number => {
+      if (value instanceof Date) {
+        return value.getTime();
+      }
+
+      if (typeof value === 'string' || typeof value === 'number') {
+        const parsed = new Date(value).getTime();
+        return Number.isFinite(parsed) ? parsed : 0;
+      }
+
+      return 0;
+    };
+
     const sorted = [...entities].sort((a, b) => {
       let comparison = 0;
 
@@ -43,7 +56,7 @@ export const EntityList: React.FC<EntityListProps> = ({
           break;
         case 'date':
           comparison =
-            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+            parseTimestamp(a.createdAt) - parseTimestamp(b.createdAt);
           break;
         case 'type':
           comparison = a.entityType.localeCompare(b.entityType);

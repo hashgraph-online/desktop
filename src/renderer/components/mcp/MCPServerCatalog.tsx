@@ -14,7 +14,8 @@ import {
   FiFilter,
   FiX,
   FiCheck,
-  FiDownload
+  FiDownload,
+  FiChevronDown
 } from 'react-icons/fi'
 import { Button } from '../ui'
 import { Input } from '../ui'
@@ -22,6 +23,12 @@ import Typography from '../ui/Typography'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip'
 import { cn } from '../../lib/utils'
 import popularServersData from '../../data/popularMCPServers.json'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from '../ui/dropdown-menu'
 
 interface MCPServerCatalogProps {
   onQuickInstall: (server: PopularMCPServer) => void
@@ -73,6 +80,14 @@ const difficultyLabels = {
   medium: 'Moderate',
   hard: 'Advanced'
 }
+
+type CatalogSortKey = 'popularity' | 'name' | 'difficulty'
+
+const sortOptions: Array<{ value: CatalogSortKey; label: string }> = [
+  { value: 'popularity', label: 'Sort by Popularity' },
+  { value: 'name', label: 'Sort by Name' },
+  { value: 'difficulty', label: 'Sort by Difficulty' }
+]
 
 /**
  * Server card component for displaying individual server details
@@ -223,7 +238,7 @@ export const MCPServerCatalog: React.FC<MCPServerCatalogProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
-  const [sortBy, setSortBy] = useState<'popularity' | 'name' | 'difficulty'>('popularity')
+  const [sortBy, setSortBy] = useState<CatalogSortKey>('popularity')
 
   const categories = popularServersData.categories as Category[]
   const servers = popularServersData.servers as PopularMCPServer[]
@@ -266,6 +281,12 @@ export const MCPServerCatalog: React.FC<MCPServerCatalogProps> = ({
     onQuickInstall(server)
   }
 
+  const selectedSortOption = sortOptions.find(option => option.value === sortBy) ?? sortOptions[0]
+
+  const handleSortSelect = (value: CatalogSortKey) => {
+    setSortBy(value)
+  }
+
   return (
     <TooltipProvider>
       <div className="space-y-6">
@@ -290,15 +311,42 @@ export const MCPServerCatalog: React.FC<MCPServerCatalogProps> = ({
             className="pl-10"
           />
         </div>
-        <select
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-          className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-sm"
-        >
-          <option value="popularity">Sort by Popularity</option>
-          <option value="name">Sort by Name</option>
-          <option value="difficulty">Sort by Difficulty</option>
-        </select>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex items-center justify-between gap-2 min-w-[180px]"
+            >
+              <span>{selectedSortOption.label}</span>
+              <FiChevronDown className="w-4 h-4 opacity-70" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="end"
+            sideOffset={8}
+            className="z-[60] min-w-[200px] bg-white shadow-lg dark:bg-gray-900"
+          >
+            {sortOptions.map(option => (
+              <DropdownMenuItem
+                key={option.value}
+                onSelect={(event) => {
+                  event.preventDefault()
+                  handleSortSelect(option.value)
+                }}
+                className={cn(
+                  'flex items-center gap-2',
+                  option.value === sortBy && 'font-semibold text-primary-600'
+                )}
+              >
+                {option.value === sortBy && (
+                  <FiCheck className="w-4 h-4" />
+                )}
+                <span>{option.label}</span>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <div className="flex flex-wrap gap-2">

@@ -12,7 +12,6 @@ import Typography from './Typography';
 import { useLegalStore } from '../../stores/legalStore';
 import { processMarkdown } from '../../utils/markdownProcessor';
 import { motion, AnimatePresence } from 'framer-motion';
-import { TERMS_OF_SERVICE } from '../../constants/legal';
 
 interface TermsModalProps {
   open: boolean;
@@ -31,10 +30,24 @@ export const TermsModal: React.FC<TermsModalProps> = ({
   onDecline,
 }) => {
   const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
-  const { legalAcceptance } = useLegalStore();
-  
-  const termsContent = TERMS_OF_SERVICE;
-  const isLoading = false;
+  const legalAcceptance = useLegalStore((state) => state.legalAcceptance);
+  const termsContent = useLegalStore((state) => state.termsContent);
+  const isLoading = useLegalStore((state) => state.isLoadingContent);
+  const loadLegalContent = useLegalStore((state) => state.loadContent);
+  const hasLoadedContent = useLegalStore((state) => state.hasLoadedContent);
+
+  useEffect(() => {
+    if (!open || hasLoadedContent) {
+      return;
+    }
+    void loadLegalContent();
+  }, [open, hasLoadedContent, loadLegalContent]);
+
+  useEffect(() => {
+    if (open) {
+      setHasScrolledToBottom(false);
+    }
+  }, [open]);
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const element = e.currentTarget;

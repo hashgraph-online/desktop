@@ -6,7 +6,6 @@ import Typography from './Typography';
 import { useLegalStore } from '../../stores/legalStore';
 import { processMarkdown } from '../../utils/markdownProcessor';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PRIVACY_POLICY } from '../../constants/legal';
 
 interface PrivacyModalProps {
   open: boolean;
@@ -25,10 +24,24 @@ export const PrivacyModal: React.FC<PrivacyModalProps> = ({
   onDecline,
 }) => {
   const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
-  const { legalAcceptance } = useLegalStore();
-  
-  const privacyContent = PRIVACY_POLICY;
-  const isLoading = false;
+  const legalAcceptance = useLegalStore((state) => state.legalAcceptance);
+  const privacyContent = useLegalStore((state) => state.privacyContent);
+  const isLoading = useLegalStore((state) => state.isLoadingContent);
+  const loadLegalContent = useLegalStore((state) => state.loadContent);
+  const hasLoadedContent = useLegalStore((state) => state.hasLoadedContent);
+
+  useEffect(() => {
+    if (!open || hasLoadedContent) {
+      return;
+    }
+    void loadLegalContent();
+  }, [open, hasLoadedContent, loadLegalContent]);
+
+  useEffect(() => {
+    if (open) {
+      setHasScrolledToBottom(false);
+    }
+  }, [open]);
 
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {

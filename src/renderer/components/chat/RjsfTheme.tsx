@@ -150,7 +150,7 @@ const CustomInputWidget = (props: WidgetProps) => {
       onFocus={handleFocus}
       aria-label={props.schema?.title || props.placeholder || 'Text input'}
       aria-required={props.required}
-      className='w-full px-4 py-3 bg-white/20 dark:bg-white/10 backdrop-blur-sm border border-white/30 dark:border-white/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 focus:bg-white/30 dark:focus:bg-white/20 placeholder:text-white/80 text-white transition-all duration-300 ease-out disabled:opacity-50 disabled:cursor-not-allowed'
+      className='w-full px-4 py-3 bg-white/70 dark:bg-white/10 backdrop-blur-sm border border-gray-300 dark:border-white/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/60 dark:focus:ring-white/50 focus:border-blue-500 dark:focus:border-white/40 focus:bg-white dark:focus:bg-white/20 placeholder:text-gray-500 dark:placeholder:text-white/80 text-gray-900 dark:text-white transition-all duration-300 ease-out disabled:opacity-50 disabled:cursor-not-allowed'
     />
   );
 };
@@ -188,7 +188,7 @@ const CustomTextareaWidget = (props: WidgetProps) => {
       rows={4}
       aria-label={props.schema?.title || props.placeholder || 'Text area input'}
       aria-required={props.required}
-      className='w-full px-4 py-3 bg-white/20 dark:bg-white/10 backdrop-blur-sm border border-white/30 dark:border-white/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 focus:bg-white/30 dark:focus:bg-white/20 placeholder:text-white/80 text-white transition-all duration-300 ease-out disabled:opacity-50 disabled:cursor-not-allowed resize-none'
+      className='w-full px-4 py-3 bg-white/70 dark:bg-white/10 backdrop-blur-sm border border-gray-300 dark:border-white/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/60 dark:focus:ring-white/50 focus:border-blue-500 dark:focus:border-white/40 focus:bg-white dark:focus:bg-white/20 placeholder:text-gray-500 dark:placeholder:text-white/80 text-gray-900 dark:text-white transition-all duration-300 ease-out disabled:opacity-50 disabled:cursor-not-allowed resize-none'
     />
   );
 };
@@ -212,18 +212,18 @@ const CustomSelectWidget = (props: WidgetProps) => {
       disabled={props.disabled}
       onValueChange={handleValueChange}
     >
-      <SelectTrigger className='bg-white/20 dark:bg-white/10 border-white/30 dark:border-white/20 text-white data-[placeholder]:text-white/70'>
+      <SelectTrigger className='bg-white dark:bg-white/10 border border-gray-300 dark:border-white/20 text-gray-900 dark:text-white data-[placeholder]:text-gray-500 dark:data-[placeholder]:text-white/70'>
         <SelectValue
           placeholder={props.placeholder || 'Select an option'}
-          className='text-white'
+          className='text-gray-900 dark:text-white'
         />
       </SelectTrigger>
-      <SelectContent className='bg-gray-900/95 border-gray-700 text-white'>
+      <SelectContent className='bg-white border border-gray-200 text-gray-900 dark:bg-gray-900/95 dark:border-gray-700 dark:text-white'>
         {props.options.enumOptions?.map(({ value, label }) => (
           <SelectItem
             key={value}
             value={value}
-            className='text-white hover:bg-white/10 focus:bg-white/10 focus:text-white'
+            className='text-gray-900 dark:text-white data-[state=open]:bg-gray-100 dark:data-[state=open]:bg-white/10 hover:bg-gray-100 focus:bg-gray-100 dark:hover:bg-white/10 dark:focus:bg-white/10'
           >
             {label}
           </SelectItem>

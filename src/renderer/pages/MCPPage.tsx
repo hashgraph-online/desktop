@@ -27,14 +27,19 @@ import { MCPRegistry } from '../components/mcp/MCPRegistry';
 import { AddMCPServer } from '../components/mcp/AddMCPServer';
 import { MCPInfoPanel } from '../components/mcp/MCPInfoPanel';
 import { useMCPStore } from '../stores/mcpStore';
-import { MCPServerConfig, MCPServerFormData } from '../types/mcp';
+import {
+  MCPServerConfig,
+  MCPServerConfigType,
+  MCPServerFormData,
+  MCPServerType,
+} from '../types/mcp';
 import { cn } from '../lib/utils';
 
 interface MCPServerQuickInstall {
   name: string;
   template: {
-    type: string;
-    config: Record<string, unknown>;
+    type: MCPServerType;
+    config: MCPServerConfigType;
   };
   requirements?: string[];
 }
@@ -80,7 +85,14 @@ const MCPPage: React.FC = () => {
   );
   const [testingServerId, setTestingServerId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('servers');
-  const [serverTemplate, setServerTemplate] = useState<any>(null);
+  const [serverTemplate, setServerTemplate] = useState<
+    {
+      name: string;
+      type: MCPServerType;
+      config: MCPServerConfigType;
+      requirements?: string[];
+    } | null
+  >(null);
 
   const {
     servers,

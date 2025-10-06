@@ -420,7 +420,7 @@ const AcknowledgementsPage: React.FC = () => {
                           )}
                         >
                           <img
-                            src={daoLogos[member.logo] || getPublicAssetPath(`logos/${member.logo}`)}
+                            src={daoLogos[member.logo]}
                             alt={`${member.name} logo`}
                             className='w-full h-full object-contain'
                           />

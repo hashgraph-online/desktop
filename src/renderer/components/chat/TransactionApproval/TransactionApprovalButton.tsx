@@ -27,6 +27,7 @@ import {
 } from '../../../services/txExecution';
 import { TransactionApprovedDisplay } from './TransactionApprovedDisplay';
 import { isEqual } from 'lodash';
+import { enqueueHydration } from '../../../services/hydrationScheduler';
 
 interface TransactionApprovalButtonProps {
   scheduleId?: string;
@@ -70,6 +71,7 @@ export const TransactionApprovalButton: React.FC<
   initialApproved,
   initialExecuted,
   initialTransactionId,
+  entityContext: initialEntityContext,
 }) => {
   const [isApproving, setIsApproving] = useState(false);
   const [isApproved, setIsApproved] = useState(false);
@@ -133,6 +135,45 @@ export const TransactionApprovalButton: React.FC<
     return isAlreadyExecuted || isScheduleExpired || isExecuted;
   }, [isAlreadyExecuted, isScheduleExpired, isExecuted]);
 
+  const resolveEntityContext = useCallback(
+    (): { name?: string; description?: string } | undefined => {
+      const context: { name?: string; description?: string } = {
+        ...(initialEntityContext ?? {}),
+      };
+
+      if (!context.name) {
+        const details = transactionDetailsRef.current;
+        const derivedName =
+          (details as { tokenCreation?: { tokenName?: string } })?.tokenCreation
+            ?.tokenName ||
+          (
+            details as {
+              details?: { tokenCreation?: { tokenName?: string } };
+            }
+          )?.details?.tokenCreation?.tokenName;
+
+        if (derivedName) {
+          context.name = derivedName;
+        }
+      }
+
+      if (!context.description && description) {
+        context.description = description;
+      }
+
+      return Object.keys(context).length > 0 ? context : undefined;
+    }, [description, initialEntityContext]);
+
+  const scheduleHydrateExecutedTransaction = useCallback(
+    (transactionId: string, entityContext?: { name?: string; description?: string }) => {
+      enqueueHydration(transactionId, entityContext, {
+        session: () => useAgentStore.getState().currentSession?.id || undefined,
+        network,
+      });
+    },
+    [network]
+  );
+
   useEffect(() => {
     const getScheduleInfo = async (forceRefresh = false): Promise<void> => {
       if (shouldStopPolling() && !forceRefresh) {
@@ -149,20 +190,25 @@ export const TransactionApprovalButton: React.FC<
 
       try {
         const statusResult =
-          await window.electron.mirrorNode.getScheduledTransactionStatus(
+          await window?.desktop?.mirrorNode.getScheduledTransactionStatus?.(
             scheduleId!,
             network as 'mainnet' | 'testnet'
           );
 
         let executionStateChanged = false;
-        if (statusResult.success) {
+        if (statusResult?.success && statusResult.data) {
           const status = statusResult.data;
           if (status.executed && !isAlreadyExecuted) {
             executionStateChanged = true;
             setIsAlreadyExecuted(true);
-            setExecutedTimestamp(
-              status.executedDate?.toISOString() || 'executed'
-            );
+            const executedTs =
+              (typeof status.executedTimestamp === 'string' &&
+                status.executedTimestamp) ||
+              (typeof (status as Record<string, unknown>).executedDate ===
+              'string'
+                ? ((status as Record<string, unknown>).executedDate as string)
+                : undefined);
+            setExecutedTimestamp(executedTs ?? new Date().toISOString());
             if (intervalIdRef.current) {
               clearInterval(intervalIdRef.current);
               intervalIdRef.current = null;
@@ -170,12 +216,12 @@ export const TransactionApprovalButton: React.FC<
           }
         }
 
-        const result = await window.electron.mirrorNode.getScheduleInfo(
+        const result = await window?.desktop?.mirrorNode.getScheduleInfo(
           scheduleId!,
           network as 'mainnet' | 'testnet'
         );
 
-        if (!result.success) {
+        if (!result?.success) {
           const errorMessage = result.error || '';
           if (
             errorMessage.includes('INVALID_SCHEDULE_ID') ||
@@ -194,7 +240,7 @@ export const TransactionApprovalButton: React.FC<
           throw new Error(result.error || 'Failed to fetch schedule info');
         }
 
-        const scheduleInfo = result.data;
+        const scheduleInfo = result?.data;
 
         if (scheduleInfo && scheduleInfo.transaction_body) {
           let dataChanged = false;
@@ -255,8 +301,10 @@ export const TransactionApprovalButton: React.FC<
             dataChanged = true;
           }
 
-          if (scheduleInfo.expiration_time !== expirationTime) {
-            setExpirationTime(scheduleInfo.expiration_time);
+          const expirationValue =
+            scheduleInfo.expiration_time ?? scheduleInfo.expirationTime;
+          if (expirationValue !== expirationTime) {
+            setExpirationTime(expirationValue ?? null);
             dataChanged = true;
           }
 
@@ -296,8 +344,9 @@ export const TransactionApprovalButton: React.FC<
 
       setIsLoadingDetails(true);
       try {
-        const parsedTx =
-          await TransactionParser.parseTransactionBytes(transactionBytes);
+        const parsedTx = await TransactionParser.parseTransactionBytes(
+          transactionBytes
+        );
 
         const convertedTransfers = Array.isArray(parsedTx.transfers)
           ? parsedTx.transfers.map((transfer: any) => ({
@@ -446,13 +495,15 @@ export const TransactionApprovalButton: React.FC<
         } else {
           if (
             scheduleOp === 'delete' &&
-            typeof window.electron.deleteScheduledTransaction === 'function'
+            typeof window?.desktop?.deleteScheduledTransaction === 'function'
           ) {
-            result =
-              await window.electron.deleteScheduledTransaction(scheduleId);
+            result = await window?.desktop?.deleteScheduledTransaction(
+              scheduleId
+            );
           } else {
-            result =
-              await window.electron.executeScheduledTransaction(scheduleId);
+            result = await window?.desktop?.executeScheduledTransaction(
+              scheduleId
+            );
           }
         }
 
@@ -596,24 +647,6 @@ export const TransactionApprovalButton: React.FC<
             }
           } catch {}
 
-          try {
-            const parsed = await TransactionParser.parseTransactionBytes(
-              transactionBytes,
-              { includeRaw: false }
-            );
-            const txType = parsed.type || '';
-            if (!isLikelyPayerOnly(txType)) {
-              const msg = `This ${parsed.humanReadableType || txType} likely requires keys beyond the payer. Ask the agent to build bytes for your wallet or use the local path.`;
-              setError(msg);
-              addNotification({
-                type: 'warning',
-                title: 'Unsupported Transaction for Wallet',
-                message: msg,
-              });
-              return;
-            }
-          } catch {}
-
           setExecutionStatus('signing');
           const result = await executeFromBytes(transactionBytes);
           if (result.success) {
@@ -659,7 +692,9 @@ export const TransactionApprovalButton: React.FC<
               );
             }
 
-            await persistExecuted(messageId, txId);
+            const contextForHydration = resolveEntityContext();
+            scheduleHydrateExecutedTransaction(txId, contextForHydration);
+            await persistExecuted(messageId, txId, contextForHydration);
 
             if (messageId && onExecuted) {
               try {
@@ -702,20 +737,9 @@ export const TransactionApprovalButton: React.FC<
         await new Promise((resolve) => setTimeout(resolve, 500));
         setExecutionStatus('submitting');
 
-        const entityContext = {
-          description: description || '',
-          name:
-            (transactionDetails as { tokenCreation?: { tokenName?: string } })
-              ?.tokenCreation?.tokenName ||
-            (
-              transactionDetails as {
-                details?: { tokenCreation?: { tokenName?: string } };
-              }
-            )?.details?.tokenCreation?.tokenName ||
-            undefined,
-        };
+        const entityContext = resolveEntityContext();
 
-        const result = await window.electron.executeTransactionBytes(
+        const result = await window?.desktop?.executeTransactionBytes(
           transactionBytes,
           entityContext
         );
@@ -751,14 +775,17 @@ export const TransactionApprovalButton: React.FC<
             duration: 5000,
           });
 
-          if (transactionId) {
+          if (typeof transactionId === 'string' && transactionId.length > 0) {
             handleEnhancedTransactionSuccess(
               transactionId,
               transactionDetailsRef.current
             );
           }
 
-          await persistExecuted(messageId, transactionId);
+          if (typeof transactionId === 'string' && transactionId.length > 0) {
+            scheduleHydrateExecutedTransaction(transactionId, entityContext);
+          }
+          await persistExecuted(messageId, transactionId, entityContext);
 
           if (messageId && onExecuted) {
             try {
@@ -882,8 +909,13 @@ export const TransactionApprovalButton: React.FC<
         // Small delay to allow mirror node to index the transaction
         await new Promise((resolve) => setTimeout(resolve, 2000));
 
+        const mirrorNode = window?.desktop?.mirrorNode;
+        if (!mirrorNode?.getTransaction) {
+          throw new Error('Mirror node transaction lookup unavailable');
+        }
+
         const response = (await Promise.race([
-          window.electron.mirrorNode.getTransaction(
+          mirrorNode.getTransaction(
             formattedId,
             (network as 'mainnet' | 'testnet') || 'testnet'
           ),

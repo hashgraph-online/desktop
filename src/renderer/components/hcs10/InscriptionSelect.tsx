@@ -1,11 +1,12 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/input';
-import { Label } from '../ui/label';
 import Typography from '../ui/Typography';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { Upload, X, Image as ImageIcon, FileWarning } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { useInscriptionJobs, type InscriptionJob } from '../../hooks/useInscriptionJobs';
+import { InscriptionGalleryPanel } from './inscription-gallery';
 
 interface InscriptionSelectProps {
   onChange: (hcsUrl: string) => void;
@@ -35,6 +36,19 @@ export function InscriptionSelect({
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isExistingOpen, setIsExistingOpen] = useState(false);
+  const {
+    jobs: existingJobs,
+    loading: isLoadingExisting,
+    error: existingError,
+    hasLoaded: hasLoadedExisting,
+    loadJobs,
+  } = useInscriptionJobs();
+  const normalizedNetwork: 'mainnet' | 'testnet' =
+    network === 'mainnet' ? 'mainnet' : 'testnet';
+  const existingToggleLabel = isExistingOpen
+    ? 'Hide Existing Inscriptions'
+    : 'Load Existing Inscriptions';
 
   const MAX_FILE_SIZE = 5 * 1024 * 1024;
   const ACCEPTED_FORMATS = {
@@ -44,17 +58,47 @@ export function InscriptionSelect({
     'image/webp': ['.webp'],
   };
 
+  useEffect(() => {
+    if (isExistingOpen && !hasLoadedExisting) {
+      void loadJobs();
+    }
+  }, [isExistingOpen, hasLoadedExisting, loadJobs]);
+
+  const handleToggleExisting = useCallback(() => {
+    setIsExistingOpen((previous) => !previous);
+  }, []);
+
+  const handleRefreshExisting = useCallback(() => {
+    void loadJobs();
+  }, [loadJobs]);
+
+  const handleSelectExisting = useCallback(
+    (job: InscriptionJob) => {
+      const topicCandidate = job.topic || job.imageTopic;
+      if (!topicCandidate) {
+        return;
+      }
+      const normalized = topicCandidate.replace(/^hcs:\/\/(1\/)?/i, '').replace(/^1\//, '');
+      const formatted = `hcs://1/${normalized}`;
+      onChange(formatted);
+      setIsExistingOpen(false);
+    },
+    [onChange]
+  );
+
   /**
    * Handle manual topic ID submission
    */
   const handleManualTopicIdSubmit = useCallback(() => {
-    if (manualTopicId.trim()) {
-      const formattedUrl = manualTopicId.startsWith('hcs://')
-        ? manualTopicId
-        : `hcs://${manualTopicId}`;
-      onChange(formattedUrl);
-      setManualTopicId('');
+    const trimmed = manualTopicId.trim();
+    if (!trimmed) {
+      return;
     }
+    const formatted = trimmed.startsWith('hcs://')
+      ? trimmed
+      : `hcs://1/${trimmed.replace(/^1\//, '')}`;
+    onChange(formatted);
+    setManualTopicId('');
   }, [manualTopicId, onChange]);
 
   /**
@@ -167,6 +211,32 @@ export function InscriptionSelect({
           style={{ display: 'none' }}
         />
       </div>
+
+      <div className='flex gap-2'>
+        <Button
+          type='button'
+          variant='secondary'
+          onClick={handleToggleExisting}
+          className='flex items-center gap-2'
+          disabled={isLoadingExisting && !isExistingOpen}
+        >
+          {existingToggleLabel}
+        </Button>
+      </div>
+
+      {isExistingOpen ? (
+        <InscriptionGalleryPanel
+          title='Existing Inscriptions'
+          jobs={existingJobs}
+          isLoading={isLoadingExisting}
+          error={existingError}
+          hasLoaded={hasLoadedExisting}
+          network={normalizedNetwork}
+          onRefresh={handleRefreshExisting}
+          onSelect={handleSelectExisting}
+          className='mt-2 rounded-xl border border-border bg-card/50 p-4'
+        />
+      ) : null}
 
       {!formData && messageEnabled && (
         <Alert variant='destructive'>

@@ -1,18 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { format } from 'date-fns';
 import {
   FiServer,
   FiDatabase,
   FiGithub,
   FiHardDrive,
-  FiSettings,
   FiTrash2,
   FiEdit,
   FiRefreshCw,
   FiWifi,
   FiWifiOff,
   FiActivity,
-  FiTool,
   FiZap,
 } from 'react-icons/fi';
 import { Card } from '../ui/Card';
@@ -23,7 +21,6 @@ import { Switch } from '../ui/switch';
 import { cn } from '../../lib/utils';
 import { MCPServerCardProps, MCPServerType } from '../../types/mcp';
 import { useMCPStore } from '../../stores/mcpStore';
-import { createMCPError } from '../../utils/mcpErrors';
 import { MCPToolsModal } from './MCPToolsModal';
 
 const serverTypeIcons: Record<MCPServerType, React.ReactNode> = {
@@ -66,7 +63,6 @@ export const MCPServerCard: React.FC<MCPServerCardProps> = ({
 }) => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isToolsModalOpen, setIsToolsModalOpen] = useState(false);
-
 
   const handleTest = async () => {
     setIsRefreshing(true);

@@ -42,7 +42,8 @@ function getDisplayInfo(
   const name = session.name;
   const subtitle = isHcs ? `HCS-10: ${session.topicId}` : 'Personal Assistant';
   const isActive = currentSession ? currentSession.id === session.id : false;
-  const lastUsed = (session.lastMessageAt || session.updatedAt) as Date;
+  const lastTimestamp = session.lastMessageAt ?? session.updatedAt;
+  const lastUsed = lastTimestamp ? new Date(lastTimestamp) : null;
   return { name, subtitle, isHcs, isActive, lastUsed };
 }
 
@@ -147,10 +148,10 @@ export default function ChatHeader(props: ChatHeaderProps) {
                           .sort(
                             (a, b) =>
                               new Date(
-                                (b.lastMessageAt || b.updatedAt) as Date
+                                b.lastMessageAt ?? b.updatedAt ?? 0
                               ).getTime() -
                               new Date(
-                                (a.lastMessageAt || a.updatedAt) as Date
+                                a.lastMessageAt ?? a.updatedAt ?? 0
                               ).getTime()
                           );
                         if (groupSessions.length === 0) return null;
@@ -215,9 +216,9 @@ export default function ChatHeader(props: ChatHeaderProps) {
                                           className='text-gray-400 dark:text-gray-500 text-xs'
                                         >
                                           <FiClock className='w-3 h-3 inline mr-1' />
-                                          {new Date(
-                                            d.lastUsed
-                                          ).toLocaleDateString()}
+                                          {d.lastUsed
+                                            ? d.lastUsed.toLocaleDateString()
+                                            : '—'}
                                         </Typography>
                                       </div>
                                     </div>

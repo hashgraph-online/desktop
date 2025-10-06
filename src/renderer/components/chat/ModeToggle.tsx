@@ -35,7 +35,7 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({
   const { config } = useConfigStore();
   const { hasAcceptedAll } = useLegalStore();
 
-  const isAutonomousModeEnabled = config?.autonomousMode && hasAcceptedAll();
+  const isAutonomousModeEnabled = Boolean(config?.autonomousMode) && hasAcceptedAll();
   const isAutonomousMode = mode === 'autonomous';
 
   const handleToggle = () => {

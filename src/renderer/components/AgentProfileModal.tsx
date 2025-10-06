@@ -42,6 +42,7 @@ import { toast } from 'sonner';
 import { gradients } from '../lib/styles';
 import { useHRLImageUrl } from '../hooks/useHRLImageUrl';
 import { NetworkType } from '@hashgraphonline/standards-sdk';
+import { invokeCommand } from '../tauri/ipc';
 
 interface ProfileModalProps {
   agent: AgentProfile | null;
@@ -207,11 +208,14 @@ export const AgentProfileModal: React.FC<ProfileModalProps> = ({
 
     setIsLoading(true);
     try {
-      const result = await window.electron.invoke('hcs10:get-agent-profile', {
-        accountId: agentData.accountId,
-      });
+      const result = await invokeCommand<AgentProfile | null>(
+        'hcs10_get_agent_profile',
+        {
+          accountId: agentData.accountId,
+        }
+      );
 
-      if (result.success) {
+      if (result.success && result.data) {
         setProfileData(result.data);
       } else {
         toast.error('Failed to load full profile');

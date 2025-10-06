@@ -473,6 +473,7 @@ export class SchemaParser {
         ...constraints,
         ...renderConfig?.constraints
       },
+      options: Array.isArray(options) ? options : [],
       validation: {
         customMessages: {},
         ...renderConfig?.validation
@@ -480,7 +481,10 @@ export class SchemaParser {
       ...renderConfig
     };
 
-    if (options && (fieldType === 'select' || config.fieldType === 'select')) {
+    if (
+      Array.isArray(options) &&
+      (fieldType === 'select' || config.fieldType === 'select')
+    ) {
       config.options = options;
     }
 

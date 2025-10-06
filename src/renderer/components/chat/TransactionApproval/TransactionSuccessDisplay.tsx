@@ -59,7 +59,7 @@ export const TransactionSuccessDisplay: React.FC<TransactionSuccessDisplayProps>
                         network === 'mainnet'
                           ? `https://hashscan.io/testnet/transaction/${executedTransactionId}`
                           : `https://hashscan.io/transaction/${executedTransactionId}`
-                      window.electron.openExternal(explorerUrl);
+                      window?.desktop?.openExternal(explorerUrl);
                     }}
                     className='text-white underline hover:text-white/80 mt-1 inline-block'
                   >
@@ -94,6 +94,9 @@ export const TransactionSuccessDisplay: React.FC<TransactionSuccessDisplayProps>
           <div className='mt-4'>
             {(() => {
               const detailsToShow = enhancedTransactionDetails || transactionDetails;
+              if (!detailsToShow) {
+                return null;
+              }
               const entityId =
                 (detailsToShow.details as any)?.createdTokenId ||
                 (detailsToShow.details as any)?.entityId;
@@ -134,7 +137,7 @@ export const TransactionSuccessDisplay: React.FC<TransactionSuccessDisplayProps>
                   tokenTransfers={formattedTokenTransfers}
                   executedTransactionEntityId={entityId}
                   executedTransactionType={
-                    detailsToShow.type
+                    detailsToShow.type ?? ''
                   }
                   network={network}
                   hideHeader={true}

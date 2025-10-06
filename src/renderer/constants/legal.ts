@@ -6,5 +6,5 @@
 import termsContent from '/terms.md?raw';
 import privacyContent from '/privacy.md?raw';
 
-export const TERMS_OF_SERVICE = termsContent;
-export const PRIVACY_POLICY = privacyContent;
+export const DEFAULT_TERMS_OF_SERVICE = termsContent;
+export const DEFAULT_PRIVACY_POLICY = privacyContent;

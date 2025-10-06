@@ -1,25 +1,25 @@
-/**
- * Utility functions for handling asset paths in both development and production
- */
+import { convertFileSrc } from '@tauri-apps/api/core';
 
-/**
- * Get the correct path for public assets
- * In development, assets are served from the dev server
- * In production, they need to be imported as modules
- */
-export function getPublicAssetPath(path: string): string {
-  if (path.startsWith('/')) {
-    path = path.slice(1);
+const isConvertible = (): boolean => {
+  if (typeof window === 'undefined') {
+    return false;
   }
-  
-  const isDev = typeof process !== 'undefined' && process.env && process.env.NODE_ENV !== 'production';
-  if (isDev) {
-    return `/${path}`;
+  const internals = (window as typeof window & {
+    __TAURI_INTERNALS?: { convertFileSrc?: (path: string, protocol?: string) => string };
+  }).__TAURI_INTERNALS;
+  return typeof internals?.convertFileSrc === 'function';
+};
+
+export function getAssetUrl(assetPath: string): string {
+  if (!assetPath) {
+    return assetPath;
   }
-  
+  if (!isConvertible()) {
+    return assetPath;
+  }
   try {
-    return new URL(`/${path}`, import.meta.url).href;
-  } catch {
-    return `/${path}`;
+    return convertFileSrc(assetPath);
+  } catch (error) {
+    return assetPath;
   }
 }

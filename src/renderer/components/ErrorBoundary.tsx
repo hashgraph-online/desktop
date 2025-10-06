@@ -56,8 +56,8 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
                 this.setState({ hasError: false, error: undefined });
                 
                 setTimeout(() => {
-                  if (window.electron?.reloadApp) {
-                    window.electron.reloadApp();
+                  if (window.desktop?.reloadApp) {
+                    window?.desktop?.reloadApp();
                   } else {
                     window.location.reload();
                   }

@@ -47,7 +47,7 @@ export const HederaSettings: React.FC<HederaSettingsProps> = () => {
   const watchNetwork = watch('network')
 
   useEffect(() => {
-    window.electron.getEnvironmentConfig().then((envConfig: any) => {
+    window?.desktop?.getEnvironmentConfig?.()?.then((envConfig: any) => {
       const mainnetEnabled = envConfig.enableMainnet || false
       setIsMainnetEnabled(mainnetEnabled)
       

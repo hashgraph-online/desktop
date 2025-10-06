@@ -2,9 +2,9 @@ import { create } from 'zustand';
 import { configService } from '../services/configService';
 
 /**
- * Helper to wait for electron bridge to be available
+ * Helper to wait for desktop bridge to be available
  */
-const waitForElectronBridge = async (
+const waitForDesktopBridge = async (
   maxRetries = 20,
   retryDelay = 100
 ): Promise<boolean> => {
@@ -14,7 +14,7 @@ const waitForElectronBridge = async (
 
   const checkBridgePromise = async (): Promise<boolean> => {
     for (let i = 0; i < maxRetries; i++) {
-      if (window.electron && typeof window.electron.saveConfig === 'function') {
+      if (window.desktop && typeof window?.desktop?.saveConfig === 'function') {
         return true;
       }
       await new Promise((resolve) => setTimeout(resolve, retryDelay));
@@ -46,12 +46,19 @@ export interface AdvancedConfig {
   autoStart: boolean;
   logLevel: 'debug' | 'info' | 'warn' | 'error';
   operationalMode?: 'autonomous' | 'provideBytes' | 'returnBytes';
+  webBrowserPluginEnabled?: boolean;
 }
 
 export interface LegalAcceptanceConfig {
   termsAccepted: boolean;
   privacyAccepted: boolean;
   acceptedAt?: string;
+}
+
+interface WalletConnectionState {
+  isConnected: boolean;
+  accountId: string | null;
+  network: 'mainnet' | 'testnet' | null;
 }
 
 export interface AppConfig {
@@ -61,6 +68,7 @@ export interface AppConfig {
   advanced: AdvancedConfig;
   llmProvider: 'openai' | 'anthropic';
   autonomousMode: boolean;
+  operationalMode: 'autonomous' | 'provideBytes' | 'returnBytes';
   legalAcceptance: LegalAcceptanceConfig;
 }
 
@@ -68,6 +76,8 @@ export interface ConfigStore {
   config: AppConfig | null;
   isLoading: boolean;
   error: string | null;
+  hasLoadedInitialConfig: boolean;
+  walletConnection: WalletConnectionState;
   isConfigured: () => boolean;
 
   setHederaAccountId: (accountId: string) => void;
@@ -85,8 +95,14 @@ export interface ConfigStore {
   setTheme: (theme: 'light' | 'dark') => Promise<void>;
   setAutoStart: (autoStart: boolean) => void;
   setLogLevel: (logLevel: 'debug' | 'info' | 'warn' | 'error') => void;
-  setOperationalMode: (mode: 'autonomous' | 'provideBytes' | 'returnBytes') => void;
+  setWebBrowserPluginEnabled: (enabled: boolean) => void;
+  setOperationalMode: (
+    mode: 'autonomous' | 'provideBytes' | 'returnBytes'
+  ) => void;
   setAutonomousMode: (enabled: boolean) => void;
+  updateFromWallet: (
+    info: { accountId: string; network: 'mainnet' | 'testnet' } | null
+  ) => void;
 
   saveConfig: () => Promise<void>;
   loadConfig: () => Promise<void>;
@@ -111,7 +127,7 @@ const defaultConfig: AppConfig = {
   },
   openai: {
     apiKey: '',
-    model: 'gpt-4o',
+    model: 'gpt-5',
   },
   anthropic: {
     apiKey: '',
@@ -122,19 +138,47 @@ const defaultConfig: AppConfig = {
     autoStart: false,
     logLevel: 'info',
     operationalMode: 'provideBytes',
+    webBrowserPluginEnabled: true,
   },
   llmProvider: 'openai',
   autonomousMode: false,
+  operationalMode: 'provideBytes',
   legalAcceptance: {
     termsAccepted: false,
     privacyAccepted: false,
   },
 };
 
+const cloneConfig = (config: AppConfig): AppConfig => ({
+  ...config,
+  hedera: { ...config.hedera },
+  openai: { ...config.openai },
+  anthropic: { ...config.anthropic },
+  advanced: { ...config.advanced },
+  legalAcceptance: { ...config.legalAcceptance },
+});
+
+const persistToLocalStorage = (config: AppConfig): void => {
+  try {
+    localStorage.setItem('app-config', JSON.stringify(config));
+  } catch (_error) {}
+};
+
+const persistConfig = (config: AppConfig): void => {
+  persistToLocalStorage(config);
+  void configService.saveConfig(config);
+};
+
 export const useConfigStore = create<ConfigStore>((set, get) => ({
   config: defaultConfig,
   isLoading: false,
   error: null,
+  hasLoadedInitialConfig: false,
+  walletConnection: {
+    isConnected: false,
+    accountId: null,
+    network: null,
+  },
 
   isConfigured: () => {
     const state = get();
@@ -180,7 +224,12 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
         : null,
     })),
 
-  setOpenAIApiKey: (apiKey) =>
+  setOpenAIApiKey: (apiKey) => {
+    try {
+      console.debug('[ConfigStore] setOpenAIApiKey()', {
+        length: apiKey?.length,
+      });
+    } catch {}
     set((state) => ({
       config: state.config
         ? {
@@ -188,9 +237,15 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
             openai: { ...state.config.openai, apiKey },
           }
         : null,
-    })),
+    }));
+    const state = get();
+    if (state.config && state.hasLoadedInitialConfig) {
+      const snapshot = cloneConfig(state.config);
+      persistConfig(snapshot);
+    }
+  },
 
-  setOpenAIModel: (model) =>
+  setOpenAIModel: (model) => {
     set((state) => ({
       config: state.config
         ? {
@@ -198,9 +253,23 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
             openai: { ...state.config.openai, model },
           }
         : null,
-    })),
+    }));
+    const state = get();
+    if (
+      state.config &&
+      state.isLLMConfigValid() &&
+      state.hasLoadedInitialConfig
+    ) {
+      persistConfig(cloneConfig(state.config));
+    }
+  },
 
-  setAnthropicApiKey: (apiKey) =>
+  setAnthropicApiKey: (apiKey) => {
+    try {
+      console.debug('[ConfigStore] setAnthropicApiKey()', {
+        length: apiKey?.length,
+      });
+    } catch {}
     set((state) => ({
       config: state.config
         ? {
@@ -208,9 +277,15 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
             anthropic: { ...state.config.anthropic, apiKey },
           }
         : null,
-    })),
+    }));
+    const state = get();
+    if (state.config && state.hasLoadedInitialConfig) {
+      const snapshot = cloneConfig(state.config);
+      persistConfig(snapshot);
+    }
+  },
 
-  setAnthropicModel: (model) =>
+  setAnthropicModel: (model) => {
     set((state) => ({
       config: state.config
         ? {
@@ -218,7 +293,16 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
             anthropic: { ...state.config.anthropic, model },
           }
         : null,
-    })),
+    }));
+    const state = get();
+    if (
+      state.config &&
+      state.isLLMConfigValid() &&
+      state.hasLoadedInitialConfig
+    ) {
+      persistConfig(cloneConfig(state.config));
+    }
+  },
 
   setLLMProvider: (provider) =>
     set((state) => ({
@@ -242,8 +326,7 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
 
     try {
       await configService.applyTheme(theme);
-    } catch (_error) {
-    }
+    } catch (_error) {}
   },
 
   setAutoStart: (autoStart) => {
@@ -255,6 +338,10 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
           }
         : null,
     }));
+
+    try {
+      void configService.setAutoStart(autoStart);
+    } catch (_error) {}
   },
 
   setLogLevel: (logLevel) => {
@@ -266,6 +353,29 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
           }
         : null,
     }));
+
+    try {
+      void configService.setLogLevel(logLevel);
+    } catch (_error) {}
+  },
+
+  setWebBrowserPluginEnabled: (enabled) => {
+    set((state) => ({
+      config: state.config
+        ? {
+            ...state.config,
+            advanced: {
+              ...state.config.advanced,
+              webBrowserPluginEnabled: enabled,
+            },
+          }
+        : null,
+    }));
+
+    const state = get();
+    if (state.config && state.hasLoadedInitialConfig) {
+      persistConfig(cloneConfig(state.config));
+    }
   },
 
   setOperationalMode: (mode) =>
@@ -288,37 +398,94 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
         : null,
     })),
 
+  updateFromWallet: (info) => {
+    const previous = get();
+    const connection: WalletConnectionState = info
+      ? {
+          isConnected: true,
+          accountId: info.accountId,
+          network: info.network,
+        }
+      : {
+          isConnected: false,
+          accountId: null,
+          network: null,
+        };
+
+    let nextConfig = previous.config;
+
+    if (info && info.accountId) {
+      const base = nextConfig ?? cloneConfig(defaultConfig);
+      if (
+        base.hedera.accountId !== info.accountId ||
+        base.hedera.network !== info.network
+      ) {
+        nextConfig = {
+          ...base,
+          hedera: {
+            ...base.hedera,
+            accountId: info.accountId,
+            network: info.network,
+          },
+        };
+      } else if (nextConfig === null) {
+        nextConfig = base;
+      }
+    }
+
+    set({
+      walletConnection: connection,
+      config: nextConfig ?? null,
+    });
+
+    if (!info) {
+      return;
+    }
+
+    const state = get();
+    if (!state.config || !state.isLLMConfigValid()) {
+      return;
+    }
+
+    persistConfig(cloneConfig(state.config));
+  },
+
   saveConfig: async () => {
     const { config } = get();
     if (!config) {
       throw new Error('No configuration to save');
     }
 
+    try {
+      console.debug('[ConfigStore] saveConfig()', {
+        openaiKeyLength: config.openai.apiKey.length,
+        anthropicKeyLength: config.anthropic.apiKey.length,
+        hasLoadedInitialConfig: get().hasLoadedInitialConfig,
+      });
+    } catch {}
+
     set({ isLoading: true, error: null });
 
     try {
-      const isAvailable = await waitForElectronBridge();
+      const isAvailable = await waitForDesktopBridge();
       if (!isAvailable) {
         const errorMsg = 'Unable to save settings - Electron API not available';
-        set({ 
+        set({
           isLoading: false,
-          error: errorMsg 
+          error: errorMsg,
         });
-        throw new Error(errorMsg);
+        return;
       }
 
-      await window.electron.saveConfig(
-        config as unknown as Record<string, unknown>
-      );
-      
+      await configService.saveConfig(config);
+
       localStorage.setItem('app-config', JSON.stringify(config));
-      
+
       set({ isLoading: false, error: null });
     } catch (error) {
-      const errorMessage = error instanceof Error
-        ? error.message
-        : 'Failed to save configuration';
-      
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to save configuration';
+
       set({
         isLoading: false,
         error: errorMessage,
@@ -336,33 +503,55 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
 
     try {
       const loadConfigWithTimeout = async (): Promise<void> => {
-        const isAvailable = await waitForElectronBridge();
+        const isAvailable = await waitForDesktopBridge();
         if (!isAvailable) {
-          set({ config: defaultConfig, isLoading: false });
+          set({
+            config: defaultConfig,
+            isLoading: false,
+            hasLoadedInitialConfig: true,
+          });
           return;
         }
 
         const [loadedConfig, envConfig] = await Promise.all([
-          window.electron.loadConfig(),
-          window.electron.getEnvironmentConfig(),
+          configService.loadConfig(),
+          window?.desktop?.getEnvironmentConfig?.(),
         ]);
 
         let finalConfig = defaultConfig;
 
-        if (loadedConfig) {
-          const mode = (
-            loadedConfig.operationalMode ||
-            loadedConfig.advanced?.operationalMode ||
-            'provideBytes'
-          ).replace('returnBytes', 'provideBytes');
+        const resolvedConfig = loadedConfig ?? null;
+
+        if (resolvedConfig) {
+          const rawMode =
+            resolvedConfig.operationalMode ??
+            resolvedConfig.advanced?.operationalMode ??
+            'provideBytes';
+
+          let normalizedMode: 'autonomous' | 'provideBytes' | 'returnBytes' =
+            'provideBytes';
+
+          if (rawMode === 'autonomous') {
+            normalizedMode = 'autonomous';
+          } else if (rawMode === 'returnBytes') {
+            normalizedMode = 'returnBytes';
+          } else if (rawMode === 'provideBytes') {
+            normalizedMode = 'provideBytes';
+          }
+
+          const effectiveMode: 'autonomous' | 'provideBytes' | 'returnBytes' =
+            normalizedMode === 'returnBytes'
+              ? 'provideBytes'
+              : normalizedMode;
 
           finalConfig = {
             ...defaultConfig,
-            ...loadedConfig,
+            ...resolvedConfig,
+            operationalMode: effectiveMode,
             advanced: {
               ...defaultConfig.advanced,
-              ...loadedConfig.advanced,
-              operationalMode: mode,
+              ...resolvedConfig.advanced,
+              operationalMode: effectiveMode,
             },
           };
         }
@@ -391,13 +580,16 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
           }
         }
 
-        set({ config: finalConfig, isLoading: false });
+        set({
+          config: finalConfig,
+          isLoading: false,
+          hasLoadedInitialConfig: true,
+        });
         localStorage.setItem('app-config', JSON.stringify(finalConfig));
 
         try {
           await configService.applyTheme(finalConfig.advanced.theme);
-        } catch {
-        }
+        } catch {}
       };
 
       const timeoutPromise = new Promise<void>((_, reject) => {
@@ -405,11 +597,11 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
       });
 
       await Promise.race([loadConfigWithTimeout(), timeoutPromise]);
-      
     } catch (error) {
       set({
         config: defaultConfig,
         isLoading: false,
+        hasLoadedInitialConfig: true,
         error:
           error instanceof Error
             ? error.message
@@ -417,7 +609,7 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
       });
     } finally {
       clearTimeout(emergencyTimeout);
-      
+
       const currentState = get();
       if (currentState.isLoading) {
         set({ isLoading: false });
@@ -432,13 +624,13 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
       return { success: false, error: 'Hedera configuration not found' };
     }
 
-    const isAvailable = await waitForElectronBridge();
+    const isAvailable = await waitForDesktopBridge();
     if (!isAvailable) {
       return { success: false, error: 'Electron API not available' };
     }
 
     try {
-      const result = await window.electron.testHederaConnection({
+      const result = await window?.desktop?.testHederaConnection({
         accountId: config.hedera.accountId,
         privateKey: config.hedera.privateKey,
         network: config.hedera.network,
@@ -460,13 +652,13 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
       return { success: false, error: 'OpenAI configuration not found' };
     }
 
-    const isAvailable = await waitForElectronBridge();
+    const isAvailable = await waitForDesktopBridge();
     if (!isAvailable) {
       return { success: false, error: 'Electron API not available' };
     }
 
     try {
-      const result = await window.electron.testOpenAIConnection({
+      const result = await window?.desktop?.testOpenAIConnection({
         apiKey: config.openai.apiKey,
         model: config.openai.model,
       });
@@ -487,13 +679,13 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
       return { success: false, error: 'Anthropic configuration not found' };
     }
 
-    const isAvailable = await waitForElectronBridge();
+    const isAvailable = await waitForDesktopBridge();
     if (!isAvailable) {
       return { success: false, error: 'Electron API not available' };
     }
 
     try {
-      const result = await window.electron.testAnthropicConnection({
+      const result = await window?.desktop?.testAnthropicConnection({
         apiKey: config.anthropic.apiKey,
         model: config.anthropic.model,
       });
@@ -508,19 +700,26 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
   },
 
   isHederaConfigValid: () => {
-    const { config } = get();
+    const { config, walletConnection } = get();
     if (!config || !config.hedera) {
       return false;
     }
 
-    const hasAccountId = !!config.hedera.accountId;
-    const hasPrivateKey = !!config.hedera.privateKey;
-    const validAccountId = isValidAccountId(config.hedera.accountId);
-    const validPrivateKey = isValidPrivateKey(config.hedera.privateKey);
+    const accountId = config.hedera.accountId.trim();
+    const privateKey = config.hedera.privateKey.trim();
+    const accountValid = Boolean(accountId) && isValidAccountId(accountId);
+    const privateKeyValid =
+      Boolean(privateKey) && isValidPrivateKey(privateKey);
 
-    const result =
-      hasAccountId && hasPrivateKey && validAccountId && validPrivateKey;
-    return result;
+    if (accountValid && privateKeyValid) {
+      return true;
+    }
+
+    if (walletConnection.isConnected && accountValid) {
+      return Boolean(walletConnection.network);
+    }
+
+    return false;
   },
 
   isOpenAIConfigValid: () => {

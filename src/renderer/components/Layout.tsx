@@ -1,17 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from './navigation/Sidebar';
-import UserProfileImage from './ui/UserProfileImage';
 import { FiMoon, FiSun } from 'react-icons/fi';
 import { cn } from '../lib/utils';
 import { useConfigStore } from '../stores/configStore';
-import { fetchUserProfile as fetchProfileViaFactory } from '../services/hcs10ClientFactory';
-import { useWalletStore } from '../stores/walletStore';
-import type { UserProfile } from '../types/userProfile';
+import ProfileButton from './ui/ProfileButton';
 
 interface LayoutProps {
   children: React.ReactNode;
+  hideSidebar?: boolean;
 }
 
 const ThemeToggle: React.FC = () => {
@@ -57,81 +55,25 @@ const ThemeToggle: React.FC = () => {
   );
 };
 
-const ProfileButton: React.FC = () => {
+const Layout: React.FC<LayoutProps> = ({ children, hideSidebar = false }) => {
   const navigate = useNavigate();
-  const { config } = useConfigStore();
-  const wallet = useWalletStore();
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
 
-  useEffect(() => {
-    const fetchUserProfile = async () => {
-      const effectiveAccountId = wallet.isConnected ? wallet.accountId : config?.hedera?.accountId;
-      const effectiveNetwork = wallet.isConnected ? wallet.network : (config?.hedera?.network as ('mainnet'|'testnet'|undefined));
-      if (effectiveAccountId && effectiveNetwork && !isLoadingProfile) {
-        setIsLoadingProfile(true);
-        try {
-          const resp = await fetchProfileViaFactory(
-            effectiveAccountId as string,
-            effectiveNetwork as any,
-            {
-              walletConnected: wallet.isConnected,
-              operatorId: config?.hedera?.accountId,
-              privateKey: config?.hedera?.privateKey,
-            }
-          );
-          if (resp.success) {
-            setUserProfile(resp.profile as unknown as UserProfile);
-          } else if (wallet.isConnected) {
-            setUserProfile({ display_name: 'Wallet Account' } as UserProfile);
-          }
-        } catch (error) {
-        } finally {
-          setIsLoadingProfile(false);
-        }
-      }
-    };
-
-    fetchUserProfile();
-  }, [wallet.isConnected, wallet.accountId, wallet.network, config?.hedera?.accountId, config?.hedera?.network]);
-
-  return (
-    <motion.button
-      onClick={() => navigate('/hcs10-profile')}
-      whileHover={{ scale: 1.1 }}
-      whileTap={{ scale: 0.95 }}
-      className={cn(
-        'ml-3 p-2 rounded-xl transition-all duration-200',
-        'bg-gradient-to-r from-[#a679f0]/10 to-[#5599fe]/10 hover:from-[#a679f0]/20 hover:to-[#5599fe]/20',
-        'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white',
-        'border border-gray-200/50 dark:border-white/10'
-      )}
-      aria-label='View profile'
-      title='My Profile'
-    >
-      <UserProfileImage
-        profileImage={userProfile?.profileImage}
-        displayName={userProfile?.display_name}
-        alias={userProfile?.alias}
-        network={wallet.isConnected ? wallet.network : config?.hedera?.network}
-        size='sm'
-      />
-    </motion.button>
-  );
-};
-
-const Layout: React.FC<LayoutProps> = ({ children }) => {
   return (
     <div className='flex h-screen bg-gray-50 dark:bg-[#0a0a0a]'>
-      <Sidebar />
+      {!hideSidebar && <Sidebar />}
 
       <div className='flex-1 flex flex-col overflow-hidden'>
-        <header className='h-16 bg-white/80 dark:bg-black/40 backdrop-blur-lg border-b border-gray-200/50 dark:border-white/[0.06] flex items-center justify-end px-6 relative overflow-hidden'>
-          {/* Static gradient line */}
-          <div className='absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#a679f0] via-[#5599fe] to-[#48df7b]' />
+        <header className='flex h-16 items-center justify-between px-6 border-b border-gray-200/60 bg-white/90 dark:border-white/10 dark:bg-black/30 backdrop-blur-xl'>
+          <button
+            type='button'
+            onClick={() => navigate('/')}
+            className='text-sm font-semibold tracking-wide text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-200 dark:hover:text-white'
+          >
+            Hashgraph Online
+          </button>
 
           <div className='flex items-center'>
-            <ProfileButton />
+            <ProfileButton className='ml-0' />
             <ThemeToggle />
           </div>
         </header>

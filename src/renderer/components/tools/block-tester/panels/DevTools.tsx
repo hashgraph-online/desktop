@@ -127,7 +127,7 @@ const DevTools: React.FC<DevToolsProps> = ({ className }) => {
 
       if (
         typeof window !== 'undefined' &&
-        (window as any).electronAPI?.showSaveDialog
+        (window as any).desktopAPI?.showSaveDialog
       ) {
         const filters = {
           json: [{ name: 'JSON Files', extensions: ['json'] }],
@@ -135,20 +135,20 @@ const DevTools: React.FC<DevToolsProps> = ({ className }) => {
           'hcs-1': [{ name: 'HCS-1 Files', extensions: ['json'] }],
         };
 
-        const result = await (window as any).electronAPI.showSaveDialog({
+        const result = await (window as any).desktopAPI.showSaveDialog({
           filters: filters[format],
           defaultPath: `${currentBlock.name || 'block'}.${format === 'hcs-1' ? 'hcs1.json' : format}`,
         });
 
         if (!result.canceled && result.filePath) {
           const exportedContent = exportBlock(format);
-          await (window as any).electronAPI.writeFile(
+          await (window as any).desktopAPI.writeFile(
             result.filePath,
             exportedContent
           );
 
-          if ((window as any).electronAPI?.showNotification) {
-            (window as any).electronAPI.showNotification({
+          if ((window as any).desktopAPI?.showNotification) {
+            (window as any).desktopAPI.showNotification({
               type: 'success',
               title: 'Export Successful',
               message: `Block exported to ${result.filePath}`,
@@ -187,9 +187,9 @@ const DevTools: React.FC<DevToolsProps> = ({ className }) => {
 
       if (
         typeof window !== 'undefined' &&
-        (window as any).electronAPI?.showOpenDialog
+        (window as any).desktopAPI?.showOpenDialog
       ) {
-        const result = await (window as any).electronAPI.showOpenDialog({
+        const result = await (window as any).desktopAPI.showOpenDialog({
           filters: [
             { name: 'JSON Files', extensions: ['json'] },
             { name: 'All Files', extensions: ['*'] },
@@ -198,13 +198,13 @@ const DevTools: React.FC<DevToolsProps> = ({ className }) => {
         });
 
         if (!result.canceled && result.filePaths.length > 0) {
-          const fileContent = await (window as any).electronAPI.readFile(
+          const fileContent = await (window as any).desktopAPI.readFile(
             result.filePaths[0]
           );
           importBlock(fileContent);
 
-          if ((window as any).electronAPI?.showNotification) {
-            (window as any).electronAPI.showNotification({
+          if ((window as any).desktopAPI?.showNotification) {
+            (window as any).desktopAPI.showNotification({
               type: 'success',
               title: 'Import Successful',
               message: 'Block imported successfully',

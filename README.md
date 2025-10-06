@@ -1,6 +1,6 @@
 # Hashgraph Online Desktop App
 
-A modern desktop application for the Hashgraph Online Conversational Agent, built with Electron, React, and TypeScript.
+A modern desktop application for the Hashgraph Online Conversational Agent, built with Tauri, React, and TypeScript.
 
 ## 🚀 Quick Start
 
@@ -17,7 +17,7 @@ This is an alpha version. By using this software, you acknowledge:
 
 ### Prerequisites
 
-- **Node.js** 18+ (20+ recommended)
+- **Node.js** 23.x (v23 required)
 - **pnpm** 8+ (auto-installed by setup script if missing)
 - **Git**
 
@@ -96,29 +96,20 @@ The app requires terms of service and privacy policy files:
 ### Start Development Server
 
 ```bash
-pnpm dev         # Starts Electron app in dev mode (RECOMMENDED)
+pnpm dev         # Starts Tauri app in dev mode (RECOMMENDED)
 # or
 pnpm start       # Same as above
-
-pnpm dev:log     # Starts Electron app with comprehensive logging
 ```
 
 **Development Mode Features:**
 
-- ✅ Auto-opens Electron window
+- ✅ Auto-opens Tauri window
 - ✅ Runs on http://localhost:5173 (Vite dev server)
 - ✅ Hot module replacement enabled
 - ✅ DevTools available for debugging
 - ✅ Auto-restart on code changes
+- ✅ TypeScript bridge auto-compiles on changes
 - ✅ All dependencies available (including local file dependencies)
-
-**Logging Mode Features (`pnpm dev:log`):**
-
-- ✅ All development mode features above
-- ✅ Runs on http://localhost:5174 (different port to avoid conflicts)
-- ✅ Comprehensive logging to `dev.log` file
-- ✅ Can run alongside regular dev server
-- ✅ Timestamps and formatted log output for debugging
 
 ### Other Development Commands
 
@@ -268,58 +259,55 @@ set ENABLE_MAINNET=true && pnpm build
 | **Missing legal files error**                                                 | Run `./setup.sh --legal` or `node scripts/setup-legal.js`                                                                                                                                                                                                                                                                                                              |
 | **Build fails on macOS**                                                      | Install Xcode tools: `xcode-select --install`<br>Clear cache: `rm -rf out/ .vite/`                                                                                                                                                                                                                                                                                     |
 | **pnpm not found**                                                            | Run `npm install -g pnpm` or use setup script                                                                                                                                                                                                                                                                                                                          |
-| **Electron fails to start**                                                   | Clear and reinstall: `rm -rf node_modules && pnpm install`                                                                                                                                                                                                                                                                                                             |
+| **Tauri fails to start**                                                      | Clear and reinstall: `rm -rf node_modules && pnpm install`                                                                                                                                                                                                                                                                                                             |
 | **Port 5173 in use**                                                          | Kill process: `lsof -ti:5173 \| xargs kill`                                                                                                                                                                                                                                                                                                                            |
-| **Port 5174 in use (dev:log)**                                                | Kill process: `lsof -ti:5174 \| xargs kill`                                                                                                                                                                                                                                                                                                                            |
-| **Packaged app error: `Cannot find module '@hashgraphonline/standards-sdk'`** | This happens if the SDK was externalized from the main bundle. Fix: in `vite.main.config.ts`, do not list `@hashgraphonline/*` under `rollupOptions.external` so Vite bundles the module. Ensure it’s in `dependencies` (not `devDependencies`). Rebuild with `pnpm make`. See electron-vite docs: [Troubleshooting](https://electron-vite.org/guide/troubleshooting). |
+| **Packaged app error: `Cannot find module '@hashgraphonline/standards-sdk'`** | Ensure all `@hashgraphonline/*` packages are in `dependencies` (not `devDependencies`). Rebuild with `pnpm run tauri:build`. |
 
 ### Notes on native modules (e.g., better-sqlite3)
 
-- Native addons must be unpacked from ASAR. We configure:
-  - `forge.config.ts` → `packagerConfig.asar = { unpack: '**/*.node' }`
-- Reference: [Electron: Using native Node modules](https://www.electronjs.org/de/docs/latest/tutorial/using-native-node-modules)
+- Native modules are automatically handled by Tauri
+- No special configuration needed for `.node` files
 
 ## 📁 Project Structure
 
 ```
-app/
+desktop-tauri/
 ├── src/
-│   ├── main/              # Electron main process
-│   ├── preload/           # Preload scripts
-│   └── renderer/          # React application
-│       ├── components/    # UI components
-│       ├── pages/         # App pages
-│       └── store/         # State management
+│   ├── components/        # React components
+│   ├── pages/             # Application pages
+│   ├── store/             # State management
+│   └── lib/               # Utilities
 │
-├── scripts/
-│   ├── setup-legal.js     # Legal files setup (Node.js)
-│   └── prepare-icons.js   # Icon generation script
+├── src-tauri/
+│   ├── bridge/            # TypeScript bridge code
+│   ├── resources/         # Compiled bridge output
+│   ├── src/               # Rust backend code
+│   └── tauri.conf.json    # Tauri configuration
 │
-├── setup.sh               # Automated setup script (Bash)
-├── terms.md.example       # Terms template
-├── privacy.md.example     # Privacy template
-├── package.json           # Project configuration
-└── forge.config.ts        # Electron Forge config
+├── public/                # Static assets
+│   ├── terms.md           # Terms of service
+│   └── privacy.md         # Privacy policy
+│
+├── setup.sh               # Automated setup script
+└── package.json           # Project configuration
 ```
 
 ## 🔧 Available Scripts
 
-| Script            | Description                            |
-| ----------------- | -------------------------------------- |
-| `pnpm dev`        | Start development server (recommended) |
-| `pnpm dev:log`    | Start development server with logging (port 5174) |
-| `pnpm start`      | Alias for dev                          |
-| `pnpm test`       | Run tests                              |
-| `pnpm typecheck`  | Check TypeScript types                 |
-| `pnpm storybook`  | Launch Storybook                       |
-| `pnpm build`      | Build application (for distribution)   |
-| `pnpm dist:mac`   | Build macOS distribution               |
-| `pnpm dist:win`   | Build Windows distribution             |
-| `pnpm dist:linux` | Build Linux distribution               |
+| Script              | Description                              |
+| ------------------- | ---------------------------------------- |
+| `pnpm dev`          | Start Tauri development server           |
+| `pnpm start`        | Alias for dev                            |
+| `pnpm test`         | Run tests                                |
+| `pnpm typecheck`    | Check TypeScript types                   |
+| `pnpm build`        | Build Vite frontend                      |
+| `pnpm build:bridge` | Build TypeScript bridge                  |
+| `pnpm tauri:build`  | Build Tauri app for current platform     |
 
 ## 🏗️ Built With
 
-- [Electron](https://electronjs.org) - Cross-platform desktop framework
+- [Tauri](https://tauri.app) - Cross-platform desktop framework
+- [Rust](https://www.rust-lang.org) - Backend runtime
 - [React](https://reactjs.org) - UI library
 - [Vite](https://vitejs.dev) - Build tool & dev server
 - [TypeScript](https://www.typescriptlang.org) - Type safety

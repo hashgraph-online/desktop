@@ -22,6 +22,7 @@ import { cn } from '../../lib/utils';
 import { useHRLImageUrl } from '../../hooks/useHRLImageUrl';
 import { NetworkType } from '@hashgraphonline/standards-sdk';
 import ConnectionConfirmDialog from '../shared/ConnectionConfirmDialog';
+import { invokeCommand } from '../../tauri/ipc';
 
 interface AgentProfile {
   accountId: string;
@@ -121,17 +122,27 @@ export const AgentSelectorModal: React.FC<AgentSelectorModalProps> = ({
     setError(null);
 
     try {
-      const result = await window.electron.invoke('hcs10:discover-agents', {
-        search: searchTerm,
-        network: currentNetwork,
-        page: currentPage,
-        limit: pageSize,
-        sortBy,
-        filters,
-      });
+      const result = await invokeCommand<{ agents?: AgentProfile[] }>(
+        'hcs10_discover_agents',
+        {
+          search: searchTerm,
+          network: currentNetwork,
+          page: currentPage,
+          limit: pageSize,
+          sortBy,
+          filters,
+        }
+      );
 
       if (result.success) {
-        setAgents(result.agents || []);
+        const discovered = Array.isArray(result.agents)
+          ? result.agents
+          : Array.isArray(result.data?.agents)
+            ? result.data?.agents ?? []
+            : Array.isArray(result.data as unknown as AgentProfile[])
+              ? (result.data as unknown as AgentProfile[])
+              : [];
+        setAgents(discovered);
       } else {
         setError(result.error || 'Failed to load agents');
       }

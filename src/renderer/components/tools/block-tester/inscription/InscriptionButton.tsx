@@ -29,8 +29,8 @@ const InscriptionButton: React.FC<InscriptionButtonProps> = ({
     return (
       isValid &&
       block.name.trim() !== '' &&
-      block.description.trim() !== '' &&
-      template.trim() !== ''
+      (block.description || '').trim() !== '' &&
+      (template || '').trim() !== ''
     );
   }, [block, isValid, template]);
 

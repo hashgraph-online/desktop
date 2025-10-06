@@ -29,7 +29,7 @@ export const WalletSettings: React.FC<WalletSettingsProps> = () => {
   const [projectId, setProjectId] = useState<string>('');
   useEffect(() => {
     let mounted = true;
-    window.electron
+    window.desktop
       .getEnvironmentConfig()
       .then((envCfg: any) => {
         if (!mounted) return;

@@ -1,4 +1,9 @@
 import { create } from 'zustand';
+import type { AppConfig } from './configStore';
+import {
+  DEFAULT_PRIVACY_POLICY,
+  DEFAULT_TERMS_OF_SERVICE,
+} from '../constants/legal';
 
 export interface LegalAcceptance {
   termsAccepted: boolean;
@@ -9,6 +14,12 @@ export interface LegalAcceptance {
 
 export interface LegalStore {
   legalAcceptance: LegalAcceptance;
+  termsContent: string;
+  privacyContent: string;
+  termsSource?: string;
+  privacySource?: string;
+  isLoadingContent: boolean;
+  hasLoadedContent: boolean;
   hasAcceptedAll: () => boolean;
   acceptTerms: () => void;
   acceptPrivacy: () => void;
@@ -16,6 +27,7 @@ export interface LegalStore {
   reset: () => void;
   loadFromStorage: () => Promise<void>;
   saveToStorage: () => Promise<void>;
+  loadContent: () => Promise<void>;
 }
 
 const defaultLegalAcceptance: LegalAcceptance = {
@@ -27,6 +39,12 @@ const STORAGE_KEY = 'legal-acceptance';
 
 export const useLegalStore = create<LegalStore>((set, get) => ({
   legalAcceptance: defaultLegalAcceptance,
+  termsContent: DEFAULT_TERMS_OF_SERVICE,
+  privacyContent: DEFAULT_PRIVACY_POLICY,
+  termsSource: 'bundle',
+  privacySource: 'bundle',
+  isLoadingContent: false,
+  hasLoadedContent: false,
 
   hasAcceptedAll: () => {
     const { legalAcceptance } = get();
@@ -73,59 +91,106 @@ export const useLegalStore = create<LegalStore>((set, get) => ({
   reset: async () => {
     set({ legalAcceptance: defaultLegalAcceptance });
     localStorage.removeItem(STORAGE_KEY);
-    
-    if (window.electron && typeof window.electron.saveConfig === 'function') {
+
+    if (window.desktop && typeof window?.desktop?.saveConfig === 'function') {
       try {
-        const config = await window.electron.loadConfig();
-        if (config && config.success) {
-          const updatedConfig = {
-            ...config.config,
-            legalAcceptance: defaultLegalAcceptance
+        const config = await window.desktop.loadConfig();
+        if (config) {
+          const updatedConfig: AppConfig = {
+            ...config,
+            legalAcceptance: defaultLegalAcceptance,
           };
-          await window.electron.saveConfig(updatedConfig as unknown as Record<string, unknown>);
+          await window.desktop.saveConfig(updatedConfig as AppConfig);
         }
-      } catch (_error) {
-      }
+      } catch (_error) {}
     }
   },
 
   loadFromStorage: async () => {
     try {
-      if (window.electron && typeof window.electron.loadConfig === 'function') {
-        const result = await window.electron.loadConfig();
-        if (result && result.success && result.config?.legalAcceptance) {
-          set({ legalAcceptance: result.config.legalAcceptance });
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(result.config.legalAcceptance));
+      if (window.desktop && typeof window?.desktop?.loadConfig === 'function') {
+        const result = await window.desktop.loadConfig();
+        if (result?.legalAcceptance) {
+          set({ legalAcceptance: result.legalAcceptance });
+          localStorage.setItem(
+            STORAGE_KEY,
+            JSON.stringify(result.legalAcceptance)
+          );
           return;
         }
       }
-      
+
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored) as LegalAcceptance;
         set({ legalAcceptance: parsed });
       }
-    } catch (_error) {
-    }
+    } catch (_error) {}
   },
 
   saveToStorage: async () => {
     const { legalAcceptance } = get();
-    
+
     localStorage.setItem(STORAGE_KEY, JSON.stringify(legalAcceptance));
-    
-    if (window.electron && typeof window.electron.saveConfig === 'function') {
+
+    if (window.desktop && typeof window?.desktop?.saveConfig === 'function') {
       try {
-        const result = await window.electron.loadConfig();
-        if (result && result.success) {
-          const updatedConfig = {
-            ...result.config,
-            legalAcceptance
+        const result = await window.desktop.loadConfig();
+        if (result) {
+          const updatedConfig: AppConfig = {
+            ...result,
+            legalAcceptance,
           };
-          await window.electron.saveConfig(updatedConfig as unknown as Record<string, unknown>);
+          await window.desktop.saveConfig(updatedConfig as AppConfig);
         }
-      } catch (_error) {
+      } catch (_error) {}
+    }
+  },
+
+  loadContent: async () => {
+    const { isLoadingContent, hasLoadedContent } = get();
+    if (isLoadingContent || hasLoadedContent) {
+      return;
+    }
+
+    set({ isLoadingContent: true });
+    try {
+      const envConfig = await window?.desktop?.getEnvironmentConfig?.();
+      const legal = envConfig?.legal;
+      if (!legal) {
+        set({ hasLoadedContent: true, isLoadingContent: false });
+        return;
       }
+
+      const nextTerms =
+        typeof legal.termsMarkdown === 'string' && legal.termsMarkdown.trim().length > 0
+          ? legal.termsMarkdown
+          : DEFAULT_TERMS_OF_SERVICE;
+      const nextPrivacy =
+        typeof legal.privacyMarkdown === 'string' &&
+        legal.privacyMarkdown.trim().length > 0
+          ? legal.privacyMarkdown
+          : DEFAULT_PRIVACY_POLICY;
+
+      set({
+        termsContent: nextTerms,
+        privacyContent: nextPrivacy,
+        termsSource: legal.termsSource || (legal.termsMarkdown ? 'env' : 'bundle'),
+        privacySource:
+          legal.privacySource || (legal.privacyMarkdown ? 'env' : 'bundle'),
+        hasLoadedContent: true,
+        isLoadingContent: false,
+      });
+    } catch (_error) {
+      set({
+        termsContent: DEFAULT_TERMS_OF_SERVICE,
+        privacyContent: DEFAULT_PRIVACY_POLICY,
+        termsSource: 'bundle',
+        privacySource: 'bundle',
+        hasLoadedContent: true,
+      });
+    } finally {
+      set({ isLoadingContent: false });
     }
   },
 }));

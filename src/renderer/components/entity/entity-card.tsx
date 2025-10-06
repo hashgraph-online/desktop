@@ -191,17 +191,68 @@ export const EntityCard: FC<EntityCardProps> = ({
     return format(d, 'MMM d, yyyy');
   }, []);
 
-  const parseMetadata = useCallback(() => {
-    if (!entity.metadata) return null;
-
-    try {
-      return JSON.parse(entity.metadata);
-    } catch {
+  const parseMetadata = useCallback((): Record<string, unknown> | null => {
+    if (!entity.metadata) {
       return null;
     }
+
+    if (typeof entity.metadata === 'string') {
+      try {
+        return JSON.parse(entity.metadata) as Record<string, unknown>;
+      } catch {
+        return null;
+      }
+    }
+
+    if (typeof entity.metadata === 'object') {
+      return entity.metadata as Record<string, unknown>;
+    }
+
+    return null;
   }, [entity.metadata]);
 
   const metadata = parseMetadata();
+
+  const tokenMetadata = useMemo(() => {
+    if (!metadata || entity.entityType !== 'tokenId') {
+      return undefined;
+    }
+
+    const symbol = typeof metadata.symbol === 'string' ? metadata.symbol : undefined;
+
+    const decimalsCandidate = metadata.decimals;
+    const decimalsValue =
+      typeof decimalsCandidate === 'number'
+        ? decimalsCandidate
+        : typeof decimalsCandidate === 'string'
+          ? Number.parseInt(decimalsCandidate, 10)
+          : undefined;
+
+    const totalSupplyCandidate = metadata.totalSupply;
+    const totalSupplyValue =
+      typeof totalSupplyCandidate === 'number'
+        ? totalSupplyCandidate
+        : typeof totalSupplyCandidate === 'string'
+          ? Number.parseInt(totalSupplyCandidate, 10)
+          : undefined;
+
+    return {
+      symbol,
+      decimals: Number.isFinite(decimalsValue) ? decimalsValue : undefined,
+      totalSupply: Number.isFinite(totalSupplyValue) ? totalSupplyValue : undefined,
+    };
+  }, [metadata, entity.entityType]);
+
+  const createdAtDisplay = useMemo(() => {
+    const value = entity.createdAt;
+    if (!value) {
+      return undefined;
+    }
+    if (typeof value === 'number') {
+      return formatDate(new Date(value));
+    }
+    return formatDate(value);
+  }, [entity.createdAt, formatDate]);
 
   return (
     <motion.article
@@ -406,17 +457,19 @@ export const EntityCard: FC<EntityCardProps> = ({
             </div>
           )}
 
-          {metadata && entity.entityType === 'tokenId' && (
+          {tokenMetadata && (
             <div className='flex items-center space-x-4 text-xs text-gray-500 dark:text-gray-400'>
-              {metadata.symbol && (
+              {tokenMetadata.symbol && (
                 <span className='font-medium text-gray-700 dark:text-gray-300'>
-                  {metadata.symbol}
+                  {tokenMetadata.symbol}
                 </span>
               )}
-              {metadata.decimals && <span>{metadata.decimals} decimals</span>}
-              {metadata.totalSupply && (
+              {typeof tokenMetadata.decimals === 'number' && (
+                <span>{tokenMetadata.decimals} decimals</span>
+              )}
+              {typeof tokenMetadata.totalSupply === 'number' && (
                 <span>
-                  {parseInt(metadata.totalSupply).toLocaleString()} total supply
+                  {tokenMetadata.totalSupply.toLocaleString()} total supply
                 </span>
               )}
             </div>
@@ -424,7 +477,7 @@ export const EntityCard: FC<EntityCardProps> = ({
 
           <div className='flex items-center justify-between text-xs text-gray-400 dark:text-gray-500'>
             <div className='flex items-center space-x-4'>
-              <span>{formatDate(entity.createdAt)}</span>
+              <span>{createdAtDisplay ?? 'Unknown date'}</span>
               {entity.sessionId && (
                 <span>{entity.sessionId || 'No session'}</span>
               )}

@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo } from 'react';
 import Form from '@rjsf/core';
 import { customizeValidator } from '@rjsf/validator-ajv8';
 import { rjsfTheme, FieldInteractionProvider } from './RjsfTheme';
-import type { RJSFSchema, UiSchema } from '@rjsf/utils';
+import type { RJSFSchema, UiSchema, ValidatorType } from '@rjsf/utils';
 import { Button } from '../ui/Button';
 import type { FormMessage } from '../../stores/agentStore';
 import { useAgentStore } from '../../stores/agentStore';
@@ -21,11 +21,14 @@ interface RJSFFormProps {
   onSubmit: (formData: JsonRecord) => Promise<void>;
   onCancel: () => void;
   jsonSchema: RJSFSchema;
-  uiSchema: UiSchema;
+  uiSchema: FormUiSchema;
 }
 
 type JsonRecord = Record<string, unknown>;
 type RJSFEvent = { formData?: JsonRecord };
+
+type FormUiSchema = UiSchema<JsonRecord, RJSFSchema, JsonRecord>;
+type FormValidator = ValidatorType<JsonRecord, RJSFSchema, JsonRecord>;
 
 /**
  * Converts FormMessage field configuration to JSON Schema format
@@ -138,8 +141,8 @@ const convertToJsonSchema = (formMessage: FormMessage): RJSFSchema => {
 /**
  * Converts FormMessage field configuration to UI Schema format
  */
-const convertToUiSchema = (formMessage: FormMessage): UiSchema => {
-  const uiSchema: UiSchema = {};
+const convertToUiSchema = (formMessage: FormMessage): FormUiSchema => {
+  const uiSchema: FormUiSchema = {};
 
   formMessage.formConfig.fields.forEach((field) => {
     switch (field.type) {
@@ -190,9 +193,9 @@ function RJSFForm({
 
   const isProcessing = isSubmitting || isTyping || isFormSubmitting;
 
-  const validator = useMemo(
+  const validator: FormValidator = useMemo(
     () =>
-      customizeValidator({
+      customizeValidator<JsonRecord, RJSFSchema, JsonRecord>({
         ajvOptionsOverrides: {
           removeAdditional: 'all',
           strict: false,
@@ -265,7 +268,7 @@ function RJSFForm({
           </div>
 
           <div className='opacity-50 pointer-events-none'>
-            <Form
+            <Form<JsonRecord, RJSFSchema, JsonRecord>
               schema={jsonSchema}
               uiSchema={uiSchema}
               formData={(message.partialInput as JsonRecord) || {}}
@@ -347,7 +350,7 @@ function RJSFForm({
                   Retry Form Submission
                 </span>
               </div>
-              <Form
+              <Form<JsonRecord, RJSFSchema, JsonRecord>
                 schema={jsonSchema}
                 uiSchema={uiSchema}
                 formData={formData}
@@ -425,7 +428,7 @@ function RJSFForm({
           )}
         </div>
         <div>
-          <Form
+          <Form<JsonRecord, RJSFSchema, JsonRecord>
             schema={jsonSchema}
             uiSchema={uiSchema}
             formData={formData}
@@ -506,8 +509,10 @@ export function FormMessageBubble({
     [formMessage]
   );
 
-  const uiSchema = useMemo(
-    () => formMessage.uiSchema || convertToUiSchema(formMessage),
+  const uiSchema: FormUiSchema = useMemo(
+    () =>
+      (formMessage.uiSchema as FormUiSchema | undefined) ||
+      convertToUiSchema(formMessage),
     [formMessage]
   );
 

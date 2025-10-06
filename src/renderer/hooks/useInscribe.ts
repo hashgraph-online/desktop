@@ -7,9 +7,8 @@ import {
   type RetrievedInscriptionResult,
   type StartInscriptionRequest,
 } from '@hashgraphonline/standards-sdk';
-import type { DAppSigner } from '@hashgraph/hedera-wallet-connect';
-import { InscriptionSDK } from '@kiloscribe/inscription-sdk';
-import type { RegistrationProgressData } from '@kiloscribe/inscription-sdk/dist/es/inscription-sdk';
+import type { DAppSigner } from '@hashgraph/hedera-wallet-connect/dist/lib/dapp/DAppSigner';
+import { InscriptionSDK, type RegistrationProgressData } from '@kiloscribe/inscription-sdk';
 import { Buffer } from 'buffer';
 
 export type BufferInput = {

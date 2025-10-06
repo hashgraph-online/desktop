@@ -17,7 +17,7 @@ export const openAIConfigSchema = z.object({
     .string()
     .min(1, 'API key is required')
     .startsWith('sk-', "API key must start with 'sk-'"),
-  model: z.enum(['gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano', 'gpt-4o', 'gpt-4o-mini', 'gpt-4', 'gpt-3.5-turbo', 'o4-mini'])
+  model: z.enum(['gpt-5', 'gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano', 'gpt-4o', 'gpt-4o-mini', 'gpt-4', 'gpt-3.5-turbo', 'o4-mini'])
 })
 
 export const anthropicConfigSchema = z.object({
@@ -31,7 +31,8 @@ export const anthropicConfigSchema = z.object({
 export const advancedConfigSchema = z.object({
   theme: z.enum(['light', 'dark']),
   autoStart: z.boolean(),
-  logLevel: z.enum(['debug', 'info', 'warn', 'error'])
+  logLevel: z.enum(['debug', 'info', 'warn', 'error']),
+  webBrowserPluginEnabled: z.boolean().optional().default(true)
 })
 
 export const appConfigSchema = z.object({

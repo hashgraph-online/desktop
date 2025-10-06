@@ -124,8 +124,8 @@ export const KeyboardShortcutsProvider: React.FC<KeyboardShortcutsProviderProps>
         keys: ['f11'],
         description: 'Toggle Fullscreen',
         handler: () => {
-          if (window.electron) {
-            window.electron.invoke('toggle-fullscreen')
+          if (window.desktop) {
+            window?.desktop?.invoke('toggle-fullscreen')
           }
         },
         category: 'system',
@@ -136,8 +136,8 @@ export const KeyboardShortcutsProvider: React.FC<KeyboardShortcutsProviderProps>
         keys: ['cmd+alt+i', 'ctrl+shift+i'],
         description: 'Open Developer Tools',
         handler: () => {
-          if (window.electron) {
-            window.electron.invoke('toggle-devtools')
+          if (window.desktop) {
+            window?.desktop?.invoke('toggle-devtools')
           }
         },
         category: 'system',

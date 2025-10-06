@@ -26,29 +26,29 @@ export const ConfigurationSchema = z.object({
 
 export const IPCMessageSchema = z.discriminatedUnion('channel', [
   z.object({
-    channel: z.literal('credential:store'),
+    channel: z.literal('credential_store'),
     data: CredentialSchema,
   }),
   z.object({
-    channel: z.literal('credential:get'),
+    channel: z.literal('credential_get'),
     data: CredentialRequestSchema,
   }),
   z.object({
-    channel: z.literal('credential:delete'),
+    channel: z.literal('credential_delete'),
     data: CredentialRequestSchema,
   }),
   z.object({
-    channel: z.literal('credential:clear'),
+    channel: z.literal('credential_clear'),
     data: z.object({}),
   }),
   z.object({
-    channel: z.literal('config:get'),
+    channel: z.literal('config_get'),
     data: z.object({
       key: z.string().optional(),
     }),
   }),
   z.object({
-    channel: z.literal('config:set'),
+    channel: z.literal('config_set'),
     data: ConfigurationSchema,
   }),
 ]);

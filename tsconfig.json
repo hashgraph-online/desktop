@@ -1,28 +1,33 @@
 {
-  "include": ["src/**/*"],
+  "extends": "../tsconfig.base.json",
   "compilerOptions": {
-    "target": "ES2022",
-    "module": "ESNext",
-    "useDefineForClassFields": true,
-    "isolatedModules": true,
-    "allowJs": true,
-    "skipLibCheck": true,
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "noImplicitAny": true,
-    "sourceMap": true,
     "jsx": "react-jsx",
-    "baseUrl": ".",
-    "outDir": "dist",
-    "moduleResolution": "node",
+    "types": [
+      "vitest/globals",
+      "vite/client",
+      "react",
+      "react-dom",
+      "@testing-library/jest-dom",
+      "node"
+    ],
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
     "resolveJsonModule": true,
+    "target": "ES2022",
+    "strict": true,
+    "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"],
-      "@/components/*": ["./src/renderer/components/*"],
-      "@/lib/*": ["./src/renderer/lib/*"],
-      "@/utils/*": ["./src/renderer/lib/utils/*"],
-      "@/hooks/*": ["./src/renderer/hooks/*"],
-      "@/types/*": ["./src/renderer/types/*"]
+      "@/*": ["src/*"],
+      "@/components/*": ["src/renderer/components/*"],
+      "@/lib/*": ["src/renderer/lib/*"],
+      "@/hooks/*": ["src/renderer/hooks/*"],
+      "@/types/*": ["src/renderer/types/*"],
+      "@/utils/*": ["src/renderer/utils/*"],
+      "@/stores/*": ["src/renderer/stores/*"]
     }
-  }
+  },
+  "include": ["src", "vite.config.ts"],
+  "exclude": ["node_modules", "dist", "src-tauri"]
 }

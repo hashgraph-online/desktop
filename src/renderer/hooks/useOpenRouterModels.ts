@@ -1,5 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
-import { ModelInfo } from '../lib/models';
+import {
+  ModelInfo,
+  ALL_MODELS,
+  OPENAI_MODELS,
+  ANTHROPIC_MODELS,
+} from '../lib/models';
 
 interface OpenRouterAPIModel {
   id: string;
@@ -37,33 +42,51 @@ export function useOpenRouterModels(options: UseOpenRouterModelsOptions = {}): U
     setError(null);
 
     try {
+      const desktopApi = typeof window === 'undefined' ? undefined : window.desktop;
+      const hasProviderBridge = typeof desktopApi?.getOpenRouterModelsByProvider === 'function';
+      const hasModelsBridge = typeof desktopApi?.getOpenRouterModels === 'function';
+
+      if (provider && !hasProviderBridge) {
+        const fallbackModels = provider === 'openai' ? OPENAI_MODELS : ANTHROPIC_MODELS;
+        setModels([...fallbackModels]);
+        setIsLoading(false);
+        return;
+      }
+
+      if (!provider && !hasModelsBridge) {
+        setModels([...ALL_MODELS]);
+        setIsLoading(false);
+        return;
+      }
+
       if (provider) {
-        const response = await window.electron.getOpenRouterModelsByProvider(provider);
+        const response = await desktopApi?.getOpenRouterModelsByProvider?.(provider);
         if (response.success && response.data) {
-          setModels(response.data);
+          const data = response.data;
+          if (isModelInfoArray(data)) {
+            setModels(data);
+          } else if (Array.isArray(data)) {
+            const converted = convertRawModels(data as OpenRouterAPIModel[]).filter(
+              (model) => model.provider === provider
+            );
+            setModels(converted);
+          } else {
+            throw new Error('Unexpected response format');
+          }
         } else {
           throw new Error(response.error || 'Failed to fetch models');
         }
       } else {
-        const response = await window.electron.getOpenRouterModels(forceRefresh);
+        const response = await desktopApi?.getOpenRouterModels?.(forceRefresh);
         if (response.success && response.data) {
-          const convertedModels = response.data.map((model: OpenRouterAPIModel) => ({
-            id: model.id,
-            name: extractModelName(model.id),
-            description: model.description || '',
-            provider: determineProvider(model.id),
-            category: determineCategory(model.id, model.pricing),
-            contextWindow: formatContextWindow(model.context_length),
-            inputCost: formatCost(model.pricing.prompt),
-            outputCost: formatCost(model.pricing.completion),
-            strengths: [] as string[],
-            bestFor: [] as string[],
-            supportsVision: model.architecture?.modality === 'multimodal',
-            supportsFunctionCalling: true,
-            isRecommended: false,
-            isNew: false
-          }));
-          setModels(convertedModels);
+          const data = response.data;
+          if (isModelInfoArray(data)) {
+            setModels(data);
+          } else if (Array.isArray(data)) {
+            setModels(convertRawModels(data as OpenRouterAPIModel[]));
+          } else {
+            throw new Error('Unexpected response format');
+          }
         } else {
           throw new Error(response.error || 'Failed to fetch models');
         }
@@ -94,6 +117,7 @@ function extractModelName(modelId: string): string {
   const modelName = parts[parts.length - 1];
   
   const nameMap: Record<string, string> = {
+    'gpt-5': 'GPT-5',
     'gpt-4o': 'GPT-4o (Omni)',
     'gpt-4o-mini': 'GPT-4o Mini',
     'gpt-4-turbo': 'GPT-4 Turbo',
@@ -115,6 +139,40 @@ function extractModelName(modelId: string): string {
   return modelName.split('-').map(word => 
     word.charAt(0).toUpperCase() + word.slice(1)
   ).join(' ');
+}
+
+function convertRawModels(models: OpenRouterAPIModel[]): ModelInfo[] {
+  return models.map((model) => ({
+    id: model.id,
+    name: extractModelName(model.id),
+    description: model.description || '',
+    provider: determineProvider(model.id),
+    category: determineCategory(model.id, model.pricing),
+    contextWindow: formatContextWindow(model.context_length),
+    inputCost: formatCost(model.pricing.prompt),
+    outputCost: formatCost(model.pricing.completion),
+    strengths: [],
+    bestFor: [],
+    supportsVision: model.architecture?.modality === 'multimodal',
+    supportsFunctionCalling: true,
+    isRecommended: false,
+    isNew: false,
+  }));
+}
+
+function isModelInfoArray(payload: unknown): payload is ModelInfo[] {
+  return (
+    Array.isArray(payload) &&
+    payload.every(
+      (item) =>
+        item &&
+        typeof item === 'object' &&
+        'id' in item &&
+        'name' in item &&
+        'provider' in item &&
+        'contextWindow' in item
+    )
+  );
 }
 
 function determineProvider(modelId: string): 'openai' | 'anthropic' {

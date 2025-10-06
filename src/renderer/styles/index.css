@@ -747,6 +747,70 @@ p {
     touch-action: manipulation;
   }
 
+  /* Checkered background pattern for image viewers */
+  .bg-checkered {
+    background-color: #f8f9fa;
+    background-image:
+      linear-gradient(45deg, #e9ecef 25%, transparent 25%),
+      linear-gradient(-45deg, #e9ecef 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #e9ecef 75%),
+      linear-gradient(-45deg, transparent 75%, #e9ecef 75%);
+    background-size: 20px 20px;
+    background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+  }
+
+  .dark .bg-checkered {
+    background-color: #1a1a1a;
+    background-image:
+      linear-gradient(45deg, #2a2a2a 25%, transparent 25%),
+      linear-gradient(-45deg, #2a2a2a 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #2a2a2a 75%),
+      linear-gradient(-45deg, transparent 75%, #2a2a2a 75%);
+  }
+
+  /* Override undefined Shell Window backgrounds to be solid */
+  .bg-hol-surface {
+    background-color: white;
+  }
+
+  .bg-hol-surface-alt {
+    background-color: white;
+  }
+
+  .dark .bg-hol-surface {
+    background-color: #1f2937;
+  }
+
+  .dark .bg-hol-surface-alt {
+    background-color: #1f2937;
+  }
+
+  /* HOL Design System Window Controls */
+  .bg-hol-primary {
+    background-color: #3b82f6 !important;
+  }
+
+  .bg-hol-primary-light {
+    background-color: #60a5fa !important;
+  }
+
+  .text-hol-text-inverse {
+    color: white !important;
+  }
+
+  .border-hol-border {
+    border-color: #e5e7eb !important;
+  }
+
+  .border-hol-highlight {
+    border-color: #3b82f6 !important;
+  }
+
+  /* Ensure window title bar is visible */
+  .bg-gradient-to-r.from-hol-primary.to-hol-primary-light {
+    background: linear-gradient(to right, #3b82f6, #60a5fa) !important;
+  }
+
   /* Animation utilities */
   .animate-fade-in {
     animation: fadeIn 0.2s ease-in forwards;

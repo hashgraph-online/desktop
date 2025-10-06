@@ -2,6 +2,13 @@ import React from 'react';
 import { HiMagnifyingGlass, HiXMark, HiAdjustmentsHorizontal } from 'react-icons/hi2';
 import Typography from '../ui/Typography';
 import { useDebounce } from '../../hooks/use-debounced-value';
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '../ui/select';
 
 /**
  * Entity filter configuration
@@ -137,6 +144,9 @@ export const EntityFilters: React.FC<EntityFiltersProps> = ({
     return '';
   }, []);
 
+  const selectedEntityType = filters.entityType || 'all';
+  const selectedSessionId = filters.sessionId || 'all';
+
   return (
     <div className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm rounded-lg p-4 space-y-4">
       {/* Search and basic filters */}
@@ -168,33 +178,47 @@ export const EntityFilters: React.FC<EntityFiltersProps> = ({
 
         {/* Entity type filter */}
         <div className="sm:w-48">
-          <select
-            value={filters.entityType}
-            onChange={(e) => onFiltersChange({ entityType: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#5599fe] focus:outline-none"
-            aria-label="Entity Type"
+          <Select
+            value={selectedEntityType}
+            onValueChange={(value) =>
+              onFiltersChange({ entityType: value === 'all' ? '' : value })
+            }
           >
-            <option value="">All Types</option>
-            {entityTypes.map(type => (
-              <option key={type} value={type}>{type}</option>
-            ))}
-          </select>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="All Types" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              {entityTypes.map((type) => (
+                <SelectItem key={type} value={type}>
+                  {type}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Session filter (only show if multiple sessions) */}
         {sessionIds.length > 1 && (
           <div className="sm:w-48">
-            <select
-              value={filters.sessionId}
-              onChange={(e) => onFiltersChange({ sessionId: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#5599fe] focus:outline-none"
-              aria-label="Session"
+            <Select
+              value={selectedSessionId}
+              onValueChange={(value) =>
+                onFiltersChange({ sessionId: value === 'all' ? '' : value })
+              }
             >
-              <option value="">All Sessions</option>
-              {sessionIds.map(sessionId => (
-                <option key={sessionId} value={sessionId}>{sessionId}</option>
-              ))}
-            </select>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="All Sessions" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Sessions</SelectItem>
+                {sessionIds.map((sessionId) => (
+                  <SelectItem key={sessionId} value={sessionId}>
+                    {sessionId}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         )}
 
