@@ -63,6 +63,8 @@ export const calculateBrowserBounds = (
       const dockWidth = safeDimension(assistantPanel.width);
       width = Math.max(width - dockWidth, 0);
     } else if (dock === 'bottom') {
+      const dockHeight = safeDimension(assistantPanel.height);
+      height = Math.max(height - dockHeight, 0);
     }
   }
 
