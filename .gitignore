@@ -8,3 +8,8 @@ dist/**
 src-tauri/target
 target/**
 DS_Store
+coverage
+out
+*.log
+.DS_Store
+scripts
