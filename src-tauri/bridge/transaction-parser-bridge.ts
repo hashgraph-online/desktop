@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+
 
 import { TransactionParser, Logger } from '@hashgraphonline/standards-sdk';
 

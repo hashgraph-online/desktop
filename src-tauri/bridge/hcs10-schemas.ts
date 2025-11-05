@@ -59,7 +59,7 @@ export const HederaCredentialsSchema = z.object({
 
 export type HederaCredentials = z.infer<typeof HederaCredentialsSchema>;
 
-const agentCreationStateSchema: z.ZodType<AgentCreationState> = z.object({
+const agentCreationStateSchema = z.object({
   pfpTopicId: z.string().optional(),
   inboundTopicId: z.string().optional(),
   outboundTopicId: z.string().optional(),

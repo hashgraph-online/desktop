@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+
 
 import { installLogging } from './agent/logging';
 import { ensureBrowserLikeGlobals, setupProcessHandlers } from './agent/environment';

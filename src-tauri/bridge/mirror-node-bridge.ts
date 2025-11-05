@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+
 
 import { HederaMirrorNode, Logger } from '@hashgraphonline/standards-sdk';
 

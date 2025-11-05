@@ -1,11 +1,10 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig",
-  "extends": "../tsconfig.node.json",
   "compilerOptions": {
     "outDir": "./resources",
     "rootDir": "./bridge",
     "module": "CommonJS",
-    "target": "ES2021",
+    "target": "ES2022",
     "strict": true,
     "esModuleInterop": true,
     "moduleResolution": "Node",
@@ -13,7 +12,18 @@
     "declaration": false,
     "emitDeclarationOnly": false,
     "noEmit": false,
-    "noEmitOnError": true
+    "noEmitOnError": true,
+    "allowSyntheticDefaultImports": true,
+    "baseUrl": "..",
+    "paths": {
+      "@/*": ["src/*"],
+      "@/components/*": ["src/renderer/components/*"],
+      "@/lib/*": ["src/renderer/lib/*"],
+      "@/hooks/*": ["src/renderer/hooks/*"],
+      "@/types/*": ["src/renderer/types/*"],
+      "@/utils/*": ["src/renderer/utils/*"],
+      "@/stores/*": ["src/renderer/stores/*"]
+    }
   },
   "include": ["bridge/**/*.ts", "bridge/**/*.d.ts"],
   "exclude": ["resources"]

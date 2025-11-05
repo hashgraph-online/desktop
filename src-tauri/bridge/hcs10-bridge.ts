@@ -1,6 +1,6 @@
-#!/usr/bin/env node
 
-import { createInterface } from 'node:readline';
+
+import { createInterface } from './stubs/readline-stub';
 
 import {
   AgentBuilder,
