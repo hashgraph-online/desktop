@@ -12,14 +12,14 @@ importers:
         specifier: 2.76.0
         version: 2.76.0(bn.js@5.2.2)(react-native@0.81.4(@babel/core@7.28.4)(@types/react@19.2.0)(react@19.2.0))
       '@hashgraphonline/conversational-agent':
-        specifier: 0.2.216
-        version: 0.2.216(1d90d1231a3aae805318d64a35ba35b9)
+        specifier: file:../../conversational-agent
+        version: file:../../conversational-agent(1d90d1231a3aae805318d64a35ba35b9)
       '@hashgraphonline/hashinal-wc':
         specifier: 1.0.107
         version: 1.0.107(@types/react@19.2.0)(@walletconnect/types@2.23.0(ioredis@5.8.0))(@walletconnect/web3wallet@1.16.1(ioredis@5.8.0)(typescript@5.9.3)(zod@3.25.76))(ansi-regex@6.2.2)(ansi-styles@6.2.3)(bn.js@5.2.2)(debug@4.4.1)(ioredis@5.8.0)(protobufjs@7.5.4)(react-native@0.81.4(@babel/core@7.28.4)(@types/react@19.2.0)(react@19.2.0))(react@19.2.0)(strip-ansi@7.1.2)(typescript@5.9.3)(zod@3.25.76)
       '@hashgraphonline/standards-agent-kit':
         specifier: 0.2.164
-        version: 0.2.164(97d1d45b2dfb5e14f6ae0fed41adb86b)
+        version: 0.2.164(76bc7e41a46610b187a96e27d38b5771)
       '@hashgraphonline/standards-sdk':
         specifier: 0.1.111
         version: 0.1.111(@types/react@19.2.0)(@walletconnect/qrcode-modal@1.8.0)(@walletconnect/types@2.23.0(ioredis@5.8.0))(@walletconnect/utils@2.21.10(ioredis@5.8.0)(typescript@5.9.3)(zod@3.25.76))(@walletconnect/web3wallet@1.16.1(ioredis@5.8.0)(typescript@5.9.3)(zod@3.25.76))(ansi-regex@6.2.2)(ansi-styles@6.2.3)(bn.js@5.2.2)(debug@4.4.1)(protobufjs@7.5.4)(react-native@0.81.4(@babel/core@7.28.4)(@types/react@19.2.0)(react@19.2.0))(react@19.2.0)(strip-ansi@7.1.2)(typescript@5.9.3)
@@ -101,6 +101,9 @@ importers:
       '@types/lodash':
         specifier: ^4.17.20
         version: 4.17.20
+      '@walletconnect/modal-core':
+        specifier: ^2.7.0
+        version: 2.7.0(@types/react@19.2.0)(react@19.2.0)
       '@walletconnect/types':
         specifier: ^2.23.0
         version: 2.23.0(ioredis@5.8.0)
@@ -1006,6 +1009,23 @@ packages:
     resolution: {integrity: sha512-sB5uyeq+dwCWyPi31B2gQlVlo+j5brPlWx4yZBrEaRo/nhdDE8Xke1gsGgtiBdaBTxuTkceLVuVt/pclrasb0A==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
+  '@ethereumjs/rlp@10.0.0':
+    resolution: {integrity: sha512-h2SK6RxFBfN5ZGykbw8LTNNLckSXZeuUZ6xqnmtF22CzZbHflFMcIOyfVGdvyCVQqIoSbGMHtvyxMCWnOyB9RA==}
+    engines: {node: '>=18'}
+    hasBin: true
+
+  '@ethereumjs/util@10.0.0':
+    resolution: {integrity: sha512-lO23alM4uQsv8dp6/yEm4Xw4328+wIRjSeuBO1mRTToUWRcByEMTk87yzBpXgpixpgHrl+9LTn9KB2vvKKtOQQ==}
+    engines: {node: '>=18'}
+
+  '@ethereumjs/wallet@10.0.0':
+    resolution: {integrity: sha512-ayRmV8uL1YEaRxUacr5fcy/Z/03K8NtVP7NIq3X4y5wDaNx7e+6hk40sa7cbkBhzOEK4j3JPpGohVhrOw5I03A==}
+    engines: {node: '>=18'}
+
+  '@ethersphere/bee-js@10.1.1':
+    resolution: {integrity: sha512-4EdlFSrfeZr9v7BNTDXDPqXN2gVXssGAXWy5dKZ2/3TJySBjm9NxnFlmOb1pieCBu6WIumffHYtd3J+pym3JVg==}
+    engines: {bee: 2.4.0-390a402e, beeApiVersion: 7.2.0}
+
   '@ethersproject/abi@5.8.0':
     resolution: {integrity: sha512-b9YS/43ObplgyV6SlyQsG53/vkSal0MNA1fskSC4mbnCMi8R+NkcH8K9FPYNESf6jUefBUniE4SOKms0E/KK1Q==}
 
@@ -1181,8 +1201,8 @@ packages:
     peerDependencies:
       bn.js: 5.2.1
 
-  '@hashgraphonline/conversational-agent@0.2.216':
-    resolution: {integrity: sha512-VKYolh8/fhzRLGVLXq85ASLNzBzF3PaRbX4QOkOkvwnJSXxWrrR+xyTiJpXsBsDCdBL2W2wZx9ALSoU6snZUeA==}
+  '@hashgraphonline/conversational-agent@file:../../conversational-agent':
+    resolution: {directory: ../../conversational-agent, type: directory}
     hasBin: true
 
   '@hashgraphonline/hashinal-wc@1.0.107':
@@ -1866,6 +1886,10 @@ packages:
 
   '@noble/curves@1.8.1':
     resolution: {integrity: sha512-warwspo+UYUPep0Q+vtdVB4Ugn8GGQj8iyB3gnRWsztmUHTI3S1nhdiWNsPUGL0vud7JlRRk1XEu7Lq1KGTnMQ==}
+    engines: {node: ^14.21.3 || >=16}
+
+  '@noble/curves@1.9.0':
+    resolution: {integrity: sha512-7YDlXiNMdO1YZeH6t/kvopHHbIZzlxrCV9WLqCY6QhcXOoXiNCMDqJIglZ9Yjx5+w7Dz30TITFrlTjnRg7sKEg==}
     engines: {node: ^14.21.3 || >=16}
 
   '@noble/curves@1.9.1':
@@ -3675,6 +3699,9 @@ packages:
     resolution: {integrity: sha512-wvUjBtSGN7+7SjNpq/9M2Tg350UZD3q62IFZLbRAR1bSMlCo1ZaeW+BJ+D090e4hIIZLBcTDWe4Mh4jvUDajzQ==}
     engines: {node: '>= 0.4'}
 
+  axios@0.30.2:
+    resolution: {integrity: sha512-0pE4RQ4UQi1jKY6p7u6i1Tkzqmu+d+/tHS7Q7rKunWLB9WyilBTpHHpXzPNMDj5hTbK0B0PTLSz07yqMBiF6xg==}
+
   axios@1.12.2:
     resolution: {integrity: sha512-vMJzPewAlRyOgxV2dU0Cuz2O8zzzx9VYtbJOaBgXFeLc4IV/Eg50n4LowmehOOR61S8ZMpc2K5Sa7g6A4jfkUw==}
 
@@ -3876,6 +3903,9 @@ packages:
   cac@6.7.14:
     resolution: {integrity: sha512-b6Ilus+c3RrdDk+JhLKUAQfzzgLEPy6wcXqS7f/xe1EETvsDP6GORG7SFuOs6cID5YkqchW/LXZbX5bc8j7ZcQ==}
     engines: {node: '>=8'}
+
+  cafe-utility@32.2.0:
+    resolution: {integrity: sha512-Pz1XZ9HCG0oVEfM/iAmefkaKoSJxPfJh1d7a7sFM/WqXf2Yg4bqoRioFdy+awEtFCJjC7XJzKtG0w0y57x2K0Q==}
 
   call-bind-apply-helpers@1.0.2:
     resolution: {integrity: sha512-Sp1ablJ0ivDkSzjcaJdxEunN5/XvksFJ2sMBFfq6x0ryhQV/2b/KwFe21cMpmHtPOSij8K99/wSfoEuTObmuMQ==}
@@ -4634,6 +4664,10 @@ packages:
     resolution: {integrity: sha512-aIL5Fx7mawVa300al2BnEE4iNvo1qETxLrPI/o05L7z6go7fCw1J6EQmbK4FmJ2AS7kgVF/KEZWufBfdClMcPg==}
     engines: {node: '>= 0.6'}
 
+  ethereum-cryptography@3.2.0:
+    resolution: {integrity: sha512-Urr5YVsalH+Jo0sYkTkv1MyI9bLYZwW8BENZCeE1QYaTHETEYx0Nv/SVsWkSqpYrzweg6d8KMY1wTjH/1m/BIg==}
+    engines: {node: ^14.21.3 || >=16, npm: '>=9'}
+
   ethers@6.15.0:
     resolution: {integrity: sha512-Kf/3ZW54L4UT0pZtsY/rf+EkBU7Qi5nnhonjUb8yTXcxH3cdcWrV2cRyk0Xk/4jK6OoHhxxZHriyhje20If2hQ==}
     engines: {node: '>=14.0.0'}
@@ -5322,6 +5356,11 @@ packages:
   isomorphic-unfetch@3.1.0:
     resolution: {integrity: sha512-geDJjpoZ8N0kWexiwkX8F9NkTsXhetLPVbZFQ+JTW239QNOwvB0gniuR1Wc6f0AMTn7/mFGyXvHTifrCp/GH8Q==}
 
+  isomorphic-ws@4.0.1:
+    resolution: {integrity: sha512-BhBvN2MBpWTaSHdWRb/bwdZJ1WaehQ2L1KngkCkfLUGF0mAWAT1sQUQacEmQ0jXkFw/czDXPNQSL5u2/Krsz1w==}
+    peerDependencies:
+      ws: '*'
+
   isstream@0.1.2:
     resolution: {integrity: sha512-Yljz7ffyPbrLpLngrMtZ7NduUgVvi6wG9RJ9IUcyCd59YQ911PBJphODUcbOVbqYfxe1wuYf/LJ8PauMRwsM/g==}
 
@@ -5400,6 +5439,9 @@ packages:
 
   js-base64@3.7.8:
     resolution: {integrity: sha512-hNngCeKxIUQiEUN3GPJOkz4wF/YvdUdbNL9hsBcMQTkKzboD7T/q3OYOuuPZLUE6dBxSGpwhk5mwuDud7JVAow==}
+
+  js-md5@0.8.3:
+    resolution: {integrity: sha512-qR0HB5uP6wCuRMrWPTrkMaev7MJZwJuuw4fnwAzRgP4J4/F8RwtodOKpGp4XpqsLBFzzgqIO42efFAyz2Et6KQ==}
 
   js-sha3@0.8.0:
     resolution: {integrity: sha512-gF1cRrHhIzNfToc802P800N8PpXS+evLLXfsVpowqmAFR9uwbi89WvXg2QspOmXL8QL86J4T1EpFu+yUkwJY3Q==}
@@ -7475,6 +7517,10 @@ packages:
     resolution: {integrity: sha512-8XkAphELsDnEGrDxUOHB3RGvXz6TeuYSGEZBOjtTtPm2lwhGBjLgOzLHB63IUWfBpNucQjND6d3AOudO+H3RWQ==}
     hasBin: true
 
+  uuid@11.1.0:
+    resolution: {integrity: sha512-0/A9rDy9P7cJ+8w1c9WD9V//9Wj15Ce2MPz8Ri6032usz+NfePxx5AcN3bN+r6ZL6jEo066/yNYB3tn4pQEx+A==}
+    hasBin: true
+
   uuid@9.0.1:
     resolution: {integrity: sha512-b+1eJOlsR9K8HJpow9Ok3fiWOWSIcIzXodvv0rQjVoOVNpWMpxf1wZNpt4y9h10odCNrqnYp1OBzRktckBe3sA==}
     hasBin: true
@@ -8797,6 +8843,34 @@ snapshots:
       '@eslint/core': 0.16.0
       levn: 0.4.1
 
+  '@ethereumjs/rlp@10.0.0': {}
+
+  '@ethereumjs/util@10.0.0':
+    dependencies:
+      '@ethereumjs/rlp': 10.0.0
+      ethereum-cryptography: 3.2.0
+
+  '@ethereumjs/wallet@10.0.0':
+    dependencies:
+      '@ethereumjs/util': 10.0.0
+      '@scure/base': 1.2.6
+      ethereum-cryptography: 3.2.0
+      js-md5: 0.8.3
+      uuid: 11.1.0
+
+  '@ethersphere/bee-js@10.1.1':
+    dependencies:
+      axios: 0.30.2(debug@4.4.3)
+      cafe-utility: 32.2.0
+      debug: 4.4.3
+      isomorphic-ws: 4.0.1(ws@8.18.3)
+      semver: 7.7.2
+      ws: 8.18.3
+    transitivePeerDependencies:
+      - bufferutil
+      - supports-color
+      - utf-8-validate
+
   '@ethersproject/abi@5.8.0':
     dependencies:
       '@ethersproject/address': 5.8.0
@@ -9156,11 +9230,13 @@ snapshots:
       - react-native
       - supports-color
 
-  '@hashgraphonline/conversational-agent@0.2.216(1d90d1231a3aae805318d64a35ba35b9)':
+  '@hashgraphonline/conversational-agent@file:../../conversational-agent(1d90d1231a3aae805318d64a35ba35b9)':
     dependencies:
+      '@ethereumjs/wallet': 10.0.0
+      '@ethersphere/bee-js': 10.1.1
       '@hashgraph/sdk': 2.76.0(bn.js@5.2.2)(react-native@0.81.4(@babel/core@7.28.4)(@types/react@19.2.0)(react@19.2.0))
       '@hashgraphonline/hashinal-wc': 1.0.107(@types/react@19.2.0)(@walletconnect/types@2.23.0(ioredis@5.8.0))(@walletconnect/web3wallet@1.16.1(ioredis@5.8.0)(typescript@5.9.3)(zod@3.25.76))(ansi-regex@6.2.2)(ansi-styles@6.2.3)(bn.js@5.2.2)(debug@4.4.1)(ioredis@5.8.0)(protobufjs@7.5.4)(react-native@0.81.4(@babel/core@7.28.4)(@types/react@19.2.0)(react@19.2.0))(react@19.2.0)(strip-ansi@7.1.2)(typescript@5.9.3)(zod@3.25.76)
-      '@hashgraphonline/standards-agent-kit': 0.2.164(97d1d45b2dfb5e14f6ae0fed41adb86b)
+      '@hashgraphonline/standards-agent-kit': 0.2.164(76bc7e41a46610b187a96e27d38b5771)
       '@hashgraphonline/standards-sdk': 0.1.111(@types/react@19.2.0)(@walletconnect/qrcode-modal@1.8.0)(@walletconnect/types@2.23.0(ioredis@5.8.0))(@walletconnect/utils@2.21.10(ioredis@5.8.0)(typescript@5.9.3)(zod@3.25.76))(@walletconnect/web3wallet@1.16.1(ioredis@5.8.0)(typescript@5.9.3)(zod@3.25.76))(ansi-regex@6.2.2)(ansi-styles@6.2.3)(bn.js@5.2.2)(debug@4.4.1)(protobufjs@7.5.4)(react-native@0.81.4(@babel/core@7.28.4)(@types/react@19.2.0)(react@19.2.0))(react@19.2.0)(strip-ansi@7.1.2)(typescript@5.9.3)
       '@langchain/anthropic': 0.3.30(@langchain/core@0.3.78(openai@5.23.2(ws@8.18.3)(zod@3.25.76)))(zod@3.25.76)
       '@langchain/core': 0.3.78(openai@5.23.2(ws@8.18.3)(zod@3.25.76))
@@ -9408,7 +9484,7 @@ snapshots:
       - utf-8-validate
       - zod
 
-  '@hashgraphonline/standards-agent-kit@0.2.164(97d1d45b2dfb5e14f6ae0fed41adb86b)':
+  '@hashgraphonline/standards-agent-kit@0.2.164(76bc7e41a46610b187a96e27d38b5771)':
     dependencies:
       '@hashgraph/sdk': 2.76.0(bn.js@5.2.2)(react-native@0.81.4(@babel/core@7.28.4)(@types/react@19.2.0)(react@19.2.0))
       '@hashgraphonline/standards-sdk': 0.1.111(@types/react@19.2.0)(@walletconnect/qrcode-modal@1.8.0)(@walletconnect/types@2.23.0(ioredis@5.8.0))(@walletconnect/utils@2.21.10(ioredis@5.8.0)(typescript@5.9.3)(zod@3.25.76))(@walletconnect/web3wallet@1.16.1(ioredis@5.8.0)(typescript@5.9.3)(zod@3.25.76))(ansi-regex@6.2.2)(ansi-styles@6.2.3)(bn.js@5.2.2)(debug@4.4.1)(protobufjs@7.5.4)(react-native@0.81.4(@babel/core@7.28.4)(@types/react@19.2.0)(react@19.2.0))(react@19.2.0)(strip-ansi@7.1.2)(typescript@5.9.3)
@@ -9439,13 +9515,20 @@ snapshots:
       - '@aws-sdk/client-sfn'
       - '@aws-sdk/credential-provider-node'
       - '@aws-sdk/dsql-signer'
+      - '@azure/app-configuration'
+      - '@azure/cosmos'
+      - '@azure/data-tables'
+      - '@azure/identity'
+      - '@azure/keyvault-secrets'
       - '@azure/search-documents'
       - '@azure/storage-blob'
       - '@browserbasehq/sdk'
       - '@browserbasehq/stagehand'
+      - '@capacitor/preferences'
       - '@clickhouse/client'
       - '@cloudflare/ai'
       - '@datastax/astra-db-ts'
+      - '@deno/kv'
       - '@elastic/elasticsearch'
       - '@getmetal/metal-sdk'
       - '@getzep/zep-cloud'
@@ -9477,6 +9560,7 @@ snapshots:
       - '@mlc-ai/web-llm'
       - '@mozilla/readability'
       - '@neondatabase/serverless'
+      - '@netlify/blobs'
       - '@notionhq/client'
       - '@opensearch-project/opensearch'
       - '@opentelemetry/api'
@@ -9487,6 +9571,7 @@ snapshots:
       - '@premai/prem-sdk'
       - '@qdrant/js-client-rest'
       - '@raycast/api'
+      - '@react-native-async-storage/async-storage'
       - '@rockset/client'
       - '@smithy/eventstream-codec'
       - '@smithy/protocol-http'
@@ -9497,9 +9582,12 @@ snapshots:
       - '@tensorflow-models/universal-sentence-encoder'
       - '@tensorflow/tfjs-converter'
       - '@tensorflow/tfjs-core'
+      - '@types/react'
       - '@upstash/ratelimit'
       - '@upstash/redis'
       - '@upstash/vector'
+      - '@vercel/blob'
+      - '@vercel/functions'
       - '@vercel/kv'
       - '@vercel/postgres'
       - '@walletconnect/qrcode-modal'
@@ -9514,6 +9602,7 @@ snapshots:
       - apify-client
       - assemblyai
       - aws-crt
+      - aws4fetch
       - azion
       - bare-buffer
       - better-sqlite3
@@ -9529,6 +9618,7 @@ snapshots:
       - convex
       - crypto-js
       - d3-dsv
+      - db0
       - debug
       - discord.js
       - duck-duck-scrape
@@ -9582,6 +9672,7 @@ snapshots:
       - supports-color
       - typeorm
       - typesense
+      - uploadthing
       - usearch
       - utf-8-validate
       - voy-search
@@ -10271,6 +10362,10 @@ snapshots:
   '@noble/curves@1.8.1':
     dependencies:
       '@noble/hashes': 1.7.1
+
+  '@noble/curves@1.9.0':
+    dependencies:
+      '@noble/hashes': 1.8.0
 
   '@noble/curves@1.9.1':
     dependencies:
@@ -12619,6 +12714,14 @@ snapshots:
     dependencies:
       possible-typed-array-names: 1.1.0
 
+  axios@0.30.2(debug@4.4.3):
+    dependencies:
+      follow-redirects: 1.15.11(debug@4.4.3)
+      form-data: 4.0.4
+      proxy-from-env: 1.1.0
+    transitivePeerDependencies:
+      - debug
+
   axios@1.12.2(debug@4.4.1):
     dependencies:
       follow-redirects: 1.15.11(debug@4.4.1)
@@ -12886,6 +12989,8 @@ snapshots:
   bytes@3.1.2: {}
 
   cac@6.7.14: {}
+
+  cafe-utility@32.2.0: {}
 
   call-bind-apply-helpers@1.0.2:
     dependencies:
@@ -13746,6 +13851,14 @@ snapshots:
 
   etag@1.8.1: {}
 
+  ethereum-cryptography@3.2.0:
+    dependencies:
+      '@noble/ciphers': 1.3.0
+      '@noble/curves': 1.9.0
+      '@noble/hashes': 1.8.0
+      '@scure/bip32': 1.7.0
+      '@scure/bip39': 1.6.0
+
   ethers@6.15.0:
     dependencies:
       '@adraffy/ens-normalize': 1.10.1
@@ -14541,6 +14654,10 @@ snapshots:
     transitivePeerDependencies:
       - encoding
 
+  isomorphic-ws@4.0.1(ws@8.18.3):
+    dependencies:
+      ws: 8.18.3
+
   isstream@0.1.2: {}
 
   istanbul-lib-coverage@3.2.2: {}
@@ -14661,6 +14778,8 @@ snapshots:
   js-base64@3.7.7: {}
 
   js-base64@3.7.8: {}
+
+  js-md5@0.8.3: {}
 
   js-sha3@0.8.0: {}
 
@@ -16994,6 +17113,8 @@ snapshots:
   utils-merge@1.0.1: {}
 
   uuid@10.0.0: {}
+
+  uuid@11.1.0: {}
 
   uuid@9.0.1: {}
 

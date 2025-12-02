@@ -32,7 +32,17 @@ export const builtinPluginDefinitions: ReadonlyArray<BuiltinPluginDefinition> = 
     keywords: ['browser', 'assistant', 'context'],
     author: 'Hashgraph Online',
     homepage: 'https://hashgraph.online/'
-  }
+  },
+  {
+    id: "swarm",
+    name: "Swarm Plugin",
+    version: "0.1.0",
+    description:
+      "Swarm operations: tools for interacting with the Swarm decentralized storage.",
+    keywords: ["Swarm", "storage"],
+    author: "Solar Punk",
+    homepage: "https://solarpunk.buzz/",
+  },
 ]
 
 const buildBuiltinPluginConfig = (

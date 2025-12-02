@@ -12,6 +12,18 @@ export const hederaConfigSchema = z.object({
   network: z.enum(['mainnet', 'testnet'])
 })
 
+export const swarmConfigSchema = z.object({
+  beeApiUrl: z
+    .string()
+    .min(1, 'Bee node or Gateway api URL is required'),
+  beeFeedPK: z
+    .string()
+    .min(1, 'Private key is required')
+    .min(64, 'Invalid private key format'),
+  autoAssignStamp: z.boolean().default(true),
+  deferredUploadSizeThresholdMB: z.number().default(5),
+})
+
 export const openAIConfigSchema = z.object({
   apiKey: z
     .string()

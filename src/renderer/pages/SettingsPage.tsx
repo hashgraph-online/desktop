@@ -23,8 +23,9 @@ import {
 } from '../components/ui/tabs';
 import Typography from '../components/ui/Typography';
 import { cn } from '../lib/utils';
+import { SwarmSettings } from './settings/SwarmSettings';
 
-interface SettingsPageProps {}
+interface SettingsPageProps { }
 
 type TabKey = 'hedera' | 'wallet' | 'llm' | 'advanced';
 
@@ -94,7 +95,7 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
 
       const changed = JSON.stringify(state.config) !== JSON.stringify(prevState.config);
       if (changed) {
-        try { console.debug('[SettingsPage] config changed; scheduling save debounce'); } catch {}
+        try { console.debug('[SettingsPage] config changed; scheduling save debounce'); } catch { }
         setHasChanges(true);
 
         if (saveTimeout) {
@@ -113,10 +114,10 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
         if (shouldAutoSave) {
           const timeout = setTimeout(async () => {
             try {
-              try { console.debug('[SettingsPage] auto-saving config'); } catch {}
+              try { console.debug('[SettingsPage] auto-saving config'); } catch { }
               await saveConfig();
               setHasChanges(false);
-            } catch (error) {}
+            } catch (error) { }
           }, 2000);
           setSaveTimeout(timeout);
         }
@@ -156,7 +157,7 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
           }, 500);
         }
       }
-    } catch (error) {}
+    } catch (error) { }
   };
 
   const handleCancel = async () => {
@@ -287,6 +288,16 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
                   transition={{ duration: 0.2 }}
                 >
                   <WalletSettings />
+                </motion.div>
+              </TabsContent>
+
+              <TabsContent value='hedera' className='mt-0'>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <SwarmSettings />
                 </motion.div>
               </TabsContent>
 
