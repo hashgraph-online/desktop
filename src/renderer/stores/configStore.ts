@@ -41,12 +41,20 @@ export interface AnthropicConfig {
   model: string;
 }
 
+export interface SwarmConfig {
+  beeApiUrl: string;
+  beeFeedPK: string;
+  autoAssignStamp: boolean;
+  deferredUploadSizeThresholdMB: number;
+}
+
 export interface AdvancedConfig {
   theme: 'light' | 'dark';
   autoStart: boolean;
   logLevel: 'debug' | 'info' | 'warn' | 'error';
   operationalMode?: 'autonomous' | 'provideBytes' | 'returnBytes';
   webBrowserPluginEnabled?: boolean;
+  swarmPluginEnabled?: boolean;
 }
 
 export interface LegalAcceptanceConfig {
@@ -63,6 +71,7 @@ interface WalletConnectionState {
 
 export interface AppConfig {
   hedera: HederaConfig;
+  swarm: SwarmConfig;
   openai: OpenAIConfig;
   anthropic: AnthropicConfig;
   advanced: AdvancedConfig;
@@ -84,6 +93,13 @@ export interface ConfigStore {
   setHederaPrivateKey: (privateKey: string) => void;
   setHederaNetwork: (network: 'mainnet' | 'testnet') => void;
 
+  setSwarmBeeApiUrl: (beeApiUrl: string) => void;
+  setSwarmBeeFeedPK: (beeFeedPK: string) => void;
+  setSwarmAutoAssignStamp: (autoAssignStamp: boolean) => void;
+  setSwarmDeferredUploadSizeThresholdMB: (
+    deferredUploadSizeThresholdMB: number
+  ) => void;
+
   setOpenAIApiKey: (apiKey: string) => void;
   setOpenAIModel: (model: string) => void;
 
@@ -96,6 +112,7 @@ export interface ConfigStore {
   setAutoStart: (autoStart: boolean) => void;
   setLogLevel: (logLevel: 'debug' | 'info' | 'warn' | 'error') => void;
   setWebBrowserPluginEnabled: (enabled: boolean) => void;
+  setSwarmPluginEnabled: (enabled: boolean) => void;
   setOperationalMode: (
     mode: 'autonomous' | 'provideBytes' | 'returnBytes'
   ) => void;
@@ -112,6 +129,7 @@ export interface ConfigStore {
   testAnthropicConnection: () => Promise<{ success: boolean; error?: string }>;
 
   isHederaConfigValid: () => boolean;
+  isSwarmConfigValid: () => boolean;
   isOpenAIConfigValid: () => boolean;
   isAnthropicConfigValid: () => boolean;
   isLLMConfigValid: () => boolean;
@@ -124,6 +142,12 @@ const defaultConfig: AppConfig = {
     accountId: '',
     privateKey: '',
     network: 'testnet',
+  },
+  swarm: {
+    beeApiUrl: 'https://api.gateway.ethswarm.org',
+    beeFeedPK: '',
+    autoAssignStamp: true,
+    deferredUploadSizeThresholdMB: 5,
   },
   openai: {
     apiKey: '',
@@ -139,6 +163,7 @@ const defaultConfig: AppConfig = {
     logLevel: 'info',
     operationalMode: 'provideBytes',
     webBrowserPluginEnabled: true,
+    swarmPluginEnabled: true
   },
   llmProvider: 'openai',
   autonomousMode: false,
@@ -152,6 +177,7 @@ const defaultConfig: AppConfig = {
 const cloneConfig = (config: AppConfig): AppConfig => ({
   ...config,
   hedera: { ...config.hedera },
+  swarm: { ...config.swarm },
   openai: { ...config.openai },
   anthropic: { ...config.anthropic },
   advanced: { ...config.advanced },
@@ -220,6 +246,46 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
         ? {
             ...state.config,
             hedera: { ...state.config.hedera, network },
+          }
+        : null,
+    })),
+
+  setSwarmBeeApiUrl: (beeApiUrl) =>
+    set((state) => ({
+      config: state.config
+        ? {
+            ...state.config,
+            swarm: { ...state.config.swarm, beeApiUrl },
+          }
+        : null,
+    })),
+
+  setSwarmBeeFeedPK: (beeFeedPK) =>
+    set((state) => ({
+      config: state.config
+        ? {
+            ...state.config,
+            swarm: { ...state.config.swarm, beeFeedPK },
+          }
+        : null,
+    })),
+
+  setSwarmAutoAssignStamp: (autoAssignStamp) =>
+    set((state) => ({
+      config: state.config
+        ? {
+            ...state.config,
+            swarm: { ...state.config.swarm, autoAssignStamp },
+          }
+        : null,
+    })),
+
+  setSwarmDeferredUploadSizeThresholdMB: (deferredUploadSizeThresholdMB) =>
+    set((state) => ({
+      config: state.config
+        ? {
+            ...state.config,
+            swarm: { ...state.config.swarm, deferredUploadSizeThresholdMB },
           }
         : null,
     })),
@@ -367,6 +433,25 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
             advanced: {
               ...state.config.advanced,
               webBrowserPluginEnabled: enabled,
+            },
+          }
+        : null,
+    }));
+
+    const state = get();
+    if (state.config && state.hasLoadedInitialConfig) {
+      persistConfig(cloneConfig(state.config));
+    }
+  },
+
+  setSwarmPluginEnabled: (enabled) => {
+    set((state) => ({
+      config: state.config
+        ? {
+            ...state.config,
+            advanced: {
+              ...state.config.advanced,
+              swarmPluginEnabled: enabled,
             },
           }
         : null,
@@ -540,9 +625,7 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
           }
 
           const effectiveMode: 'autonomous' | 'provideBytes' | 'returnBytes' =
-            normalizedMode === 'returnBytes'
-              ? 'provideBytes'
-              : normalizedMode;
+            normalizedMode === 'returnBytes' ? 'provideBytes' : normalizedMode;
 
           finalConfig = {
             ...defaultConfig,
@@ -561,6 +644,12 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
             finalConfig.hedera = {
               ...envConfig.hedera,
               ...finalConfig.hedera,
+            };
+          }
+          if (envConfig.swarm) {
+            finalConfig.swarm = {
+              ...envConfig.swarm,
+              ...finalConfig.swarm,
             };
           }
           if (envConfig.openai) {
@@ -585,6 +674,7 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
           isLoading: false,
           hasLoadedInitialConfig: true,
         });
+        
         localStorage.setItem('app-config', JSON.stringify(finalConfig));
 
         try {
@@ -722,6 +812,15 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     return false;
   },
 
+  isSwarmConfigValid: () => {
+    const { config } = get();
+    if (!config || !config.swarm) {
+      return false;
+    }
+
+    return true;
+  },
+
   isOpenAIConfigValid: () => {
     const { config } = get();
     if (!config || !config.openai) {
@@ -775,3 +874,4 @@ function isValidAccountId(accountId: string): boolean {
 function isValidPrivateKey(privateKey: string): boolean {
   return !!privateKey && privateKey.length > 0;
 }
+

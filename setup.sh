@@ -160,6 +160,7 @@ This application interacts with:
 - Hedera Network
 - OpenAI API
 - Anthropic API (optional)
+- Swarm Network (optional)
 
 ## Your Rights
 

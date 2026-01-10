@@ -29,6 +29,15 @@ pub struct HederaConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct SwarmConfig {
+    pub bee_api_url: String,
+    pub bee_feed_pk: String,
+    pub auto_assig_stamp: bool,
+    pub deferred_upload_size_threshold_mb: i32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ProviderConfig {
     pub api_key: String,
     pub model: String,
@@ -42,6 +51,8 @@ pub struct AdvancedConfig {
     pub log_level: LogLevel,
     #[serde(default = "default_true")]
     pub web_browser_plugin_enabled: bool,
+    #[serde(default = "default_true")]
+    pub swarm_plugin_enabled: bool,
     #[serde(default)]
     pub operational_mode: OperationalMode,
 }
@@ -106,6 +117,8 @@ impl Default for ProfileStatus {
 #[serde(rename_all = "camelCase")]
 pub struct AppConfig {
     pub hedera: HederaConfig,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub swarm: Option<SwarmConfig>,
     pub openai: ProviderConfig,
     pub anthropic: ProviderConfig,
     pub advanced: AdvancedConfig,
@@ -209,6 +222,17 @@ impl Default for HederaConfig {
     }
 }
 
+impl Default for SwarmConfig {
+    fn default() -> Self {
+        Self {
+            bee_api_url: String::new(),
+            bee_feed_pk: String::new(),
+            auto_assig_stamp: true,
+            deferred_upload_size_threshold_mb: 5,
+        }
+    }
+}
+
 impl Default for ProviderConfig {
     fn default() -> Self {
         Self {
@@ -222,6 +246,7 @@ impl Default for AppConfig {
     fn default() -> Self {
         Self {
             hedera: HederaConfig::default(),
+            swarm: Some(SwarmConfig::default()),
             openai: ProviderConfig {
                 model: "gpt-5".to_string(),
                 ..ProviderConfig::default()
@@ -235,6 +260,7 @@ impl Default for AppConfig {
                 auto_start: false,
                 log_level: LogLevel::Info,
                 web_browser_plugin_enabled: true,
+                swarm_plugin_enabled: true,
                 operational_mode: OperationalMode::ProvideBytes,
             },
             llm_provider: LlmProvider::Openai,
@@ -319,6 +345,12 @@ fn encrypt_sensitive_fields(config: &mut AppConfig, master_password: &str) -> Re
         config.hedera.private_key = encrypted;
     }
 
+    if let Some(swarm) = config.swarm.as_mut()
+        && let Some(encrypted) = encrypt_value(&swarm.bee_feed_pk, master_password)?
+    {
+        swarm.bee_feed_pk = encrypted;
+    }
+
     if let Some(encrypted) = encrypt_value(&config.openai.api_key, master_password)? {
         config.openai.api_key = encrypted;
     }
@@ -333,6 +365,12 @@ fn encrypt_sensitive_fields(config: &mut AppConfig, master_password: &str) -> Re
 fn decrypt_sensitive_fields(config: &mut AppConfig, master_password: &str) -> Result<(), String> {
     if let Some(decrypted) = decrypt_value(&config.hedera.private_key, master_password)? {
         config.hedera.private_key = decrypted;
+    }
+
+    if let Some(swarm) = config.swarm.as_mut()
+        && let Some(decrypted) = decrypt_value(&swarm.bee_feed_pk, master_password)?
+    {
+        swarm.bee_feed_pk = decrypted;
     }
 
     if let Some(decrypted) = decrypt_value(&config.openai.api_key, master_password)? {
@@ -518,19 +556,31 @@ pub fn save_config(
     Ok(())
 }
 
-fn update_web_browser_plugin_state(
+fn update_plugin_state(
     app_handle: &AppHandle,
     state: &State<ConfigState>,
+    plugin_id: &str,
     enabled: bool,
 ) -> Result<(), String> {
     let response = load_config(app_handle.clone(), state.clone())?;
     let mut config = response.config;
 
-    if config.advanced.web_browser_plugin_enabled == enabled {
+    let current_enabled = match plugin_id {
+        "web-browser" => config.advanced.web_browser_plugin_enabled,
+        "swarm" => config.advanced.swarm_plugin_enabled,
+        _ => return Err(format!("Unknown plugin: {}", plugin_id)),
+    };
+
+    if current_enabled == enabled {
         return Ok(());
     }
 
-    config.advanced.web_browser_plugin_enabled = enabled;
+    match plugin_id {
+        "web-browser" => config.advanced.web_browser_plugin_enabled = enabled,
+        "swarm" => config.advanced.swarm_plugin_enabled = enabled,
+        _ => unreachable!(), // Safe due to prior validation
+    }
+
     save_config(app_handle.clone(), state.clone(), config)?;
     Ok(())
 }
@@ -541,7 +591,7 @@ pub fn plugin_enable(
     state: State<ConfigState>,
     plugin_id: String,
 ) -> Result<PluginToggleResponse, String> {
-    if plugin_id != "web-browser" {
+    if !["web-browser", "swarm"].contains(&plugin_id.as_str()) {
         return Ok(PluginToggleResponse {
             success: false,
             data: None,
@@ -549,7 +599,7 @@ pub fn plugin_enable(
         });
     }
 
-    update_web_browser_plugin_state(&app_handle, &state, true)?;
+    update_plugin_state(&app_handle, &state, &plugin_id, true)?;
     Ok(PluginToggleResponse {
         success: true,
         data: None,
@@ -563,7 +613,7 @@ pub fn plugin_disable(
     state: State<ConfigState>,
     plugin_id: String,
 ) -> Result<PluginToggleResponse, String> {
-    if plugin_id != "web-browser" {
+    if !["web-browser", "swarm"].contains(&plugin_id.as_str()) {
         return Ok(PluginToggleResponse {
             success: false,
             data: None,
@@ -571,7 +621,7 @@ pub fn plugin_disable(
         });
     }
 
-    update_web_browser_plugin_state(&app_handle, &state, false)?;
+    update_plugin_state(&app_handle, &state, &plugin_id, false)?;
     Ok(PluginToggleResponse {
         success: true,
         data: None,
@@ -646,6 +696,8 @@ pub struct EnvironmentConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub hedera: Option<HederaEnvironment>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub swarm: Option<SwarmEnvironment>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub openai: Option<ProviderEnvironment>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub anthropic: Option<ProviderEnvironment>,
@@ -666,6 +718,19 @@ pub struct HederaEnvironment {
     pub private_key: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub network: Option<Network>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct SwarmEnvironment {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bee_api_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bee_feed_pk: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub auto_assig_stamp: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub deferred_upload_size_threshold_mb: Option<i32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -729,7 +794,26 @@ pub fn get_environment_config() -> Result<EnvironmentConfig, String> {
             network: hedera_network,
         });
     }
+    
+    let swarm_bee_api_url = std::env::var("SWARM_BEE_API_URL").ok();
+    let swarm_bee_feed_pk = std::env::var("SWARM_BEE_FEED_PK").ok();
+    let swarm_auto_assign_stamp = std::env::var("SWARM_AUTO_ASSIGN_STAMP")
+        .ok()
+        .and_then(|v| v.parse().ok());
+    let swarm_threshold_mb = std::env::var("SWARM_DEFERRED_UPLOAD_SIZE_THRESHOLD_MB")
+        .ok()
+        .and_then(|v| v.parse().ok());
 
+    if swarm_bee_api_url.is_some() || swarm_bee_feed_pk.is_some() || 
+    swarm_auto_assign_stamp.is_some() || swarm_threshold_mb.is_some() {
+        env_config.swarm = Some(SwarmEnvironment {
+            bee_api_url: swarm_bee_api_url,
+            bee_feed_pk: swarm_bee_feed_pk,
+            auto_assig_stamp: swarm_auto_assign_stamp,
+            deferred_upload_size_threshold_mb: swarm_threshold_mb,
+        });
+    }
+    
     let openai_api_key = std::env::var("OPENAI_API_KEY").ok();
     let openai_model = std::env::var("OPENAI_MODEL").ok();
     if openai_api_key.is_some() || openai_model.is_some() {

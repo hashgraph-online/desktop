@@ -27,7 +27,7 @@ import { SwarmSettings } from './settings/SwarmSettings';
 
 interface SettingsPageProps { }
 
-type TabKey = 'hedera' | 'wallet' | 'llm' | 'advanced';
+type TabKey = 'hedera' | 'wallet' | 'swarm' | 'llm' | 'advanced';
 
 interface Tab {
   key: TabKey;
@@ -39,6 +39,7 @@ interface Tab {
 const tabs: Tab[] = [
   { key: 'hedera', label: 'Hedera', icon: FiServer, component: HederaSettings },
   { key: 'wallet', label: 'Wallet', icon: FiServer, component: WalletSettings },
+  { key: 'swarm', label: 'Swarm', icon: FiServer, component: SwarmSettings },
   { key: 'llm', label: 'AI Models', icon: FiCpu, component: LLMSettings },
   {
     key: 'advanced',
@@ -240,7 +241,7 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
             onValueChange={(value) => setActiveTab(value as TabKey)}
           >
             <div className='border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6'>
-              <TabsList className='grid grid-cols-4 h-auto bg-transparent overflow-x-auto gap-2 sm:gap-3 no-scrollbar'>
+              <TabsList className='grid grid-cols-5 h-auto bg-transparent overflow-x-auto gap-2 sm:gap-3 no-scrollbar'>
                 {tabs.map((tab) => {
                   const Icon = tab.icon;
                   return (
@@ -291,7 +292,7 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
                 </motion.div>
               </TabsContent>
 
-              <TabsContent value='hedera' className='mt-0'>
+              <TabsContent value='swarm' className='mt-0'>
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}

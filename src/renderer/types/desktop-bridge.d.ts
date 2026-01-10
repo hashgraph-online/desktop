@@ -122,6 +122,7 @@ declare global {
       getEnvironmentConfig: () => Promise<{
         enableMainnet: boolean
         hedera?: { accountId?: string; privateKey?: string; network?: 'mainnet' | 'testnet' }
+        swarm?: { beeApiUrl?: string; beeFeedPK?: string; autoAssignStamp?: boolean; deferredUploadSizeThresholdMB?: number; }
         openai?: { apiKey?: string; model?: string }
         anthropic?: { apiKey?: string; model?: string }
         llmProvider?: 'openai' | 'anthropic'

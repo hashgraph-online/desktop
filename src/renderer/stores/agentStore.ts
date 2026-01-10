@@ -1079,6 +1079,12 @@ export const useAgentStore = create<AgentStore>((set, get) => {
           disabledPlugins.push('web-browser');
         }
 
+        const swarmPluginEnabled =
+          rawConfig.advanced?.swarmPluginEnabled ?? true;
+        if (!swarmPluginEnabled) {
+          disabledPlugins.push('swarm');
+        }
+
         const initTimeout = 90000;
         if (walletConnected) {
           try {
