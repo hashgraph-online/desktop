@@ -31,9 +31,9 @@ pub struct HederaConfig {
 #[serde(rename_all = "camelCase")]
 pub struct SwarmConfig {
     pub bee_api_url: String,
-    pub bee_feed_pk: String,
-    pub auto_assig_stamp: bool,
-    pub deferred_upload_size_threshold_mb: i32,
+    pub bee_feed_PK: String,
+    pub auto_assign_stamp: bool,
+    pub deferred_upload_size_threshold_MB: i32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -226,9 +226,9 @@ impl Default for SwarmConfig {
     fn default() -> Self {
         Self {
             bee_api_url: String::new(),
-            bee_feed_pk: String::new(),
-            auto_assig_stamp: true,
-            deferred_upload_size_threshold_mb: 5,
+            bee_feed_PK: String::new(),
+            auto_assign_stamp: true,
+            deferred_upload_size_threshold_MB: 5,
         }
     }
 }
@@ -346,9 +346,9 @@ fn encrypt_sensitive_fields(config: &mut AppConfig, master_password: &str) -> Re
     }
 
     if let Some(swarm) = config.swarm.as_mut()
-        && let Some(encrypted) = encrypt_value(&swarm.bee_feed_pk, master_password)?
+        && let Some(encrypted) = encrypt_value(&swarm.bee_feed_PK, master_password)?
     {
-        swarm.bee_feed_pk = encrypted;
+        swarm.bee_feed_PK = encrypted;
     }
 
     if let Some(encrypted) = encrypt_value(&config.openai.api_key, master_password)? {
@@ -368,9 +368,9 @@ fn decrypt_sensitive_fields(config: &mut AppConfig, master_password: &str) -> Re
     }
 
     if let Some(swarm) = config.swarm.as_mut()
-        && let Some(decrypted) = decrypt_value(&swarm.bee_feed_pk, master_password)?
+        && let Some(decrypted) = decrypt_value(&swarm.bee_feed_PK, master_password)?
     {
-        swarm.bee_feed_pk = decrypted;
+        swarm.bee_feed_PK = decrypted;
     }
 
     if let Some(decrypted) = decrypt_value(&config.openai.api_key, master_password)? {
@@ -726,11 +726,11 @@ pub struct SwarmEnvironment {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bee_api_url: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub bee_feed_pk: Option<String>,
+    pub bee_feed_PK: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub auto_assig_stamp: Option<bool>,
+    pub auto_assign_stamp: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub deferred_upload_size_threshold_mb: Option<i32>,
+    pub deferred_upload_size_threshold_MB: Option<i32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -796,7 +796,7 @@ pub fn get_environment_config() -> Result<EnvironmentConfig, String> {
     }
     
     let swarm_bee_api_url = std::env::var("SWARM_BEE_API_URL").ok();
-    let swarm_bee_feed_pk = std::env::var("SWARM_BEE_FEED_PK").ok();
+    let swarm_bee_feed_PK = std::env::var("SWARM_BEE_FEED_PK").ok();
     let swarm_auto_assign_stamp = std::env::var("SWARM_AUTO_ASSIGN_STAMP")
         .ok()
         .and_then(|v| v.parse().ok());
@@ -804,13 +804,13 @@ pub fn get_environment_config() -> Result<EnvironmentConfig, String> {
         .ok()
         .and_then(|v| v.parse().ok());
 
-    if swarm_bee_api_url.is_some() || swarm_bee_feed_pk.is_some() || 
+    if swarm_bee_api_url.is_some() || swarm_bee_feed_PK.is_some() || 
     swarm_auto_assign_stamp.is_some() || swarm_threshold_mb.is_some() {
         env_config.swarm = Some(SwarmEnvironment {
             bee_api_url: swarm_bee_api_url,
-            bee_feed_pk: swarm_bee_feed_pk,
-            auto_assig_stamp: swarm_auto_assign_stamp,
-            deferred_upload_size_threshold_mb: swarm_threshold_mb,
+            bee_feed_PK: swarm_bee_feed_PK,
+            auto_assign_stamp: swarm_auto_assign_stamp,
+            deferred_upload_size_threshold_MB: swarm_threshold_mb,
         });
     }
     

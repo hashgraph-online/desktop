@@ -34,7 +34,6 @@ export const SwarmSettings: React.FC<SwarmSettingsProps> = () => {
       deferredUploadSizeThresholdMB: config?.swarm?.deferredUploadSizeThresholdMB ?? 5
     }
   })
-  
 
   useEffect(() => {
     if (config?.swarm) {
@@ -51,7 +50,7 @@ export const SwarmSettings: React.FC<SwarmSettingsProps> = () => {
   const watchBeeFeedPK = watch('beeFeedPK')
   const watchAutoAssignStamp = watch('autoAssignStamp')
   const watchDeferredUploadSizeThresholdMB = watch('deferredUploadSizeThresholdMB')
-  
+
   useEffect(() => {
     const next = watchBeeApiUrl || ''
     if (config?.swarm?.beeApiUrl !== next) {
@@ -99,7 +98,7 @@ export const SwarmSettings: React.FC<SwarmSettingsProps> = () => {
           <Input
             id="beeApiUrl"
             type="text"
-            placeholder="http://localhost:1633"
+            placeholder="https://api.gateway.ethswarm.org"
             {...register('beeApiUrl')}
             className={errors.beeApiUrl ? 'border-red-500' : ''}
           />
