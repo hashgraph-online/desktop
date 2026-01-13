@@ -27,7 +27,7 @@
   },
   "dependencies": {
     "@hashgraph/sdk": "2.76.0",
-    "@hashgraphonline/conversational-agent": "file:../../conversational-agent",
+    "@hashgraphonline/conversational-agent": "0.2.218",
     "@hashgraphonline/hashinal-wc": "1.0.107",
     "@hashgraphonline/standards-agent-kit": "0.2.164",
     "@hashgraphonline/standards-sdk": "0.1.111",
