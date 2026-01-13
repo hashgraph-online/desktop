@@ -99,7 +99,7 @@ export const SwarmSettings: React.FC<SwarmSettingsProps> = () => {
           </Typography>
           <div className="mt-2">
             <Typography variant="body2" className="text-yellow-700 dark:text-yellow-400">
-              To use Swarm features, please enable the plugin in the Plugins settings section.
+              To use Swarm features, please enable the plugin in the Advanced settings section.
             </Typography>
           </div>
         </div>
