@@ -10,6 +10,7 @@ import {
   PluginUpdateInfo,
   PluginRuntimeContext,
 } from '../../shared/types/plugin'
+import { BasePlugin } from '@hashgraphonline/standards-agent-kit'
 
 type CommandResponse<T = unknown> = {
   success: boolean
@@ -29,6 +30,7 @@ interface AgentConfig {
   verbose?: boolean;
   disableLogging?: boolean;
   disabledPlugins?: string[];
+  additionalPlugins?: BasePlugin[];
 }
 
 interface ChatSession {

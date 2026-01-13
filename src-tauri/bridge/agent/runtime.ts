@@ -348,7 +348,7 @@ export class BridgeRuntime {
       payload.openRouterBaseURL.trim().length > 0
         ? payload.openRouterBaseURL
         : undefined;
-
+        
     const options: ConversationalAgentOptions = {
       accountId,
       privateKey,
@@ -362,6 +362,7 @@ export class BridgeRuntime {
       disableLogging,
       openRouterApiKey,
       openRouterBaseURL,
+      additionalPlugins: payload.additionalPlugins,
     };
 
     const mcpServers = Array.isArray(payload.mcpServers)

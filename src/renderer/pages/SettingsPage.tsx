@@ -141,7 +141,6 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
       await saveConfig();
       setHasChanges(false);
       setConfigNeverSaved(false);
-
       const newConfig = localStorage.getItem('app-config');
       if (oldConfig && newConfig) {
         const oldParsed = JSON.parse(oldConfig);

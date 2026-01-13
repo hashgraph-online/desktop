@@ -1,4 +1,5 @@
 import type {
+  BasePlugin,
   ConversationalAgentOptions,
   StartInscriptionResult,
   WalletBridgeProvider,
@@ -43,7 +44,7 @@ export interface AgentInitializePayload {
   readonly openRouterApiKey?: string;
   readonly openRouterBaseURL?: string;
   readonly disabledPlugins?: ReadonlyArray<string>;
-  readonly additionalPlugins?: Array<Record<string, unknown>>;
+  readonly additionalPlugins?: BasePlugin[];
 }
 
 export interface AgentMessagePayload {

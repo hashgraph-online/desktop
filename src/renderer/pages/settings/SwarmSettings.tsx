@@ -19,6 +19,8 @@ export const SwarmSettings: React.FC<SwarmSettingsProps> = () => {
     isSwarmConfigValid
   } = useConfigStore()
 
+  const isSwarmEnabled = config?.advanced.swarmPluginEnabled ?? true
+
   const {
     register,
     handleSubmit,
@@ -90,91 +92,106 @@ export const SwarmSettings: React.FC<SwarmSettingsProps> = () => {
         </div>
       </div>
 
-      <form className="space-y-4">
-        <div>
-          <Typography variant="body1" className="font-medium mb-1" noMargin>
-            Bee API URL
+      {!isSwarmEnabled && (
+        <div className="p-4 border border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+          <Typography variant="body1" className="font-medium text-yellow-800 dark:text-yellow-300" noMargin>
+            Swarm plugin is currently disabled
           </Typography>
-          <Input
-            id="beeApiUrl"
-            type="text"
-            placeholder="https://api.gateway.ethswarm.org"
-            {...register('beeApiUrl')}
-            className={errors.beeApiUrl ? 'border-red-500' : ''}
-          />
-          {errors.beeApiUrl && (
-            <div className="mt-1">
-              <Typography variant="caption" className="text-red-600">{errors.beeApiUrl.message}</Typography>
-            </div>
-          )}
-        </div>
-
-        <div>
-          <Typography variant="body1" className="font-medium mb-1" noMargin>
-            Feed Private Key
-          </Typography>
-          <Input
-            id="privateKey"
-            type="password"
-            placeholder="Enter your private key"
-            {...register('beeFeedPK')}
-            className={errors.beeFeedPK ? 'border-red-500' : ''}
-          />
-          {errors.beeFeedPK && (
-            <div className="mt-1">
-              <Typography variant="caption" className="text-red-600">{errors.beeFeedPK.message}</Typography>
-            </div>
-          )}
-          <div className="mt-1">
-            <Typography variant="caption" color="muted">
-              Your private key is encrypted and stored securely using the system keychain.
+          <div className="mt-2">
+            <Typography variant="body2" className="text-yellow-700 dark:text-yellow-400">
+              To use Swarm features, please enable the plugin in the Plugins settings section.
             </Typography>
           </div>
         </div>
+      )}
 
-        <div className="flex items-center justify-between">
+      {isSwarmEnabled && (
+        <form className="space-y-4">
           <div>
-            <Typography variant="body1" className="font-medium" noMargin>
-              Auto-assign postage stamp
+            <Typography variant="body1" className="font-medium mb-1" noMargin>
+              Bee API URL
             </Typography>
-            <Typography variant="caption" color="muted">
-              Automatically select a usable postage stamp for uploads when available.
-            </Typography>
+            <Input
+              id="beeApiUrl"
+              type="text"
+              placeholder="https://api.gateway.ethswarm.org"
+              {...register('beeApiUrl')}
+              className={errors.beeApiUrl ? 'border-red-500' : ''}
+            />
+            {errors.beeApiUrl && (
+              <div className="mt-1">
+                <Typography variant="caption" className="text-red-600">{errors.beeApiUrl.message}</Typography>
+              </div>
+            )}
           </div>
-          <Switch
-            checked={watchAutoAssignStamp}
-            onCheckedChange={(value) =>
-              reset({ ...watch(), autoAssignStamp: value })
-            }
-          />
-        </div>
 
-        <div>
-          <Typography variant="body1" className="font-medium mb-1" noMargin>
-            Deferred upload size threshold (MB)
-          </Typography>
-          <Input
-            id="deferredUploadSizeThresholdMB"
-            type="number"
-            min={0}
-            step={1}
-            {...register('deferredUploadSizeThresholdMB', { valueAsNumber: true })}
-            className={errors.deferredUploadSizeThresholdMB ? 'border-red-500' : ''}
-          />
-          {errors.deferredUploadSizeThresholdMB && (
+          <div>
+            <Typography variant="body1" className="font-medium mb-1" noMargin>
+              Feed Private Key
+            </Typography>
+            <Input
+              id="privateKey"
+              type="password"
+              placeholder="Enter your private key"
+              {...register('beeFeedPK')}
+              className={errors.beeFeedPK ? 'border-red-500' : ''}
+            />
+            {errors.beeFeedPK && (
+              <div className="mt-1">
+                <Typography variant="caption" className="text-red-600">{errors.beeFeedPK.message}</Typography>
+              </div>
+            )}
             <div className="mt-1">
-              <Typography variant="caption" className="text-red-600">
-                {errors.deferredUploadSizeThresholdMB.message}
+              <Typography variant="caption" color="muted">
+                Your private key is encrypted and stored securely using the system keychain.
               </Typography>
             </div>
-          )}
-          <div className="mt-1">
-            <Typography variant="caption" color="muted">
-              Files larger than this size may be uploaded in the background.
-            </Typography>
           </div>
-        </div>
-      </form>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <Typography variant="body1" className="font-medium" noMargin>
+                Auto-assign postage stamp
+              </Typography>
+              <Typography variant="caption" color="muted">
+                Automatically select a usable postage stamp for uploads when available.
+              </Typography>
+            </div>
+            <Switch
+              checked={watchAutoAssignStamp}
+              onCheckedChange={(value) =>
+                reset({ ...watch(), autoAssignStamp: value })
+              }
+            />
+          </div>
+
+          <div>
+            <Typography variant="body1" className="font-medium mb-1" noMargin>
+              Deferred upload size threshold (MB)
+            </Typography>
+            <Input
+              id="deferredUploadSizeThresholdMB"
+              type="number"
+              min={0}
+              step={1}
+              {...register('deferredUploadSizeThresholdMB', { valueAsNumber: true })}
+              className={errors.deferredUploadSizeThresholdMB ? 'border-red-500' : ''}
+            />
+            {errors.deferredUploadSizeThresholdMB && (
+              <div className="mt-1">
+                <Typography variant="caption" className="text-red-600">
+                  {errors.deferredUploadSizeThresholdMB.message}
+                </Typography>
+              </div>
+            )}
+            <div className="mt-1">
+              <Typography variant="caption" color="muted">
+                Files larger than this size may be uploaded in the background.
+              </Typography>
+            </div>
+          </div>
+        </form>
+      )}
     </div>
   )
 }

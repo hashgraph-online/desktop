@@ -5,6 +5,11 @@ import {
   Logger,
   HCSMessage,
 } from '@hashgraphonline/standards-sdk';
+import {
+  SwarmPlugin,
+  SwarmConfig,
+  BasePlugin,
+} from '@hashgraphonline/conversational-agent';
 import { useNotificationStore } from './notificationStore';
 import { useWalletStore } from './walletStore';
 import { BrowserHCSClient } from '@hashgraphonline/standards-sdk';
@@ -1103,6 +1108,17 @@ export const useAgentStore = create<AgentStore>((set, get) => {
           } catch {}
         }
 
+        const additionalPlugins: BasePlugin[] = [];
+        if (swarmPluginEnabled && rawConfig.swarm) {
+          const swarmConfig: SwarmConfig = {
+            beeApiUrl: rawConfig.swarm.beeApiUrl,
+            beeFeedPK: rawConfig.swarm.beeFeedPK,
+            autoAssignStamp: rawConfig.swarm.autoAssignStamp,
+            deferredUploadSizeThresholdMB: rawConfig.swarm.deferredUploadSizeThresholdMB,
+          };
+          additionalPlugins.push(new SwarmPlugin(swarmConfig));
+        }
+
         const initPromise = window?.desktop?.initializeAgent({
           accountId,
           privateKey: walletConnected ? '' : privateKey,
@@ -1115,6 +1131,7 @@ export const useAgentStore = create<AgentStore>((set, get) => {
             ? walletState.accountId ?? accountId
             : accountId,
           disabledPlugins: disabledPlugins.length ? disabledPlugins : undefined,
+          additionalPlugins,
         });
 
         const timeoutPromise = new Promise<never>((_, reject) => {
