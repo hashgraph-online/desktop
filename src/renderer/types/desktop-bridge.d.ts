@@ -30,7 +30,7 @@ interface AgentConfig {
   verbose?: boolean;
   disableLogging?: boolean;
   disabledPlugins?: string[];
-  additionalPlugins?: Record<string, unknown>[];
+  additionalPlugins?: Array<{ pluginType: string; config: Record<string, unknown>}>;
 }
 
 interface ChatSession {

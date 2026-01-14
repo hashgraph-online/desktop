@@ -355,7 +355,7 @@ export class BridgeRuntime {
     const additionalPlugins: BasePlugin[] = [];
     if (Array.isArray(payload.additionalPlugins)) {
       for (const pluginConfig of payload.additionalPlugins) {
-        if (pluginConfig.type === 'swarm') {
+        if (pluginConfig.pluginType === 'swarm') {
           additionalPlugins.push(new SwarmPlugin(pluginConfig.config as unknown as SwarmConfig));
         }
         // Add other plugin types here
