@@ -1133,7 +1133,7 @@ export const useAgentStore = create<AgentStore>((set, get) => {
             ? walletState.accountId ?? accountId
             : accountId,
           disabledPlugins: disabledPlugins.length ? disabledPlugins : undefined,
-          additionalPlugins: additionalPluginConfigs,
+          additionalPlugins: additionalPluginConfigs.length ? additionalPluginConfigs : undefined,
         });
 
         const timeoutPromise = new Promise<never>((_, reject) => {
