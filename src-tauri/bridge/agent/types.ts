@@ -44,7 +44,7 @@ export interface AgentInitializePayload {
   readonly openRouterApiKey?: string;
   readonly openRouterBaseURL?: string;
   readonly disabledPlugins?: ReadonlyArray<string>;
-  readonly additionalPlugins?: BasePlugin[];
+  readonly additionalPlugins?: Array<{ type: string; config: Record<string, unknown>}>;
 }
 
 export interface AgentMessagePayload {

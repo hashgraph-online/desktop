@@ -104,7 +104,7 @@ const PluginsPage: React.FC = () => {
                         <div className="flex items-start justify-between gap-3">
                           <div className="space-y-1">
                             <Typography variant="h3" className="text-lg font-semibold">
-                              {plugin.name}!
+                              {plugin.name}
                             </Typography>
                             <Typography variant="body2" className="text-xs text-muted-foreground">
                               Version {plugin.version}

@@ -1108,17 +1108,19 @@ export const useAgentStore = create<AgentStore>((set, get) => {
           } catch {}
         }
 
-        const additionalPlugins: BasePlugin[] = [];
+        const additionalPluginConfigs = [];
         if (swarmPluginEnabled && rawConfig.swarm) {
-          const swarmConfig: SwarmConfig = {
-            beeApiUrl: rawConfig.swarm.beeApiUrl,
-            beeFeedPK: rawConfig.swarm.beeFeedPK,
-            autoAssignStamp: rawConfig.swarm.autoAssignStamp,
-            deferredUploadSizeThresholdMB: rawConfig.swarm.deferredUploadSizeThresholdMB,
-          };
-          additionalPlugins.push(new SwarmPlugin(swarmConfig));
+          additionalPluginConfigs.push({
+            type: 'swarm',
+            config: {
+              beeApiUrl: rawConfig.swarm.beeApiUrl,
+              beeFeedPK: rawConfig.swarm.beeFeedPK,
+              autoAssignStamp: rawConfig.swarm.autoAssignStamp,
+              deferredUploadSizeThresholdMB: rawConfig.swarm.deferredUploadSizeThresholdMB,
+            }
+          });
         }
-
+        
         const initPromise = window?.desktop?.initializeAgent({
           accountId,
           privateKey: walletConnected ? '' : privateKey,
@@ -1131,7 +1133,7 @@ export const useAgentStore = create<AgentStore>((set, get) => {
             ? walletState.accountId ?? accountId
             : accountId,
           disabledPlugins: disabledPlugins.length ? disabledPlugins : undefined,
-          additionalPlugins,
+          additionalPlugins: additionalPluginConfigs,
         });
 
         const timeoutPromise = new Promise<never>((_, reject) => {

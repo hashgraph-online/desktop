@@ -369,6 +369,8 @@ pub struct AgentInitializeConfigPayload {
     pub disable_logging: Option<bool>,
     #[serde(rename = "disabledPlugins", skip_serializing_if = "Option::is_none")]
     pub disabled_plugins: Option<Vec<String>>,
+    #[serde(rename = "additionalPlugins", skip_serializing_if = "Option::is_none")]
+    pub additional_plugins: Option<Vec<crate::agent::AdditionalPluginConfig>>,
 }
 
 #[derive(Deserialize)]
@@ -474,6 +476,7 @@ impl From<crate::agent::AgentInitializeConfig> for AgentInitializeConfigPayload 
             verbose: value.verbose,
             disable_logging: value.disable_logging,
             disabled_plugins: value.disabled_plugins,
+            additional_plugins: value.additional_plugins,
         }
     }
 }
@@ -498,6 +501,7 @@ mod tests {
             verbose: None,
             disable_logging: None,
             disabled_plugins: None,
+            additional_plugins: None,
         };
 
         let payload = AgentInitializeConfigPayload::from(config);
