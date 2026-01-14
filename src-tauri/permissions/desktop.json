@@ -127,14 +127,19 @@
       "identifier": "mirror-node-token",
       "description": "Allow renderer to fetch mirror node token info.",
       "commands": {
-        "allow": ["mirror_node_get_token_info"]
+        "allow": [
+          "mirror_node_get_token_info"
+        ]
       }
     },
     {
       "identifier": "transaction-parser",
       "description": "Allow renderer access to transaction parser commands.",
       "commands": {
-        "allow": ["transaction_parser_validate", "transaction_parser_parse"]
+        "allow": [
+          "transaction_parser_validate",
+          "transaction_parser_parse"
+        ]
       }
     },
     {
@@ -165,9 +170,13 @@
     },
     {
       "identifier": "plugins",
-      "description": "Allow renderer to query desktop plugins.",
+      "description": "Allow renderer to manage desktop plugins.",
       "commands": {
-        "allow": ["plugin_search"]
+        "allow": [
+          "plugin_search",
+          "plugin_enable",
+          "plugin_disable"
+        ]
       }
     }
   ]

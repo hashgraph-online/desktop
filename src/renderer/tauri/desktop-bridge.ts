@@ -318,9 +318,9 @@ if (typeof window !== 'undefined') {
     uninstallPlugin: () => notImplemented('uninstallPlugin'),
     updatePlugin: () => notImplemented('updatePlugin'),
     enablePlugin: (pluginId: string) =>
-      invoke<PluginToggleResponse>('plugin_enable', { plugin_id: pluginId }),
+      invoke<PluginToggleResponse>('plugin_enable', { pluginId }),
     disablePlugin: (pluginId: string) =>
-      invoke<PluginToggleResponse>('plugin_disable', { plugin_id: pluginId }),
+      invoke<PluginToggleResponse>('plugin_disable', { pluginId }),
     configurePlugin: () => notImplemented('configurePlugin'),
     grantPluginPermissions: () => notImplemented('grantPluginPermissions'),
     revokePluginPermissions: () => notImplemented('revokePluginPermissions'),
