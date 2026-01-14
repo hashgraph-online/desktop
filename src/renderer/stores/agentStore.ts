@@ -1111,7 +1111,7 @@ export const useAgentStore = create<AgentStore>((set, get) => {
         const additionalPluginConfigs = [];
         if (swarmPluginEnabled && rawConfig.swarm) {
           additionalPluginConfigs.push({
-            type: 'swarm',
+            pluginType: 'swarm',
             config: {
               beeApiUrl: rawConfig.swarm.beeApiUrl,
               beeFeedPK: rawConfig.swarm.beeFeedPK,
