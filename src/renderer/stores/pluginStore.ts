@@ -32,7 +32,17 @@ export const builtinPluginDefinitions: ReadonlyArray<BuiltinPluginDefinition> = 
     keywords: ['browser', 'assistant', 'context'],
     author: 'Hashgraph Online',
     homepage: 'https://hashgraph.online/'
-  }
+  },
+  {
+    id: 'swarm',
+    name: 'Swarm Plugin',
+    version: '0.1.0',
+    description:
+      'Swarm operations: tools for interacting with the Swarm decentralized storage.',
+    keywords: ['Swarm', 'storage'],
+    author: 'Solar Punk',
+    homepage: 'https://solarpunk.buzz/',
+  },
 ]
 
 const buildBuiltinPluginConfig = (
@@ -72,7 +82,8 @@ const computeBuiltinPlugins = (enabledMap: Record<string, boolean>): Record<stri
 const getBuiltinEnabledState = () => {
   const { config } = useConfigStore.getState()
   return {
-    'web-browser': config?.advanced?.webBrowserPluginEnabled ?? true
+    'web-browser': config?.advanced?.webBrowserPluginEnabled ?? true,
+    swarm: config?.advanced?.swarmPluginEnabled ?? true
   }
 }
 
@@ -142,6 +153,27 @@ export const usePluginStore = create<PluginStore>((set, get) => {
             plugins: {
               ...current.plugins,
               'web-browser': {
+                ...existing,
+                status: enabled ? 'enabled' : 'disabled',
+                enabled,
+                updatedAt: new Date()
+              }
+            }
+          }
+        })
+      }
+    )
+    
+    useConfigStore.subscribe(
+      state => state.config?.advanced?.swarmPluginEnabled ?? true,
+      (enabled) => {
+        set(current => {
+          const definition = builtinPluginDefinitions.find(def => def.id === 'swarm')!
+          const existing = current.plugins['swarm'] ?? buildBuiltinPluginConfig(definition, enabled)
+          return {
+            plugins: {
+              ...current.plugins,
+              'swarm': {
                 ...existing,
                 status: enabled ? 'enabled' : 'disabled',
                 enabled,
@@ -246,6 +278,9 @@ export const usePluginStore = create<PluginStore>((set, get) => {
         if (pluginId === 'web-browser') {
           const configStore = useConfigStore.getState()
           configStore.setWebBrowserPluginEnabled(true)
+        } else if (pluginId === 'swarm') {
+          const configStore = useConfigStore.getState()
+          configStore.setSwarmPluginEnabled(true)
         }
 
         if (result?.data) {
@@ -275,6 +310,7 @@ export const usePluginStore = create<PluginStore>((set, get) => {
 
     disablePlugin: async (pluginId: string) => {
       const plugin = get().plugins[pluginId]
+
       if (!plugin || !plugin.enabled) {
         return
       }
@@ -301,6 +337,9 @@ export const usePluginStore = create<PluginStore>((set, get) => {
         if (pluginId === 'web-browser') {
           const configStore = useConfigStore.getState()
           configStore.setWebBrowserPluginEnabled(false)
+        } else if (pluginId === 'swarm') {
+          const configStore = useConfigStore.getState()
+          configStore.setSwarmPluginEnabled(false)
         }
 
         set(state => ({
