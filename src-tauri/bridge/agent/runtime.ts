@@ -1,6 +1,9 @@
 import {
   AttachmentProcessor,
+  BasePlugin,
   ConversationalAgent,
+  SwarmConfig,
+  SwarmPlugin,
 } from '@hashgraphonline/conversational-agent';
 import type {
   AttachmentData,
@@ -348,6 +351,16 @@ export class BridgeRuntime {
       payload.openRouterBaseURL.trim().length > 0
         ? payload.openRouterBaseURL
         : undefined;
+        
+    const additionalPlugins: BasePlugin[] = [];
+    if (Array.isArray(payload.additionalPlugins)) {
+      for (const pluginConfig of payload.additionalPlugins) {
+        if (pluginConfig.pluginType === 'swarm') {
+          additionalPlugins.push(new SwarmPlugin(pluginConfig.config as unknown as SwarmConfig));
+        }
+        // Add other plugin types here
+      }
+    }    
 
     const options: ConversationalAgentOptions = {
       accountId,
@@ -362,6 +375,7 @@ export class BridgeRuntime {
       disableLogging,
       openRouterApiKey,
       openRouterBaseURL,
+      additionalPlugins,
     };
 
     const mcpServers = Array.isArray(payload.mcpServers)

@@ -5,6 +5,11 @@ import {
   Logger,
   HCSMessage,
 } from '@hashgraphonline/standards-sdk';
+import {
+  SwarmPlugin,
+  SwarmConfig,
+  BasePlugin,
+} from '@hashgraphonline/conversational-agent';
 import { useNotificationStore } from './notificationStore';
 import { useWalletStore } from './walletStore';
 import { BrowserHCSClient } from '@hashgraphonline/standards-sdk';
@@ -1079,6 +1084,12 @@ export const useAgentStore = create<AgentStore>((set, get) => {
           disabledPlugins.push('web-browser');
         }
 
+        const swarmPluginEnabled =
+          rawConfig.advanced?.swarmPluginEnabled ?? true;
+        if (!swarmPluginEnabled) {
+          disabledPlugins.push('swarm');
+        }
+
         const initTimeout = 90000;
         if (walletConnected) {
           try {
@@ -1097,6 +1108,19 @@ export const useAgentStore = create<AgentStore>((set, get) => {
           } catch {}
         }
 
+        const additionalPluginConfigs = [];
+        if (swarmPluginEnabled && rawConfig.swarm) {
+          additionalPluginConfigs.push({
+            pluginType: 'swarm',
+            config: {
+              beeApiUrl: rawConfig.swarm.beeApiUrl,
+              beeFeedPK: rawConfig.swarm.beeFeedPK,
+              autoAssignStamp: rawConfig.swarm.autoAssignStamp,
+              deferredUploadSizeThresholdMB: rawConfig.swarm.deferredUploadSizeThresholdMB,
+            }
+          });
+        }
+        
         const initPromise = window?.desktop?.initializeAgent({
           accountId,
           privateKey: walletConnected ? '' : privateKey,
@@ -1109,6 +1133,7 @@ export const useAgentStore = create<AgentStore>((set, get) => {
             ? walletState.accountId ?? accountId
             : accountId,
           disabledPlugins: disabledPlugins.length ? disabledPlugins : undefined,
+          additionalPlugins: additionalPluginConfigs.length ? additionalPluginConfigs : undefined,
         });
 
         const timeoutPromise = new Promise<never>((_, reject) => {

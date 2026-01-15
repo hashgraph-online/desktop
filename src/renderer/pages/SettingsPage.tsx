@@ -23,10 +23,11 @@ import {
 } from '../components/ui/tabs';
 import Typography from '../components/ui/Typography';
 import { cn } from '../lib/utils';
+import { SwarmSettings } from './settings/SwarmSettings';
 
-interface SettingsPageProps {}
+interface SettingsPageProps { }
 
-type TabKey = 'hedera' | 'wallet' | 'llm' | 'advanced';
+type TabKey = 'hedera' | 'wallet' | 'swarm' | 'llm' | 'advanced';
 
 interface Tab {
   key: TabKey;
@@ -38,6 +39,7 @@ interface Tab {
 const tabs: Tab[] = [
   { key: 'hedera', label: 'Hedera', icon: FiServer, component: HederaSettings },
   { key: 'wallet', label: 'Wallet', icon: FiServer, component: WalletSettings },
+  { key: 'swarm', label: 'Swarm', icon: FiServer, component: SwarmSettings },
   { key: 'llm', label: 'AI Models', icon: FiCpu, component: LLMSettings },
   {
     key: 'advanced',
@@ -94,7 +96,7 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
 
       const changed = JSON.stringify(state.config) !== JSON.stringify(prevState.config);
       if (changed) {
-        try { console.debug('[SettingsPage] config changed; scheduling save debounce'); } catch {}
+        try { console.debug('[SettingsPage] config changed; scheduling save debounce'); } catch { }
         setHasChanges(true);
 
         if (saveTimeout) {
@@ -113,10 +115,10 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
         if (shouldAutoSave) {
           const timeout = setTimeout(async () => {
             try {
-              try { console.debug('[SettingsPage] auto-saving config'); } catch {}
+              try { console.debug('[SettingsPage] auto-saving config'); } catch { }
               await saveConfig();
               setHasChanges(false);
-            } catch (error) {}
+            } catch (error) { }
           }, 2000);
           setSaveTimeout(timeout);
         }
@@ -139,7 +141,6 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
       await saveConfig();
       setHasChanges(false);
       setConfigNeverSaved(false);
-
       const newConfig = localStorage.getItem('app-config');
       if (oldConfig && newConfig) {
         const oldParsed = JSON.parse(oldConfig);
@@ -156,7 +157,7 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
           }, 500);
         }
       }
-    } catch (error) {}
+    } catch (error) { }
   };
 
   const handleCancel = async () => {
@@ -239,7 +240,7 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
             onValueChange={(value) => setActiveTab(value as TabKey)}
           >
             <div className='border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6'>
-              <TabsList className='grid grid-cols-4 h-auto bg-transparent overflow-x-auto gap-2 sm:gap-3 no-scrollbar'>
+              <TabsList className='grid grid-cols-5 h-auto bg-transparent overflow-x-auto gap-2 sm:gap-3 no-scrollbar'>
                 {tabs.map((tab) => {
                   const Icon = tab.icon;
                   return (
@@ -287,6 +288,16 @@ const SettingsPage: React.FC<SettingsPageProps> = () => {
                   transition={{ duration: 0.2 }}
                 >
                   <WalletSettings />
+                </motion.div>
+              </TabsContent>
+
+              <TabsContent value='swarm' className='mt-0'>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <SwarmSettings />
                 </motion.div>
               </TabsContent>
 

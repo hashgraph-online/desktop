@@ -21,7 +21,7 @@ const PluginsPage: React.FC = () => {
   } = usePluginStore()
 
   useEffect(() => {
-    loadInstalledPlugins().catch(() => {})
+    loadInstalledPlugins().catch(() => { })
   }, [loadInstalledPlugins])
 
   const orderedPlugins = useMemo(() => {
