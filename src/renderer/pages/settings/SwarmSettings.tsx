@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { DEFAULT_SWARM_GATEWAY_URL } from '@/renderer/constants/swarm'
+import { DEFAULT_SWARM_GATEWAY_URL } from '../../constants/swarm'
 import { useConfigStore } from '../../stores/configStore'
 import { swarmConfigSchema } from '../../schemas/configuration'
 import { Input } from '../../components/ui'
