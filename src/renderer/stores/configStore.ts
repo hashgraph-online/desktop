@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { configService } from '../services/configService';
+import { DEFAULT_SWARM_GATEWAY_URL } from '../constants/swarm';
 
 /**
  * Helper to wait for desktop bridge to be available
@@ -144,7 +145,7 @@ const defaultConfig: AppConfig = {
     network: 'testnet',
   },
   swarm: {
-    beeApiUrl: 'https://api.gateway.ethswarm.org',
+    beeApiUrl: DEFAULT_SWARM_GATEWAY_URL,
     beeFeedPK: '',
     autoAssignStamp: true,
     deferredUploadSizeThresholdMB: 5,

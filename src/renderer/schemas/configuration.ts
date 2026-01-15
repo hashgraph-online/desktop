@@ -15,7 +15,7 @@ export const hederaConfigSchema = z.object({
 export const swarmConfigSchema = z.object({
   beeApiUrl: z
   .string()
-  .min(1, 'Bee node or Gateway api URL is required'),
+  .min(1, 'Bee node or Gateway API URL is required'),
   beeFeedPK: z
     .string()
     .min(1, 'Private key is required')

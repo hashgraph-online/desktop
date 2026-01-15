@@ -22,7 +22,7 @@ This application interacts with:
 - Hedera Network
 - OpenAI API
 - Anthropic API (optional)
-- Swarm Network (optional)
+- Swarm Infrastructure (optional)
 
 ## Your Rights
 

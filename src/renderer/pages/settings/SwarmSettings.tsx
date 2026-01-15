@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { DEFAULT_SWARM_GATEWAY_URL } from '@/renderer/constants/swarm'
 import { useConfigStore } from '../../stores/configStore'
 import { swarmConfigSchema } from '../../schemas/configuration'
 import { Input } from '../../components/ui'
@@ -30,7 +31,7 @@ export const SwarmSettings: React.FC<SwarmSettingsProps> = () => {
   } = useForm({
     resolver: zodResolver(swarmConfigSchema),
     defaultValues: {
-      beeApiUrl: config?.swarm?.beeApiUrl ?? "https://api.gateway.ethswarm.org",
+      beeApiUrl: config?.swarm?.beeApiUrl ?? DEFAULT_SWARM_GATEWAY_URL,
       beeFeedPK: config?.swarm?.beeFeedPK ?? '',
       autoAssignStamp: config?.swarm?.autoAssignStamp ?? true,
       deferredUploadSizeThresholdMB: config?.swarm?.deferredUploadSizeThresholdMB ?? 5
@@ -40,7 +41,7 @@ export const SwarmSettings: React.FC<SwarmSettingsProps> = () => {
   useEffect(() => {
     if (config?.swarm) {
       reset({
-        beeApiUrl: config.swarm.beeApiUrl ?? "https://api.gateway.ethswarm.org",
+        beeApiUrl: config.swarm.beeApiUrl ?? DEFAULT_SWARM_GATEWAY_URL,
         beeFeedPK: config.swarm.beeFeedPK ?? '',
         autoAssignStamp: config.swarm.autoAssignStamp ?? true,
         deferredUploadSizeThresholdMB: config.swarm.deferredUploadSizeThresholdMB ?? 5
@@ -114,7 +115,7 @@ export const SwarmSettings: React.FC<SwarmSettingsProps> = () => {
             <Input
               id="beeApiUrl"
               type="text"
-              placeholder="https://api.gateway.ethswarm.org"
+              placeholder={DEFAULT_SWARM_GATEWAY_URL}
               {...register('beeApiUrl')}
               className={errors.beeApiUrl ? 'border-red-500' : ''}
             />
@@ -151,10 +152,10 @@ export const SwarmSettings: React.FC<SwarmSettingsProps> = () => {
           <div className="flex items-center justify-between">
             <div>
               <Typography variant="body1" className="font-medium" noMargin>
-                Auto-assign postage stamp
+                Auto-assign postage stamp batch
               </Typography>
               <Typography variant="caption" color="muted">
-                Automatically select a usable postage stamp for uploads when available.
+                Automatically select a usable postage stamp batch for uploads when available.
               </Typography>
             </div>
             <Switch
@@ -186,7 +187,7 @@ export const SwarmSettings: React.FC<SwarmSettingsProps> = () => {
             )}
             <div className="mt-1">
               <Typography variant="caption" color="muted">
-                Files larger than this size may be uploaded in the background.
+                Files larger than this size will be uploaded in the background.
               </Typography>
             </div>
           </div>

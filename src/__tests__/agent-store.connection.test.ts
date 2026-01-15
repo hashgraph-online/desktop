@@ -118,7 +118,7 @@ describe('AgentStore configuration bridge', () => {
         },
         anthropic: {
           apiKey: '',
-          model: 'claude-3-7-sonnet-latest',
+          model: 'claude-sonnet-4-20250514',
         },
         advanced: {
           autoStart: false,
