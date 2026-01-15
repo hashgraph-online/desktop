@@ -88,7 +88,7 @@ export const SwarmSettings: React.FC<SwarmSettingsProps> = () => {
         <Typography variant="h4" noMargin>Swarm Configuration</Typography>
         <div className="mt-2">
           <Typography variant="body1" color="muted" noMargin>
-            Configure Swarm plugin.
+            Configure the Swarm plugin to access the decentralized storage infrastructure of Swarm.
           </Typography>
         </div>
       </div>
