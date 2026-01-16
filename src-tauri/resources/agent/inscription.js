@@ -32,6 +32,7 @@ const toDashedTransactionId = (transactionId) => {
 };
 exports.toDashedTransactionId = toDashedTransactionId;
 class InscriptionService {
+    logBridgeEvent;
     constructor(logBridgeEvent) {
         this.logBridgeEvent = logBridgeEvent;
     }

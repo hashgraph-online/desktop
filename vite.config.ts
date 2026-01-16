@@ -32,6 +32,9 @@ export default defineConfig({
       react: resolvePath('./node_modules/react'),
       'react-dom': resolvePath('./node_modules/react-dom'),
       '@noble/hashes/keccak': resolvePath('./node_modules/@noble/hashes/sha3.js'),
+      '@noble/curves/secp256k1.js': resolvePath('./node_modules/@noble/curves/esm/secp256k1.js'),
+      '@noble/curves/secp256k1': resolvePath('./node_modules/@noble/curves/esm/secp256k1.js'),
+      '@reown/walletkit': resolvePath('./src/lib/reown-walletkit-stub.ts'),
       pino: resolvePath('./src/lib/pino-stub.ts'),
       'thread-stream': resolvePath('./src/lib/thread-stream-stub.ts'),
       'fs/promises': resolvePath('./src/lib/fs-promises-stub.ts'),
@@ -40,6 +43,7 @@ export default defineConfig({
   },
   optimizeDeps: {
     include: ['react', 'react-dom', 'monaco-editor', '@monaco-editor/react'],
+    exclude: ['@reown/walletkit'],
     esbuildOptions: {
       target: 'esnext'
     }

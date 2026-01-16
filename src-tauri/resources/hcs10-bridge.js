@@ -1,7 +1,6 @@
-#!/usr/bin/env node
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const node_readline_1 = require("node:readline");
+const readline_stub_1 = require("./stubs/readline-stub");
 const standards_sdk_1 = require("@hashgraphonline/standards-sdk");
 const hcs10_schemas_1 = require("./hcs10-schemas");
 const tagToCapabilityMap = {
@@ -18,7 +17,7 @@ const tagToCapabilityMap = {
 };
 let currentAbortController = null;
 let currentProfileName = null;
-const rl = (0, node_readline_1.createInterface)({ input: process.stdin, crlfDelay: Infinity });
+const rl = (0, readline_stub_1.createInterface)({ input: process.stdin, crlfDelay: Infinity });
 rl.on('line', async (line) => {
     const trimmed = line.trim();
     if (!trimmed) {

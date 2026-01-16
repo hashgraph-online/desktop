@@ -33,6 +33,7 @@ import { AgentSelectorModal } from '../components/chat/AgentSelectorModal';
 import { SessionCreationModal } from '../components/chat/SessionCreationModal';
 import { AgentProfileModal } from '../components/AgentProfileModal';
 import { toast } from 'sonner';
+import { sendConnectionRequest } from '../services/registryBrokerChatService';
 import { useNotificationStore } from '../stores/notificationStore';
 import { useHCS10 } from '../contexts/HCS10Context';
 import type { Agent } from '../contexts/HCS10Context';
@@ -330,13 +331,11 @@ const ChatPage: React.FC<ChatPageProps> = () => {
     navigate('/settings');
   };
 
-  const handleConnectToAgent = useCallback(async (agent: Agent) => {
+  const handleConnectToAgent = useCallback(async (agent: { accountId: string }) => {
     try {
-      const result = await window?.desktop?.invoke(
-        'hcs10_send_connection_request',
-        {
-          targetAccountId: agent.accountId,
-        }
+      const result = await sendConnectionRequest(
+        agent.accountId,
+        { message: "Hello! I'd like to connect with you." }
       );
 
       if (result.success) {
@@ -391,11 +390,9 @@ const ChatPage: React.FC<ChatPageProps> = () => {
 
   const handleAgentConnect = useCallback(async (accountId: string) => {
     try {
-      const result = await window?.desktop?.invoke(
-        'hcs10_send_connection_request',
-        {
-          targetAccountId: accountId,
-        }
+      const result = await sendConnectionRequest(
+        accountId,
+        { message: "Hello! I'd like to connect with you." }
       );
 
       if (result.success) {

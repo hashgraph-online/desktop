@@ -6,7 +6,11 @@ import { Logger } from '@hashgraphonline/standards-sdk';
 
 const currentOrigin = ((): string => {
   try {
-    if (typeof window !== 'undefined' && window.location && window.location.origin) {
+    if (
+      typeof window !== 'undefined' &&
+      window.location &&
+      window.location.origin
+    ) {
       return window.location.origin;
     }
   } catch {}
@@ -46,7 +50,7 @@ export const WcReproPage: React.FC = () => {
             }
           }
         } catch {}
-        return '610b20415692c366e3bf97b8208cada5';
+        return '55632c02cb971468424ae93c89366117';
       })();
 
       const sdk = HashinalsWalletConnectSDK.getInstance();

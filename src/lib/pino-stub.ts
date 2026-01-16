@@ -27,10 +27,12 @@ function createStub(): StubLogger {
   return logger;
 }
 
-export default function pino(): StubLogger {
+function pino(): StubLogger {
   return createStub();
 }
 
+export default pino;
+export { pino };
 export type { StubLogger };
 /** Minimal levels map to satisfy packages that import `levels` from pino */
 export const levels = {
