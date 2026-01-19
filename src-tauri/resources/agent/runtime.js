@@ -306,6 +306,15 @@ class BridgeRuntime {
             payload.openRouterBaseURL.trim().length > 0
             ? payload.openRouterBaseURL
             : undefined;
+        const additionalPlugins = [];
+        if (Array.isArray(payload.additionalPlugins)) {
+            for (const pluginConfig of payload.additionalPlugins) {
+                if (pluginConfig.pluginType === 'swarm') {
+                    additionalPlugins.push(new conversational_agent_1.SwarmPlugin(pluginConfig.config));
+                }
+                // Add other plugin types here
+            }
+        }
         const options = {
             accountId,
             privateKey,
@@ -319,6 +328,7 @@ class BridgeRuntime {
             disableLogging,
             openRouterApiKey,
             openRouterBaseURL,
+            additionalPlugins,
         };
         const mcpServers = Array.isArray(payload.mcpServers)
             ? payload.mcpServers
