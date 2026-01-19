@@ -8,12 +8,14 @@
     "pnpm": ">=8.0.0"
   },
   "scripts": {
+    "postinstall": "node scripts/patch-noble-curves.cjs",
     "setup:legal": "node -e \"(() => { const fs = require('node:fs'); const path = require('node:path'); const root = process.cwd(); const ensureDir = (file) => { const dir = path.dirname(file); if (!fs.existsSync(dir)) { fs.mkdirSync(dir, { recursive: true }); } }; const relativeTarget = (target) => { const rel = path.relative(root, target); return rel && rel.length > 0 ? rel : target; }; const writeContent = (target, content) => { ensureDir(target); fs.writeFileSync(target, content, 'utf8'); }; const writeFromEnv = (envName, target) => { const value = process.env[envName]; if (!value || value.trim().length === 0) { return false; } writeContent(target, value); console.log('✅ ' + envName + ' wrote to ' + relativeTarget(target)); return true; }; const copyFromPath = (envName, target) => { const value = process.env[envName]; if (!value || value.trim().length === 0) { return false; } const resolved = path.isAbsolute(value) ? value : path.join(root, value); if (!fs.existsSync(resolved)) { console.error('❌ ' + envName + ' source not found: ' + resolved); process.exitCode = 1; return true; } const content = fs.readFileSync(resolved, 'utf8'); writeContent(target, content); console.log('✅ ' + envName + ' copied to ' + relativeTarget(target)); return true; }; [ { raw: 'TERMS_MARKDOWN', pathEnv: 'TERMS_MARKDOWN_PATH', target: path.join(root, 'public', 'terms.md') }, { raw: 'PRIVACY_MARKDOWN', pathEnv: 'PRIVACY_MARKDOWN_PATH', target: path.join(root, 'public', 'privacy.md') } ].forEach((entry) => { if (writeFromEnv(entry.raw, entry.target)) { return; } if (copyFromPath(entry.pathEnv, entry.target)) { return; } console.log('ℹ️ ' + entry.raw + '/' + entry.pathEnv + ' not provided; keeping ' + relativeTarget(entry.target)); }); })();\"",
     "setup": "pnpm run setup:legal",
     "dev": "pnpm run tauri:dev",
     "dev:renderer": "pnpm run build:bridge && concurrently \"pnpm run bridge:watch\" \"node --max-old-space-size=16384 ./node_modules/vite/bin/vite.js dev\"",
     "start": "pnpm run dev",
-    "build:bridge": "vite build -c src-tauri/vite.config.bridge.ts",
+    "build:agent": "tsc -p src-tauri/tsconfig.bridge.json",
+    "build:bridge": "pnpm run build:agent && vite build -c src-tauri/vite.config.bridge.ts",
     "build": "tsx scripts/build-all.ts",
     "preview": "vite preview",
     "bridge:watch": "vite build -c src-tauri/vite.config.bridge.ts --watch",
@@ -26,17 +28,18 @@
     "tauri:test": "pnpm run build:bridge && pnpm test"
   },
   "dependencies": {
-    "@hashgraph/sdk": "2.76.0",
+    "@hashgraph/sdk": "2.77.0",
     "@hashgraphonline/conversational-agent": "0.2.218",
-    "@hashgraphonline/hashinal-wc": "1.0.107",
+    "@hashgraphonline/hashinal-wc": "2.0.35",
     "@hashgraphonline/standards-agent-kit": "0.2.164",
-    "@hashgraphonline/standards-sdk": "0.1.111",
+    "@hashgraphonline/standards-sdk": "0.1.145",
     "@hookform/resolvers": "^5.2.1",
     "@kabuto-sh/ns": "^0.14.2",
-    "@kiloscribe/inscription-sdk": "1.0.60",
+    "@kiloscribe/inscription-sdk": "2.0.8",
     "@langchain/anthropic": "^0.3.27",
     "@modelcontextprotocol/sdk": "^1.18.1",
     "@monaco-editor/react": "^4.7.0",
+    "@noble/curves": "1.8.1",
     "@noble/hashes": "1.8.0",
     "@radix-ui/react-alert-dialog": "^1.1.15",
     "@radix-ui/react-avatar": "^1.1.10",
@@ -57,7 +60,6 @@
     "@tanstack/react-virtual": "^3.13.12",
     "@tauri-apps/api": "^2.8.0",
     "@types/lodash": "^4.17.20",
-    "@walletconnect/modal-core": "^2.7.0",
     "@walletconnect/types": "^2.23.0",
     "axios": "^1.11.0",
     "bignumber.js": "9.3.1",
@@ -119,8 +121,17 @@
     "vite-plugin-wasm": "^3.5.0",
     "vitest": "^2.1.4"
   },
+  "resolutions": {
+    "@hashgraphonline/standards-sdk": "0.1.145",
+    "@hashgraphonline/hashinal-wc": "2.0.35",
+    "@hashgraph/sdk": "2.77.0"
+  },
   "overrides": {
-    "@hashgraphonline/standards-agent-kit": "0.2.164"
+    "@hashgraphonline/standards-agent-kit": "0.2.164",
+    "@hashgraphonline/standards-sdk": "0.1.145",
+    "@hashgraphonline/hashinal-wc": "2.0.35",
+    "@noble/curves": "1.8.1",
+    "@hashgraph/sdk": "2.77.0"
   },
   "packageManager": "pnpm@10.14.0+sha512.ad27a79641b49c3e481a16a805baa71817a04bbe06a38d17e60e2eaee83f6a146c6a688125f5792e48dd5ba30e7da52a5cda4c3992b9ccf333f9ce223af84748"
 }

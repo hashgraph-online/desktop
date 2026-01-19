@@ -134,18 +134,67 @@ export class BridgeRuntime {
 
     const options = this.buildAgentOptions(payload);
 
+    const optionsWithDisabled = options as ConversationalAgentOptions & { disabledPlugins?: string[] };
+    this.deps.writeStderr('Bridge initialize options', {
+      accountId: options.accountId ? `${options.accountId.slice(0, 10)}...` : 'EMPTY',
+      privateKey: options.privateKey ? `${options.privateKey.length} chars` : 'EMPTY',
+      operationalMode: options.operationalMode,
+      llmProvider: options.llmProvider,
+      openAIApiKey: options.openAIApiKey ? 'SET' : 'EMPTY',
+      disabledPlugins: optionsWithDisabled.disabledPlugins ?? 'NONE',
+    });
+
+    const missingFields: string[] = [];
+    if (!options.accountId || options.accountId.trim().length === 0) {
+      missingFields.push('Hedera account ID');
+    }
+    const isAutonomousMode = options.operationalMode === 'autonomous';
+    if (isAutonomousMode && (!options.privateKey || options.privateKey.trim().length === 0)) {
+      missingFields.push('Hedera private key (required for autonomous mode)');
+    }
+    if (!options.openAIApiKey || options.openAIApiKey.trim().length === 0) {
+      missingFields.push('API key (OpenAI or Anthropic)');
+    }
+
+    if (missingFields.length > 0) {
+      return {
+        id: null,
+        success: false,
+        error: `Missing required configuration: ${missingFields.join(', ')}. Please check your settings.`,
+      };
+    }
+
+    // Log full options for debugging
+    const optionsForLog = options as ConversationalAgentOptions & { disabledPlugins?: string[] };
+    this.deps.writeStderr('Bridge creating ConversationalAgent with options', {
+      accountId: optionsForLog.accountId?.slice(0, 15) ?? 'MISSING',
+      privateKeyLength: optionsForLog.privateKey?.length ?? 0,
+      privateKeyEmpty: !optionsForLog.privateKey || optionsForLog.privateKey.trim().length === 0,
+      operationalMode: optionsForLog.operationalMode,
+      operationalModeType: typeof optionsForLog.operationalMode,
+      network: optionsForLog.network,
+      llmProvider: optionsForLog.llmProvider,
+      userAccountId: optionsForLog.userAccountId?.slice(0, 15) ?? 'NONE',
+      disabledPlugins: optionsForLog.disabledPlugins ?? 'NONE',
+      hasOpenAIKey: !!optionsForLog.openAIApiKey,
+    });
+
     const instance = new ConversationalAgent(options);
 
     try {
+      this.deps.writeStderr('Bridge calling instance.initialize()');
       await instance.initialize();
+      this.deps.writeStderr('Bridge instance.initialize() completed successfully');
     } catch (error) {
       const errorMessage = (error as Error).message ?? String(error);
       const errorStack = (error as Error).stack ?? 'No stack trace available';
 
-      this.deps.writeStderr('Bridge initialize error', {
+      this.deps.writeStderr('Bridge initialize error FULL DETAILS', {
         message: errorMessage,
         stack: errorStack,
-        error: String(error),
+        errorName: (error as Error).name ?? 'Unknown',
+        errorString: String(error),
+        errorKeys: Object.keys(error as object),
       });
 
       return {
@@ -297,7 +346,7 @@ export class BridgeRuntime {
     ): 'autonomous' | 'returnBytes' => {
       if (typeof mode === 'string') {
         const candidate = mode.toLowerCase();
-        if (candidate === 'returnbytes') {
+        if (candidate === 'returnbytes' || candidate === 'providebytes') {
           return 'returnBytes';
         }
         if (candidate === 'autonomous') {
@@ -340,6 +389,10 @@ export class BridgeRuntime {
         ? payload.userAccountId
         : undefined;
     const operationalMode = normalizeOperationalMode(payload.operationalMode);
+    this.deps.writeStderr('Bridge operationalMode normalization', {
+      raw: payload.operationalMode,
+      normalized: operationalMode,
+    });
     const disableLogging = payload.disableLogging ?? false;
     const openRouterApiKey =
       typeof payload.openRouterApiKey === 'string' &&
@@ -381,16 +434,23 @@ export class BridgeRuntime {
     const mcpServers = Array.isArray(payload.mcpServers)
       ? payload.mcpServers
       : undefined;
-    const disabledPlugins = Array.isArray(payload.disabledPlugins)
-      ? Array.from(
-          new Set(
-            payload.disabledPlugins.filter(
-              (value): value is string =>
-                typeof value === 'string' && value.trim().length > 0
-            )
-          )
+    const baseDisabledPlugins = Array.isArray(payload.disabledPlugins)
+      ? payload.disabledPlugins.filter(
+          (value): value is string =>
+            typeof value === 'string' && value.trim().length > 0
         )
-      : undefined;
+      : [];
+
+    // In returnBytes mode (WalletConnect), disable HCS-10 plugin to avoid
+    // initialization errors when no real private key is available
+    if (operationalMode === 'returnBytes') {
+      baseDisabledPlugins.push('hcs-10');
+    }
+
+    const disabledPlugins =
+      baseDisabledPlugins.length > 0
+        ? Array.from(new Set(baseDisabledPlugins))
+        : undefined;
 
     if (mcpServers && mcpServers.length > 0) {
       (options as unknown as { mcpServers?: unknown }).mcpServers = mcpServers;

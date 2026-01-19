@@ -6,7 +6,7 @@ import { walletService } from '../services/walletService';
 import { useConfigStore } from './configStore';
 import { telemetry } from '../services/telemetryService';
 
-const DEFAULT_WC_PROJECT_ID = '610b20415692c366e3bf97b8208cada5';
+const DEFAULT_WC_PROJECT_ID = '55632c02cb971468424ae93c89366117';
 
 export interface WalletState {
   isConnected: boolean;

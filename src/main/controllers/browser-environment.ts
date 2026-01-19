@@ -32,7 +32,7 @@ const WALLETCONNECT_URLS = [
   'wss://relay.walletconnect.com/*',
 ];
 const DEFAULT_WALLETCONNECT_PROJECT_ID =
-  process.env.WC_PROJECT_ID || '610b20415692c366e3bf97b8208cada5';
+  process.env.WC_PROJECT_ID || '55632c02cb971468424ae93c89366117';
 const LOCALHOST_FALLBACK_ORIGIN = 'http://localhost:5173';
 
 const logger = new Logger({ module: 'DesktopBrowser' });

@@ -10,10 +10,12 @@ const BRIDGE_TIMEOUT_OVERRIDES = {
     wallet_inscribe_fetch: 2 * 60 * 1000,
 };
 class BridgeChannel {
+    writeJsonLine;
+    logBridgeEvent;
+    pending = new Map();
     constructor(writeJsonLine, logBridgeEvent) {
         this.writeJsonLine = writeJsonLine;
         this.logBridgeEvent = logBridgeEvent;
-        this.pending = new Map();
     }
     send(action, payload) {
         const requestId = (0, node_crypto_1.randomUUID)();

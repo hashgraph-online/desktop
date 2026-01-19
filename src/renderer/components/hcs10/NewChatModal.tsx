@@ -20,6 +20,8 @@ import {
 } from 'react-icons/fi';
 import { cn } from '../../lib/utils';
 import { invokeCommand } from '../../tauri/ipc';
+import { discoverAgents as discoverAgentsFromBroker } from '../../services/registryBrokerService';
+import { sendConnectionRequest } from '../../services/registryBrokerChatService';
 
 export interface NewChatModalProps {
   isOpen: boolean;
@@ -212,83 +214,27 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
   const loadAvailableAgents = useCallback(async () => {
     setLoadingAgents(true);
     try {
-      const result = await invokeCommand<{ agents?: unknown[] }>(
-        'hcs10_discover_agents',
-        {
-          filters: {},
-          pagination: { page: 1, limit: 50 },
-        }
-      );
+      const result = await discoverAgentsFromBroker({
+        q: '',
+        limit: 50,
+        page: 1,
+      });
 
-      if (result.success) {
-        const sourceAgents = Array.isArray(result.data?.agents)
-          ? result.data?.agents
-          : [];
-
-        const toAgent = (candidate: unknown, index: number): Agent | null => {
-          if (!candidate || typeof candidate !== 'object') {
-            return null;
-          }
-
-          const record = candidate as Record<string, unknown>;
-          const profileRecord =
-            typeof record.profile === 'object' && record.profile !== null
-              ? (record.profile as Record<string, unknown>)
-              : {};
-          const metadataRecord =
-            typeof record.metadata === 'object' && record.metadata !== null
-              ? (record.metadata as Record<string, unknown>)
-              : {};
-
-          const asString = (value: unknown): string | undefined =>
-            typeof value === 'string' && value.trim().length > 0
-              ? value
-              : undefined;
-
-          const accountId = asString(record.accountId);
-          const displayName =
-            asString(profileRecord.display_name) ||
-            asString(metadataRecord.display_name) ||
-            asString(profileRecord.alias) ||
-            asString(metadataRecord.alias) ||
-            accountId;
-
-          if (!accountId) {
-            return null;
-          }
-
-          const profileType = asString(profileRecord.type) || asString(metadataRecord.type);
-          const inboundTopicId =
-            asString(profileRecord.inboundTopicId) ||
-            asString(metadataRecord.inboundTopicId);
-
-          return {
-            id: accountId ?? `agent-${index}`,
-            accountId,
-            name: displayName ?? accountId,
-            profile: {
-              display_name: displayName,
-              bio: asString(profileRecord.bio) || asString(metadataRecord.bio),
-              profileImage:
-                asString(profileRecord.profileImage) ||
-                asString(metadataRecord.profileImage),
-              alias: asString(profileRecord.alias) || asString(metadataRecord.alias),
-              isAI:
-                profileType !== undefined
-                  ? profileType.toUpperCase() === 'AI_AGENT'
-                  : undefined,
-              isRegistryBroker:
-                profileType !== undefined
-                  ? profileType.toUpperCase() === 'REGISTRY_BROKER'
-                  : undefined,
-            },
-            inboundTopicId,
-          };
-        };
-
-        const transformedAgents = sourceAgents
-          .map((candidate, index) => toAgent(candidate, index))
-          .filter((agent): agent is Agent => agent !== null);
+      if (result.success && result.data) {
+        const transformedAgents: Agent[] = result.data.agents.map((hit, index) => ({
+          id: hit.accountId ?? hit.uaid ?? `agent-${index}`,
+          accountId: hit.accountId ?? hit.uaid ?? '',
+          name: hit.name ?? 'Unknown Agent',
+          profile: {
+            display_name: hit.name,
+            bio: hit.description,
+            profileImage: hit.profileImage,
+            alias: hit.metadata?.alias as string | undefined,
+            isAI: Boolean(hit.metadata?.aiAgent),
+            isRegistryBroker: true,
+          },
+          inboundTopicId: hit.metadata?.inboundTopicId as string | undefined,
+        }));
 
         setAvailableAgents(transformedAgents);
       } else {
@@ -352,17 +298,17 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
     }
 
     try {
-      const result = await invokeCommand('hcs10_send_connection_request', {
+      const result = await sendConnectionRequest(
         targetAccountId,
-        message: memo || "Hello! I'd like to connect with you.",
-      });
+        { message: memo || "Hello! I'd like to connect with you." }
+      );
 
       if (!result.success) {
         throw new Error(result.error || 'Failed to send connection request');
       }
 
       setIsSuccess(true);
-      onSuccess();
+      onSuccess({ sessionId: result.sessionId, isRegistryBroker: true });
     } catch (err: unknown) {
       setError((err instanceof Error ? err.message : String(err)) || 'An unexpected error occurred.');
     } finally {

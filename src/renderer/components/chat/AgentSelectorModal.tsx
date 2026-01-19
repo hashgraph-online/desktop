@@ -22,7 +22,7 @@ import { cn } from '../../lib/utils';
 import { useHRLImageUrl } from '../../hooks/useHRLImageUrl';
 import { NetworkType } from '@hashgraphonline/standards-sdk';
 import ConnectionConfirmDialog from '../shared/ConnectionConfirmDialog';
-import { invokeCommand } from '../../tauri/ipc';
+import { discoverAgents as discoverAgentsFromBroker } from '../../services/registryBrokerService';
 
 interface AgentProfile {
   accountId: string;
@@ -122,26 +122,31 @@ export const AgentSelectorModal: React.FC<AgentSelectorModalProps> = ({
     setError(null);
 
     try {
-      const result = await invokeCommand<{ agents?: AgentProfile[] }>(
-        'hcs10_discover_agents',
-        {
-          search: searchTerm,
-          network: currentNetwork,
-          page: currentPage,
-          limit: pageSize,
-          sortBy,
-          filters,
-        }
-      );
+      const result = await discoverAgentsFromBroker({
+        q: searchTerm,
+        page: currentPage,
+        limit: pageSize,
+        capabilities: filters.capabilities.length > 0 ? filters.capabilities : undefined,
+      });
 
-      if (result.success) {
-        const discovered = Array.isArray(result.agents)
-          ? result.agents
-          : Array.isArray(result.data?.agents)
-            ? result.data?.agents ?? []
-            : Array.isArray(result.data as unknown as AgentProfile[])
-              ? (result.data as unknown as AgentProfile[])
-              : [];
+      if (result.success && result.data) {
+        const discovered: AgentProfile[] = result.data.agents.map((hit) => ({
+          accountId: hit.accountId ?? hit.uaid,
+          profile: {
+            display_name: hit.name,
+            alias: hit.metadata?.alias as string | undefined,
+            bio: hit.description,
+            profileImage: hit.profileImage,
+            aiAgent: hit.metadata?.aiAgent as NonNullable<AgentProfile['profile']>['aiAgent'],
+            socials: hit.metadata?.socials as NonNullable<AgentProfile['profile']>['socials'],
+          },
+          metadata: hit.metadata,
+          rating: hit.rating,
+          ratingCount: hit.ratingCount,
+          network: hit.network ?? currentNetwork,
+          createdAt: hit.createdAt,
+          isRegistryBroker: true,
+        }));
         setAgents(discovered);
       } else {
         setError(result.error || 'Failed to load agents');
@@ -151,7 +156,7 @@ export const AgentSelectorModal: React.FC<AgentSelectorModalProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [isOpen, searchTerm, currentNetwork, currentPage, sortBy, filters]);
+  }, [isOpen, searchTerm, currentNetwork, currentPage, pageSize, filters.capabilities]);
 
   useEffect(() => {
     loadAgents();

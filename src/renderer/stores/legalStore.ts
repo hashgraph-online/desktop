@@ -94,10 +94,10 @@ export const useLegalStore = create<LegalStore>((set, get) => ({
 
     if (window.desktop && typeof window?.desktop?.saveConfig === 'function') {
       try {
-        const config = await window.desktop.loadConfig();
-        if (config) {
+        const result = await window.desktop.loadConfig();
+        if (result?.success && result.config) {
           const updatedConfig: AppConfig = {
-            ...config,
+            ...result.config,
             legalAcceptance: defaultLegalAcceptance,
           };
           await window.desktop.saveConfig(updatedConfig as AppConfig);
@@ -110,11 +110,11 @@ export const useLegalStore = create<LegalStore>((set, get) => ({
     try {
       if (window.desktop && typeof window?.desktop?.loadConfig === 'function') {
         const result = await window.desktop.loadConfig();
-        if (result?.legalAcceptance) {
-          set({ legalAcceptance: result.legalAcceptance });
+        if (result?.success && result.config?.legalAcceptance) {
+          set({ legalAcceptance: result.config.legalAcceptance });
           localStorage.setItem(
             STORAGE_KEY,
-            JSON.stringify(result.legalAcceptance)
+            JSON.stringify(result.config.legalAcceptance)
           );
           return;
         }
@@ -136,9 +136,9 @@ export const useLegalStore = create<LegalStore>((set, get) => ({
     if (window.desktop && typeof window?.desktop?.saveConfig === 'function') {
       try {
         const result = await window.desktop.loadConfig();
-        if (result) {
+        if (result?.success && result.config) {
           const updatedConfig: AppConfig = {
-            ...result,
+            ...result.config,
             legalAcceptance,
           };
           await window.desktop.saveConfig(updatedConfig as AppConfig);
