@@ -12,6 +12,18 @@ export const hederaConfigSchema = z.object({
   network: z.enum(['mainnet', 'testnet'])
 })
 
+export const swarmConfigSchema = z.object({
+  beeApiUrl: z
+  .string()
+  .min(1, 'Bee node or Gateway API URL is required'),
+  beeFeedPK: z
+    .string()
+    .min(1, 'Private key is required')
+    .length(64, 'Invalid private key format'),
+  autoAssignStamp: z.boolean().default(true),
+  deferredUploadSizeThresholdMB: z.coerce.number().min(0).default(5),
+})
+
 export const openAIConfigSchema = z.object({
   apiKey: z
     .string()
@@ -32,11 +44,13 @@ export const advancedConfigSchema = z.object({
   theme: z.enum(['light', 'dark']),
   autoStart: z.boolean(),
   logLevel: z.enum(['debug', 'info', 'warn', 'error']),
-  webBrowserPluginEnabled: z.boolean().optional().default(true)
+  webBrowserPluginEnabled: z.boolean().optional().default(true),
+  swarmPluginEnabled: z.boolean().optional().default(true)
 })
 
 export const appConfigSchema = z.object({
   hedera: hederaConfigSchema,
+  swarm: swarmConfigSchema,
   openai: openAIConfigSchema,
   anthropic: anthropicConfigSchema,
   advanced: advancedConfigSchema,
@@ -44,5 +58,7 @@ export const appConfigSchema = z.object({
 })
 
 export type HederaConfigForm = z.infer<typeof hederaConfigSchema>
-export type AdvancedConfigForm = z.infer<typeof advancedConfigSchema>
+export type SwarmConfigForm = z.infer<typeof swarmConfigSchema>
+export type AdvancedConfigForm = z.input<typeof advancedConfigSchema>
 export type AppConfigForm = z.infer<typeof appConfigSchema>
+

@@ -14,7 +14,14 @@ import { useLegalStore } from '../../stores/legalStore'
 interface AdvancedSettingsProps { }
 
 export const AdvancedSettings: React.FC<AdvancedSettingsProps> = () => {
-  const { config, setTheme, setAutoStart, setLogLevel, setWebBrowserPluginEnabled } = useConfigStore()
+  const {
+    config,
+    setTheme,
+    setAutoStart,
+    setLogLevel,
+    setWebBrowserPluginEnabled,
+    setSwarmPluginEnabled,
+  } = useConfigStore()
   const { reset: resetLegal, legalAcceptance } = useLegalStore()
   const [showResetConfirm, setShowResetConfirm] = useState(false)
 
@@ -29,7 +36,8 @@ export const AdvancedSettings: React.FC<AdvancedSettingsProps> = () => {
       theme: config?.advanced?.theme || 'light',
       autoStart: config?.advanced?.autoStart || false,
       logLevel: config?.advanced?.logLevel || 'info',
-      webBrowserPluginEnabled: config?.advanced?.webBrowserPluginEnabled ?? true
+      webBrowserPluginEnabled: config?.advanced?.webBrowserPluginEnabled ?? true,
+      swarmPluginEnabled: config?.advanced?.swarmPluginEnabled ?? true
     }
   })
 
@@ -39,7 +47,8 @@ export const AdvancedSettings: React.FC<AdvancedSettingsProps> = () => {
         theme: config.advanced.theme || 'light',
         autoStart: config.advanced.autoStart || false,
         logLevel: config.advanced.logLevel || 'info',
-        webBrowserPluginEnabled: config.advanced.webBrowserPluginEnabled ?? true
+        webBrowserPluginEnabled: config.advanced.webBrowserPluginEnabled ?? true,
+        swarmPluginEnabled: config.advanced.swarmPluginEnabled ?? true
       })
     }
   }, [config, reset])
@@ -48,6 +57,7 @@ export const AdvancedSettings: React.FC<AdvancedSettingsProps> = () => {
   const watchAutoStart = watch('autoStart')
   const watchLogLevel = watch('logLevel')
   const watchWebBrowserPluginEnabled = watch('webBrowserPluginEnabled')
+  const watchSwarmPluginEnabled = watch('swarmPluginEnabled')
 
   useEffect(() => {
     const next = watchTheme || 'light'
@@ -80,6 +90,14 @@ export const AdvancedSettings: React.FC<AdvancedSettingsProps> = () => {
       setWebBrowserPluginEnabled(next)
     }
   }, [watchWebBrowserPluginEnabled, setWebBrowserPluginEnabled, config?.advanced?.webBrowserPluginEnabled])
+
+  useEffect(() => {
+    const next = watchSwarmPluginEnabled ?? true
+    const current = config?.advanced?.swarmPluginEnabled ?? true
+    if (current !== next) {
+      setSwarmPluginEnabled(next)
+    }
+  }, [watchSwarmPluginEnabled, setSwarmPluginEnabled, config?.advanced?.swarmPluginEnabled])
 
   return (
     <div className="space-y-6">
@@ -135,7 +153,7 @@ export const AdvancedSettings: React.FC<AdvancedSettingsProps> = () => {
                 Automatically launch the application when your computer starts
               </Typography>
             </div>
-          <Switch
+            <Switch
               id="autoStart"
               checked={watchAutoStart}
               onCheckedChange={(checked) => {
@@ -187,6 +205,27 @@ export const AdvancedSettings: React.FC<AdvancedSettingsProps> = () => {
               checked={watchWebBrowserPluginEnabled ?? true}
               onCheckedChange={(checked) => {
                 setValue('webBrowserPluginEnabled', checked, {
+                  shouldDirty: true,
+                  shouldTouch: true
+                })
+              }}
+            />
+          </div>
+        </div>
+
+        <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <Label htmlFor="swarmPlugin" className="text-base font-medium">Swarm Plugin</Label>
+              <Typography variant="caption" color="muted">
+                Swarm operations: tools for interacting with the Swarm decentralized storage.
+              </Typography>
+            </div>
+            <Switch
+              id="swarmPlugin"
+              checked={watchSwarmPluginEnabled ?? true}
+              onCheckedChange={(checked) => {
+                setValue('swarmPluginEnabled', checked, {
                   shouldDirty: true,
                   shouldTouch: true
                 })

@@ -369,6 +369,8 @@ pub struct AgentInitializeConfigPayload {
     pub disable_logging: Option<bool>,
     #[serde(rename = "disabledPlugins", skip_serializing_if = "Option::is_none")]
     pub disabled_plugins: Option<Vec<String>>,
+    #[serde(rename = "additionalPlugins", skip_serializing_if = "Option::is_none")]
+    pub additional_plugins: Option<Vec<crate::agent::AdditionalPluginConfig>>,
 }
 
 #[derive(Deserialize)]
@@ -474,6 +476,7 @@ impl From<crate::agent::AgentInitializeConfig> for AgentInitializeConfigPayload 
             verbose: value.verbose,
             disable_logging: value.disable_logging,
             disabled_plugins: value.disabled_plugins,
+            additional_plugins: value.additional_plugins,
         }
     }
 }
@@ -498,6 +501,7 @@ mod tests {
             verbose: None,
             disable_logging: None,
             disabled_plugins: None,
+            additional_plugins: None,
         };
 
         let payload = AgentInitializeConfigPayload::from(config);
@@ -505,5 +509,41 @@ mod tests {
         assert_eq!(payload.user_account_id.as_deref(), Some("0.0.2002"));
         assert!(payload.mcp_servers.is_some());
         assert!(payload.mcp_servers.unwrap().is_array());
+    }
+
+    #[test]
+    fn payload_includes_additional_plugins() {
+        let config = crate::agent::AgentInitializeConfig {
+            account_id: "0.0.1001".to_string(),
+            private_key: "302e020100300506032b657004220420".to_string(),
+            network: "testnet".to_string(),
+            open_ai_api_key: "sk-test".to_string(),
+            model_name: Some("gpt-test".to_string()),
+            llm_provider: Some("openai".to_string()),
+            user_account_id: Some("0.0.2002".to_string()),
+            operational_mode: Some("provideBytes".to_string()),
+            mcp_servers: None,
+            verbose: None,
+            disable_logging: None,
+            disabled_plugins: None,
+            additional_plugins: Some(vec![
+                crate::agent::AdditionalPluginConfig {
+                    plugin_type: "swarm".to_string(),
+                    config: json!({
+                        "beeApiUrl": "http://localhost:1633",
+                        "beeFeedPK": "test-feed-pk",
+                        "autoAssignStamp": true,
+                        "deferredUploadSizeThresholdMB": 10
+                    }),
+                },
+            ]),
+        };
+
+        let payload = AgentInitializeConfigPayload::from(config);
+        assert!(payload.additional_plugins.is_some());
+        let plugins = payload.additional_plugins.unwrap();
+        assert_eq!(plugins.len(), 1);
+        assert_eq!(plugins[0].plugin_type, "swarm");
+        assert!(plugins[0].config.get("beeApiUrl").is_some());
     }
 }

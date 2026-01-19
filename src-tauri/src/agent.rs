@@ -10,7 +10,14 @@ use crate::agent_services::{InitializationService, MessageService};
 use crate::session::SessionService;
 use crate::wallet_bridge::{WalletBridgeInfo, WalletBridgeState};
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct AdditionalPluginConfig {
+    pub plugin_type: String, // "swarm", "custom", etc.
+    pub config: Value,       // Plugin-specific config as JSON
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct AgentInitializeConfig {
     pub account_id: String,
@@ -34,6 +41,8 @@ pub struct AgentInitializeConfig {
     pub disable_logging: Option<bool>,
     #[serde(default)]
     pub disabled_plugins: Option<Vec<String>>,
+    #[serde(default)]
+    pub additional_plugins: Option<Vec<AdditionalPluginConfig>>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -271,6 +280,7 @@ mod tests {
             verbose: None,
             disable_logging: None,
             disabled_plugins: None,
+            additional_plugins: None,
         }
     }
 
