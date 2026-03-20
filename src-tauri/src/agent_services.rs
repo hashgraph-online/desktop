@@ -378,6 +378,7 @@ mod tests {
             verbose: None,
             disable_logging: None,
             disabled_plugins: None,
+            additional_plugins: None,
         }
     }
 

@@ -32,7 +32,7 @@ export default defineConfig({
       formats: ['es'],
     },
     rollupOptions: {
-      external: ['@tauri-apps/api'],
+      external: ['@tauri-apps/api', '@hashgraph/proto', '@hashgraph/sdk'],
     },
   },
 });

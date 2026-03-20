@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-
+use thiserror::Error;
 use crate::agent::{AgentMessageData, AgentMessageRequest};
 use serde_json::Value;
 use uuid::Uuid;

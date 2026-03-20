@@ -60,6 +60,7 @@
     "@tanstack/react-virtual": "^3.13.12",
     "@tauri-apps/api": "^2.8.0",
     "@types/lodash": "^4.17.20",
+    "@walletconnect/modal-core": "^2.7.0",
     "@walletconnect/types": "^2.23.0",
     "axios": "^1.11.0",
     "bignumber.js": "9.3.1",
